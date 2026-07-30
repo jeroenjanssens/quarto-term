@@ -194,6 +194,7 @@ local function extract_config(meta)
   if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
+  if term_meta["theme"] then config.theme = meta_str(term_meta["theme"]) end
   if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
 
   if term_meta["env"] then
@@ -327,10 +328,15 @@ function Pandoc(doc)
   end
 
   if quarto and quarto.doc and quarto.doc.add_html_dependency then
+    local stylesheets = { "term.css" }
+    if config.theme then
+      local theme_file = "themes/" .. config.theme .. ".css"
+      table.insert(stylesheets, theme_file)
+    end
     quarto.doc.add_html_dependency({
       name = "quarto-term",
       version = "0.2.0",
-      stylesheets = { "term.css" },
+      stylesheets = stylesheets,
     })
   end
 

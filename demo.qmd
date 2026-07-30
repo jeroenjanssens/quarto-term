@@ -6,10 +6,11 @@ term:
   shell: "zsh"
   shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
+  theme: one-dark
   record: "_session.cast"
   verbose: true
   env:
-    PS1: "`$ `"
+    PS1: "$ "
 ---
 
 ## Basic Usage
