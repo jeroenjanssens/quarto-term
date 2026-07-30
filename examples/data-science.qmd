@@ -4,7 +4,6 @@ format: html
 engine: markdown
 term:
   shell: "zsh"
-  shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
   env:
     PS1: "$ "

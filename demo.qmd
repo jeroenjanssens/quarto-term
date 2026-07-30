@@ -7,7 +7,6 @@ format:
 engine: markdown
 term:
   shell: "zsh"
-  shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
   theme: solarized-light
   spacing: true

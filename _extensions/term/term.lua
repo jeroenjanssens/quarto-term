@@ -189,6 +189,16 @@ local function extract_config(meta)
         table.insert(config.shell_args, meta_str(args_val[i]))
       end
     end
+  else
+    -- Default: suppress rc files for reproducibility
+    local shell_base = config.shell:match("([^/]+)$") or config.shell
+    if shell_base == "zsh" then
+      config.shell_args = {"--no-rcs"}
+    elseif shell_base == "bash" then
+      config.shell_args = {"--norc", "--noprofile"}
+    elseif shell_base == "fish" then
+      config.shell_args = {"--no-config"}
+    end
   end
 
   if term_meta["prompt"] then
