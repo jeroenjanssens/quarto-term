@@ -277,14 +277,6 @@ function Pandoc(doc)
   }
 
   local input_json = pandoc.json.encode(request)
-
-  -- Debug: write JSON to file for inspection
-  local dbg = io.open("_debug_input.json", "w")
-  if dbg then
-    dbg:write(input_json)
-    dbg:close()
-  end
-
   local ok, output = pcall(pandoc.pipe, ENGINE, {}, input_json)
 
   if not ok then
