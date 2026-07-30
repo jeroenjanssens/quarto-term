@@ -208,7 +208,20 @@ local function extract_config(meta)
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
   if term_meta["theme"] then config.theme = meta_str(term_meta["theme"]) end
-  if term_meta["fontsize"] then config.fontsize = meta_str(term_meta["fontsize"]) end
+  if term_meta["fontsize"] then
+    local fs = term_meta["fontsize"]
+    if type(fs) == "table" and fs.t == nil then
+      -- Per-format map: { html: "0.8em", pdf: "0.7em" }
+      config._fontsize_map = {}
+      for k, v in pairs(fs) do
+        if type(k) == "string" then
+          config._fontsize_map[k] = meta_str(v)
+        end
+      end
+    else
+      config.fontsize = meta_str(fs)
+    end
+  end
   if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
 
   if term_meta["env"] then
@@ -293,6 +306,13 @@ function Pandoc(doc)
   local theme_bg, theme_fg = read_theme_colors(config.theme)
   if theme_bg then config.theme_bg = theme_bg end
   if theme_fg then config.theme_fg = theme_fg end
+
+  -- Resolve per-format fontsize
+  if config._fontsize_map then
+    local fmt_key = config.format == "latex" and "pdf" or config.format
+    config.fontsize = config._fontsize_map[fmt_key]
+    config._fontsize_map = nil
+  end
 
   local term_positions = {}
   local cells = {}

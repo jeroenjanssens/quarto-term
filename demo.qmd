@@ -11,6 +11,9 @@ term:
   prompt: "`\\$`"
   theme: solarized-light
   spacing: true
+  fontsize:
+    html: "0.85em"
+    pdf: "0.75em"
   record: "_session.cast"
   verbose: true
   env:
