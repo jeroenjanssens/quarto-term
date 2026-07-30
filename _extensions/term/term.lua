@@ -1,23 +1,37 @@
 local function find_engine()
-  local release = "./target/release/quarto-term"
-  local debug = "./target/debug/quarto-term"
-  local f = io.open(release, "r")
-  if f then
-    f:close()
-    return release
-  end
-  f = io.open(debug, "r")
-  if f then
-    f:close()
-    return debug
+  local candidates = {
+    "./target/release/quarto-term",
+    "./target/debug/quarto-term",
+  }
+  for _, path in ipairs(candidates) do
+    local f = io.open(path, "r")
+    if f then
+      f:close()
+      return path
+    end
   end
   return "quarto-term"
 end
 
 local ENGINE = find_engine()
 
-local function parse_cell_options(text)
-  local options = {}
+local function escape_pattern(s)
+  return s:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+end
+
+local function coerce_value(s)
+  s = s:match("^%s*(.-)%s*$")
+  if s == "true" then return true end
+  if s == "false" then return false end
+  local n = tonumber(s)
+  if n then return n end
+  s = s:gsub('^"(.*)"$', "%1")
+  s = s:gsub("^'(.*)'$", "%1")
+  return s
+end
+
+local function parse_cell_options(text, line_marker)
+  local cell_opts = {}
   local code_lines = {}
   local in_options = true
 
@@ -25,9 +39,16 @@ local function parse_cell_options(text)
     if in_options and line:match("^#|%s*") then
       local key, value = line:match("^#|%s*(%S+):%s*(.+)$")
       if key then
-        value = value:gsub('^"(.*)"$', '%1')
-        value = value:gsub("^'(.*)'$", '%1')
-        options[key] = value
+        local list_match = value:match("^%[(.*)%]$")
+        if list_match then
+          local items = {}
+          for item in list_match:gmatch("[^,]+") do
+            table.insert(items, coerce_value(item))
+          end
+          cell_opts[key] = items
+        else
+          cell_opts[key] = coerce_value(value)
+        end
       end
     else
       in_options = false
@@ -39,7 +60,97 @@ local function parse_cell_options(text)
     table.remove(code_lines)
   end
 
-  return options, table.concat(code_lines, "\n")
+  local marker_pat = "%s+" .. escape_pattern(line_marker) .. "%s*(.+)$"
+  local parsed_lines = {}
+  local line_options = {}
+
+  for idx, raw_line in ipairs(code_lines) do
+    local code_part, opts_str = raw_line:match("^(.-)" .. marker_pat)
+    if opts_str then
+      local opts = { line_index = idx - 1 }
+      for k, v in opts_str:gmatch("(%a[%a_]*):%s*([^,]+),?%s*") do
+        opts[k] = coerce_value(v)
+      end
+      table.insert(parsed_lines, code_part)
+      table.insert(line_options, opts)
+    else
+      table.insert(parsed_lines, raw_line)
+      table.insert(line_options, { line_index = idx - 1 })
+    end
+  end
+
+  return cell_opts, table.concat(parsed_lines, "\n"), line_options
+end
+
+local function extract_config(meta)
+  local config = {
+    shell = "bash",
+    shell_args = {},
+    prompt = "[\\$#>]\\s*$",
+    cols = 80,
+    rows = 24,
+    ansi = true,
+    timeout = 10.0,
+    env = {},
+    verbose = false,
+    format = "html",
+  }
+
+  local term_meta = meta and meta["term"]
+  if not term_meta then
+    return config
+  end
+
+  local function meta_str(val)
+    if not val then return nil end
+    if type(val) == "string" then return val end
+    if type(val) == "number" then return tostring(val) end
+    return pandoc.utils.stringify(val)
+  end
+
+  local function meta_bool(val)
+    if val == nil then return nil end
+    if type(val) == "boolean" then return val end
+    local s = meta_str(val)
+    if s == "true" then return true end
+    if s == "false" then return false end
+    return nil
+  end
+
+  local function meta_num(val)
+    if not val then return nil end
+    if type(val) == "number" then return val end
+    return tonumber(meta_str(val))
+  end
+
+  if term_meta["shell"] then
+    local shell_val = term_meta["shell"]
+    if shell_val.t == "MetaList" then
+      config.shell = meta_str(shell_val[1])
+      config.shell_args = {}
+      for i = 2, #shell_val do
+        table.insert(config.shell_args, meta_str(shell_val[i]))
+      end
+    else
+      config.shell = meta_str(shell_val)
+    end
+  end
+
+  if term_meta["prompt"] then config.prompt = meta_str(term_meta["prompt"]) end
+  if term_meta["cols"] then config.cols = meta_num(term_meta["cols"]) or config.cols end
+  if term_meta["rows"] then config.rows = meta_num(term_meta["rows"]) or config.rows end
+  if term_meta["ansi"] ~= nil then config.ansi = meta_bool(term_meta["ansi"]) end
+  if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
+  if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
+  if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
+
+  if term_meta["env"] and term_meta["env"].t == "MetaMap" then
+    for k, v in pairs(term_meta["env"]) do
+      config.env[k] = meta_str(v)
+    end
+  end
+
+  return config
 end
 
 local function is_term_block(block)
@@ -54,37 +165,59 @@ local function is_term_block(block)
   return false
 end
 
-local function build_cell(block)
-  local cell_options, code = parse_cell_options(block.text)
+local function build_cell(block, cell_id, config)
+  local line_marker = "#!"
+  local cell_opts, code, line_options = parse_cell_options(block.text, line_marker)
 
   local options = {
-    echo = true,
+    echo = "terminal",
     output = true,
-    reverse = false,
+    fullscreen = false,
+    scroll = true,
+    keep_last_prompt = false,
+    callouts = pandoc.List({}),
+    remove = pandoc.List({}),
+    highlight = "bash",
   }
 
-  if cell_options["echo"] == "false" then options.echo = false end
-  if cell_options["output"] == "false" then options.output = false end
-  if cell_options["reverse"] == "true" then options.reverse = true end
-  if cell_options["prefix"] then options.prefix = cell_options["prefix"] end
+  if cell_opts["echo"] ~= nil then options.echo = cell_opts["echo"] end
+  if cell_opts["output"] ~= nil then options.output = cell_opts["output"] end
+  if cell_opts["fullscreen"] ~= nil then options.fullscreen = cell_opts["fullscreen"] end
+  if cell_opts["scroll"] ~= nil then options.scroll = cell_opts["scroll"] end
+  if cell_opts["keep_last_prompt"] ~= nil then options.keep_last_prompt = cell_opts["keep_last_prompt"] end
+  if cell_opts["ansi"] ~= nil then options.ansi = cell_opts["ansi"] end
+  if cell_opts["callouts"] ~= nil then options.callouts = cell_opts["callouts"] end
+  if cell_opts["remove"] ~= nil then options.remove = cell_opts["remove"] end
+  if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end
 
-  if block.attributes["echo"] == "false" then options.echo = false end
-  if block.attributes["output"] == "false" then options.output = false end
-  if block.attributes["reverse"] == "true" then options.reverse = true end
-  if block.attributes["prefix"] then options.prefix = block.attributes["prefix"] end
-
-  return { code = code, options = options }
+  return {
+    id = cell_id,
+    code = code,
+    options = options,
+    line_options = line_options,
+  }
 end
 
 function Pandoc(doc)
-  -- Collect all term blocks and their positions
-  local term_indices = {}
+  local config = extract_config(doc.meta)
+
+  if quarto and quarto.doc and quarto.doc.is_format then
+    if quarto.doc.is_format("pdf") or quarto.doc.is_format("latex") then
+      config.format = "latex"
+    elseif quarto.doc.is_format("markdown") then
+      config.format = "markdown"
+    end
+  end
+
+  local term_positions = {}
   local cells = {}
 
   for i, block in ipairs(doc.blocks) do
     if is_term_block(block) then
-      table.insert(term_indices, i)
-      table.insert(cells, build_cell(block))
+      local cell_id = #cells + 1
+      local cell = build_cell(block, cell_id, config)
+      table.insert(cells, cell)
+      table.insert(term_positions, { block_i = i, cell_i = cell_id })
     end
   end
 
@@ -92,24 +225,55 @@ function Pandoc(doc)
     return nil
   end
 
-  -- Send all cells to the Rust engine in a single batch
-  local input = pandoc.json.encode(cells)
-  local ok, result = pcall(pandoc.pipe, ENGINE, {}, input)
+  -- Ensure arrays are encoded as JSON arrays, not objects
+  if #config.shell_args == 0 then
+    config.shell_args = pandoc.List({})
+  end
+
+  local request = {
+    config = config,
+    cells = cells,
+  }
+
+  local input_json = pandoc.json.encode(request)
+
+  -- Debug: write JSON to file for inspection
+  local dbg = io.open("_debug_input.json", "w")
+  if dbg then
+    dbg:write(input_json)
+    dbg:close()
+  end
+
+  local ok, output = pcall(pandoc.pipe, ENGINE, {}, input_json)
+
   if not ok then
-    io.stderr:write("quarto-term engine error: " .. tostring(result) .. "\n")
+    io.stderr:write("quarto-term: engine error: " .. tostring(output) .. "\n")
     return nil
   end
 
-  local results = pandoc.json.decode(result)
+  local results = pandoc.json.decode(output)
 
-  -- Replace term blocks with the engine's HTML output
-  for idx, block_index in ipairs(term_indices) do
-    local cell_result = results[idx]
-    if cell_result and cell_result.html and cell_result.html ~= "" then
-      doc.blocks[block_index] = pandoc.RawBlock("html", cell_result.html)
-    else
-      doc.blocks[block_index] = pandoc.Null()
+  for _, pos in ipairs(term_positions) do
+    local result = results[pos.cell_i]
+    if result then
+      if result.error and result.error ~= pandoc.json.null and result.error ~= "" then
+        io.stderr:write("quarto-term: cell " .. pos.cell_i .. " error: " .. tostring(result.error) .. "\n")
+      end
+      local html = result.html
+      if type(html) == "string" and html ~= "" then
+        doc.blocks[pos.block_i] = pandoc.RawBlock("html", html)
+      else
+        doc.blocks[pos.block_i] = pandoc.Null()
+      end
     end
+  end
+
+  if quarto and quarto.doc and quarto.doc.add_html_dependency then
+    quarto.doc.add_html_dependency({
+      name = "quarto-term",
+      version = "0.2.0",
+      stylesheets = { "term.css" },
+    })
   end
 
   return doc

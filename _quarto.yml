@@ -7,3 +7,11 @@ format:
 
 filters:
   - _extensions/term/term.lua
+
+term:
+  shell: "bash"
+  prompt: "[$#]\\s*$"
+  cols: 80
+  rows: 24
+  ansi: true
+  timeout: 10.0

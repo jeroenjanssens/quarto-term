@@ -1,0 +1,52 @@
+:root {
+  --term-fg: #d4d4d4;
+  --term-bg: #1e1e1e;
+  --term-0: #000000;
+  --term-1: #cd3131;
+  --term-2: #0dbc79;
+  --term-3: #e5e510;
+  --term-4: #2472c8;
+  --term-5: #bc3fbc;
+  --term-6: #11a8cd;
+  --term-7: #e5e5e5;
+  --term-8: #666666;
+  --term-9: #f14c4c;
+  --term-10: #23d18b;
+  --term-11: #f5f543;
+  --term-12: #3b8eea;
+  --term-13: #d670d6;
+  --term-14: #29b8db;
+  --term-15: #e5e5e5;
+}
+
+.term-output,
+.term-screen,
+.term-source {
+  background: var(--term-bg);
+  color: var(--term-fg);
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.term-output code,
+.term-screen code,
+.term-source code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.term-screen {
+  overflow: hidden;
+}
+
+.term-callout {
+  color: var(--term-8);
+  font-style: italic;
+}

@@ -1,54 +1,57 @@
 ---
-title: "Custom Quarto Engine Demo"
+title: "Quarto Term Demo"
 format: html
 engine: markdown
+term:
+  shell: "bash"
+  prompt: "bash-3.2"
+  verbose: true
 ---
 
-## Stateful session
+## Basic Usage
 
-Variables persist across cells. Define a variable:
+Simple commands in a persistent session:
 
 ```{term}
-let name = world
-let greeting = Hello, ${name}!
+echo 'Hello, world!'
 ```
 
-Use it in a later cell:
+Variables persist across cells:
 
 ```{term}
-print greeting
+export GREETING="Hello from quarto-term"
 ```
 
-## Echo disabled
-
 ```{term}
-#| echo: false
-let secret = 42
-print secret
+echo $GREETING
 ```
 
-## Custom option: reverse
+## Working with Files
 
 ```{term}
-#| reverse: true
-Hello from the reverse side!
+echo "line 1" > /tmp/demo.txt
+echo "line 2" >> /tmp/demo.txt
+echo "line 3" >> /tmp/demo.txt
+cat /tmp/demo.txt
 ```
 
-## Custom option: prefix
+## Piping and Commands
 
 ```{term}
-#| prefix: ">>> "
-let x = 10
-let y = ${x} squared
-print y
+seq 1 5 | paste -sd+ | bc
 ```
 
-## State carries through
+## Per-line Options
 
-The session remembers everything from earlier cells:
+### Interrupting a long-running command
 
 ```{term}
-print name
-print greeting
-print x
+sleep 100 #! expect_prompt: false
+ctrl-c #! literal: false, wait: 0.5, expect_prompt: true
+```
+
+## Cleanup
+
+```{term}
+rm -f /tmp/demo.txt
 ```

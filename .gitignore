@@ -3,3 +3,6 @@
 *_files/
 *.html
 *.cast
+
+/.quarto/
+**/*.quarto_ipynb
