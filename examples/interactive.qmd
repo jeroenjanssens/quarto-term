@@ -7,7 +7,7 @@ term:
   shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
   env:
-    PS1: "`$ `"
+    PS1: "$ "
 ---
 
 ## Interrupting Commands

@@ -7,7 +7,7 @@ term:
   shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
   env:
-    PS1: "`$ `"
+    PS1: "$ "
 ---
 
 ## Hello World
@@ -27,14 +27,14 @@ export NAME="World"
 Use it later:
 
 ```{term}
-echo "Hello, $NAME!"
+echo "Hello, $NAME"
 ```
 
 ## Multiple Commands in One Cell
 
 ```{term}
-for i in 1 2 3; do
-  echo "Item $i"
+for i in 1 2 3; do #! expect_prompt: false
+  echo "Item $i" #! expect_prompt: false
 done
 ```
 

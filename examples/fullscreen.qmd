@@ -8,7 +8,7 @@ term:
   prompt: "`\\$`"
   rows: 24
   env:
-    PS1: "`$ `"
+    PS1: "$ "
     TERM: "`xterm-256color`"
 ---
 
