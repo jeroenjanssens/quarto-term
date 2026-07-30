@@ -1,5 +1,6 @@
 mod error;
 mod keymap;
+mod latex;
 mod protocol;
 mod recorder;
 mod renderer;

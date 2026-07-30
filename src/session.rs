@@ -8,6 +8,7 @@ use regex::Regex;
 
 use crate::error::TermError;
 use crate::keymap;
+use crate::latex;
 use crate::protocol::{
     AnnotationSpec, CellResult, Config, EchoMode, InputCell, LineOptions,
 };
@@ -290,7 +291,8 @@ impl PtySession {
         before_scrollback: usize,
         ansi: bool,
     ) -> String {
-        let mut html = String::new();
+        let mut out = String::new();
+        let is_latex = self.config.format == "latex";
 
         let echo_mode = &cell.options.echo;
 
@@ -298,15 +300,22 @@ impl PtySession {
             EchoMode::Bool(false) => {}
             EchoMode::Mode(m) if m == "false" => {}
             EchoMode::Mode(m) if m == "source" => {
-                let lang = match &cell.options.highlight {
-                    HighlightSpec::Language(l) => l.as_str(),
-                    HighlightSpec::Bool(false) => "text",
-                    HighlightSpec::Bool(true) => "bash",
-                };
-                html.push_str(&format!(
-                    "<pre class=\"term-source\"><code class=\"language-{lang}\">{}</code></pre>\n",
-                    html_escape_basic(&cell.code)
-                ));
+                if is_latex {
+                    out.push_str(&format!(
+                        "\\begin{{verbatim}}\n{}\n\\end{{verbatim}}\n",
+                        &cell.code
+                    ));
+                } else {
+                    let lang = match &cell.options.highlight {
+                        HighlightSpec::Language(l) => l.as_str(),
+                        HighlightSpec::Bool(false) => "text",
+                        HighlightSpec::Bool(true) => "bash",
+                    };
+                    out.push_str(&format!(
+                        "<pre class=\"term-source\"><code class=\"language-{lang}\">{}</code></pre>\n",
+                        html_escape_basic(&cell.code)
+                    ));
+                }
             }
             _ => {
                 // "terminal" mode (default): output IS the echo
@@ -319,13 +328,12 @@ impl PtySession {
 
         if show_output {
             let mut lines = if cell.options.fullscreen {
-                self.capture_fullscreen(ansi)
+                self.capture_fullscreen(ansi, is_latex)
             } else {
-                self.capture_new_lines(before_cursor_row, before_scrollback, ansi)
+                self.capture_new_lines(before_cursor_row, before_scrollback, ansi, is_latex)
             };
 
             if !cell.options.keep_last_prompt {
-                // Strip trailing empty lines and prompt line(s)
                 while let Some(last) = lines.last() {
                     if last.text.is_empty() || self.prompt_re.is_match(&last.text) {
                         lines.pop();
@@ -343,14 +351,22 @@ impl PtySession {
             apply_remove(&mut lines, &cell.options.remove);
             apply_callouts(&mut lines, &cell.options.callouts);
 
-            if cell.options.fullscreen {
-                html.push_str(&renderer::render_fullscreen_to_html(&lines, self.config.cols));
+            if is_latex {
+                if cell.options.fullscreen {
+                    out.push_str(&latex::render_fullscreen_to_latex(&lines));
+                } else {
+                    out.push_str(&latex::render_lines_to_latex(&lines, "term-output"));
+                }
             } else {
-                html.push_str(&renderer::render_lines_to_html(&lines, "term-output"));
+                if cell.options.fullscreen {
+                    out.push_str(&renderer::render_fullscreen_to_html(&lines, self.config.cols));
+                } else {
+                    out.push_str(&renderer::render_lines_to_html(&lines, "term-output"));
+                }
             }
         }
 
-        html
+        out
     }
 
     fn capture_new_lines(
@@ -358,6 +374,7 @@ impl PtySession {
         before_cursor_row: usize,
         before_scrollback: usize,
         ansi: bool,
+        is_latex: bool,
     ) -> Vec<RenderedLine> {
         let current_scrollback = self.scrollback_count();
         let current_cursor_row = self.vt.cursor().row;
@@ -373,16 +390,18 @@ impl PtySession {
 
         let end = end_line.min(all_lines.len());
 
+        let render_fn = if is_latex { latex::render_line } else { renderer::render_line };
         all_lines[start_line..end]
             .iter()
-            .map(|line| renderer::render_line(line, ansi))
+            .map(|line| render_fn(line, ansi))
             .collect()
     }
 
-    fn capture_fullscreen(&self, ansi: bool) -> Vec<RenderedLine> {
+    fn capture_fullscreen(&self, ansi: bool, is_latex: bool) -> Vec<RenderedLine> {
+        let render_fn = if is_latex { latex::render_line } else { renderer::render_line };
         self.vt
             .view()
-            .map(|line| renderer::render_line(line, ansi))
+            .map(|line| render_fn(line, ansi))
             .collect()
     }
 }

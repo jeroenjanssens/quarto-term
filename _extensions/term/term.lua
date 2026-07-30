@@ -312,32 +312,43 @@ function Pandoc(doc)
 
   local results = pandoc.json.decode(output)
 
+  local raw_format = "html"
+  if config.format == "latex" then
+    raw_format = "latex"
+  end
+
   for _, pos in ipairs(term_positions) do
     local result = results[pos.cell_i]
     if result then
       if result.error and result.error ~= pandoc.json.null and result.error ~= "" then
         io.stderr:write("quarto-term: cell " .. pos.cell_i .. " error: " .. tostring(result.error) .. "\n")
       end
-      local html = result.html
-      if type(html) == "string" and html ~= "" then
-        doc.blocks[pos.block_i] = pandoc.RawBlock("html", html)
+      local content = result.html
+      if type(content) == "string" and content ~= "" then
+        doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
       else
         doc.blocks[pos.block_i] = pandoc.Null()
       end
     end
   end
 
-  if quarto and quarto.doc and quarto.doc.add_html_dependency then
-    local stylesheets = { "term.css" }
-    if config.theme then
-      local theme_file = "themes/" .. config.theme .. ".css"
-      table.insert(stylesheets, theme_file)
+  if config.format == "latex" then
+    if quarto and quarto.doc and quarto.doc.include_text then
+      quarto.doc.include_text("in-header", "\\usepackage[HTML]{xcolor}\n\\usepackage{tcolorbox}\n\\usepackage{fvextra}\n")
     end
-    quarto.doc.add_html_dependency({
-      name = "quarto-term",
-      version = "0.2.0",
-      stylesheets = stylesheets,
-    })
+  else
+    if quarto and quarto.doc and quarto.doc.add_html_dependency then
+      local stylesheets = { "term.css" }
+      if config.theme then
+        local theme_file = "themes/" .. config.theme .. ".css"
+        table.insert(stylesheets, theme_file)
+      end
+      quarto.doc.add_html_dependency({
+        name = "quarto-term",
+        version = "0.2.0",
+        stylesheets = stylesheets,
+      })
+    end
   end
 
   return doc
