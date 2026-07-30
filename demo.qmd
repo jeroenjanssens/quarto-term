@@ -1,0 +1,54 @@
+---
+title: "Custom Quarto Engine Demo"
+format: html
+engine: markdown
+---
+
+## Stateful session
+
+Variables persist across cells. Define a variable:
+
+```{term}
+let name = world
+let greeting = Hello, ${name}!
+```
+
+Use it in a later cell:
+
+```{term}
+print greeting
+```
+
+## Echo disabled
+
+```{term}
+#| echo: false
+let secret = 42
+print secret
+```
+
+## Custom option: reverse
+
+```{term}
+#| reverse: true
+Hello from the reverse side!
+```
+
+## Custom option: prefix
+
+```{term}
+#| prefix: ">>> "
+let x = 10
+let y = ${x} squared
+print y
+```
+
+## State carries through
+
+The session remembers everything from earlier cells:
+
+```{term}
+print name
+print greeting
+print x
+```

@@ -1,0 +1,9 @@
+project:
+  title: "Quarto Term"
+
+format:
+  html:
+    theme: default
+
+filters:
+  - _extensions/term/term.lua

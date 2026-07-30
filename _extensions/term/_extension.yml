@@ -1,0 +1,6 @@
+title: Term
+author: Jeroen Janssens
+version: 0.1.0
+contributes:
+  filters:
+    - term.lua
