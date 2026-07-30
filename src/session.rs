@@ -9,6 +9,7 @@ use regex::Regex;
 use crate::error::TermError;
 use crate::keymap;
 use crate::latex;
+use crate::markdown;
 use crate::protocol::{
     AnnotationSpec, CellResult, Config, EchoMode, InputCell, LineOptions,
 };
@@ -292,7 +293,8 @@ impl PtySession {
         ansi: bool,
     ) -> String {
         let mut out = String::new();
-        let is_latex = self.config.format == "latex";
+        let format = self.config.format.as_str();
+        let fontsize = self.config.fontsize.as_deref();
 
         let echo_mode = &cell.options.echo;
 
@@ -300,21 +302,27 @@ impl PtySession {
             EchoMode::Bool(false) => {}
             EchoMode::Mode(m) if m == "false" => {}
             EchoMode::Mode(m) if m == "source" => {
-                if is_latex {
-                    out.push_str(&format!(
-                        "\\begin{{verbatim}}\n{}\n\\end{{verbatim}}\n",
-                        &cell.code
-                    ));
-                } else {
-                    let lang = match &cell.options.highlight {
-                        HighlightSpec::Language(l) => l.as_str(),
-                        HighlightSpec::Bool(false) => "text",
-                        HighlightSpec::Bool(true) => "bash",
-                    };
-                    out.push_str(&format!(
-                        "<pre class=\"term-source\"><code class=\"language-{lang}\">{}</code></pre>\n",
-                        html_escape_basic(&cell.code)
-                    ));
+                match format {
+                    "latex" => {
+                        out.push_str(&format!(
+                            "\\begin{{verbatim}}\n{}\n\\end{{verbatim}}\n",
+                            &cell.code
+                        ));
+                    }
+                    "markdown" => {
+                        out.push_str(&format!("```bash\n{}\n```\n", &cell.code));
+                    }
+                    _ => {
+                        let lang = match &cell.options.highlight {
+                            HighlightSpec::Language(l) => l.as_str(),
+                            HighlightSpec::Bool(false) => "text",
+                            HighlightSpec::Bool(true) => "bash",
+                        };
+                        out.push_str(&format!(
+                            "<pre class=\"term-source\"><code class=\"language-{lang}\">{}</code></pre>\n",
+                            html_escape_basic(&cell.code)
+                        ));
+                    }
                 }
             }
             _ => {
@@ -327,6 +335,7 @@ impl PtySession {
             || matches!(echo_mode, EchoMode::Bool(true));
 
         if show_output {
+            let is_latex = format == "latex";
             let mut lines = if cell.options.fullscreen {
                 self.capture_fullscreen(ansi, is_latex)
             } else {
@@ -351,17 +360,27 @@ impl PtySession {
             apply_remove(&mut lines, &cell.options.remove);
             apply_callouts(&mut lines, &cell.options.callouts);
 
-            if is_latex {
-                if cell.options.fullscreen {
-                    out.push_str(&latex::render_fullscreen_to_latex(&lines));
-                } else {
-                    out.push_str(&latex::render_lines_to_latex(&lines, "term-output"));
+            match format {
+                "latex" => {
+                    if cell.options.fullscreen {
+                        out.push_str(&latex::render_fullscreen_to_latex(&lines, fontsize));
+                    } else {
+                        out.push_str(&latex::render_lines_to_latex(&lines, "term-output", fontsize));
+                    }
                 }
-            } else {
-                if cell.options.fullscreen {
-                    out.push_str(&renderer::render_fullscreen_to_html(&lines, self.config.cols));
-                } else {
-                    out.push_str(&renderer::render_lines_to_html(&lines, "term-output"));
+                "markdown" => {
+                    if cell.options.fullscreen {
+                        out.push_str(&markdown::render_fullscreen_to_markdown(&lines));
+                    } else {
+                        out.push_str(&markdown::render_lines_to_markdown(&lines));
+                    }
+                }
+                _ => {
+                    if cell.options.fullscreen {
+                        out.push_str(&renderer::render_fullscreen_to_html(&lines, fontsize));
+                    } else {
+                        out.push_str(&renderer::render_lines_to_html(&lines, "term-output", fontsize));
+                    }
                 }
             }
         }

@@ -195,6 +195,7 @@ local function extract_config(meta)
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
   if term_meta["theme"] then config.theme = meta_str(term_meta["theme"]) end
+  if term_meta["fontsize"] then config.fontsize = meta_str(term_meta["fontsize"]) end
   if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
 
   if term_meta["env"] then
@@ -271,7 +272,7 @@ function Pandoc(doc)
   if quarto and quarto.doc and quarto.doc.is_format then
     if quarto.doc.is_format("pdf") or quarto.doc.is_format("latex") then
       config.format = "latex"
-    elseif quarto.doc.is_format("markdown") then
+    elseif quarto.doc.is_format("gfm") or quarto.doc.is_format("markdown") then
       config.format = "markdown"
     end
   end
@@ -315,6 +316,8 @@ function Pandoc(doc)
   local raw_format = "html"
   if config.format == "latex" then
     raw_format = "latex"
+  elseif config.format == "markdown" then
+    raw_format = "markdown"
   end
 
   for _, pos in ipairs(term_positions) do

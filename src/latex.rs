@@ -54,7 +54,7 @@ pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
     RenderedLine { html: latex, text }
 }
 
-pub fn render_lines_to_latex(lines: &[RenderedLine], _css_class: &str) -> String {
+pub fn render_lines_to_latex(lines: &[RenderedLine], _css_class: &str, fontsize: Option<&str>) -> String {
     if lines.is_empty() {
         return String::new();
     }
@@ -65,16 +65,17 @@ pub fn render_lines_to_latex(lines: &[RenderedLine], _css_class: &str) -> String
         .collect::<Vec<_>>()
         .join("\n");
 
+    let font_cmd = css_fontsize_to_latex(fontsize);
     format!(
         "\\begin{{tcolorbox}}[colback=black!5!white,colframe=black!50!white,boxrule=0.5pt,arc=3pt,left=6pt,right=6pt,top=4pt,bottom=4pt]\n\
-         \\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
+         {font_cmd}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
          {inner}\n\
          \\end{{Verbatim}}\n\
          \\end{{tcolorbox}}\n"
     )
 }
 
-pub fn render_fullscreen_to_latex(lines: &[RenderedLine]) -> String {
+pub fn render_fullscreen_to_latex(lines: &[RenderedLine], fontsize: Option<&str>) -> String {
     if lines.is_empty() {
         return String::new();
     }
@@ -85,13 +86,32 @@ pub fn render_fullscreen_to_latex(lines: &[RenderedLine]) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let font_cmd = css_fontsize_to_latex(fontsize);
     format!(
         "\\begin{{tcolorbox}}[colback=black!90!white,colframe=black!70!white,colupper=white,boxrule=0.5pt,arc=3pt,left=6pt,right=6pt,top=4pt,bottom=4pt]\n\
-         \\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
+         {font_cmd}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
          {inner}\n\
          \\end{{Verbatim}}\n\
          \\end{{tcolorbox}}\n"
     )
+}
+
+fn css_fontsize_to_latex(fontsize: Option<&str>) -> String {
+    match fontsize {
+        None => String::new(),
+        Some(s) => {
+            let cmd = match s {
+                "0.6em" | "5pt" | "6pt" => "\\tiny",
+                "0.7em" | "7pt" | "8pt" => "\\scriptsize",
+                "0.75em" | "9pt" => "\\footnotesize",
+                "0.8em" | "0.85em" | "10pt" => "\\small",
+                "1em" | "11pt" | "12pt" => "\\normalsize",
+                "1.1em" | "1.2em" | "14pt" => "\\large",
+                _ => "\\small",
+            };
+            format!("{cmd}\n")
+        }
+    }
 }
 
 fn wrap_with_pen(text: &str, pen: &Pen) -> String {

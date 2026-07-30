@@ -3,6 +3,7 @@ title: "Quarto Term Demo"
 format:
   html: default
   pdf: default
+  gfm: default
 engine: markdown
 term:
   shell: "zsh"

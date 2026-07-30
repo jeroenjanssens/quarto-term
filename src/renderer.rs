@@ -64,7 +64,7 @@ pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
     RenderedLine { html, text }
 }
 
-pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str) -> String {
+pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str, fontsize: Option<&str>) -> String {
     if lines.is_empty() {
         return String::new();
     }
@@ -75,10 +75,11 @@ pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
-    format!("<pre class=\"{css_class}\"><code>{inner}</code></pre>\n")
+    let style = fontsize.map(|s| format!(" style=\"font-size:{s}\"")).unwrap_or_default();
+    format!("<pre class=\"{css_class}\"{style}><code>{inner}</code></pre>\n")
 }
 
-pub fn render_fullscreen_to_html(lines: &[RenderedLine], _cols: u16) -> String {
+pub fn render_fullscreen_to_html(lines: &[RenderedLine], fontsize: Option<&str>) -> String {
     if lines.is_empty() {
         return String::new();
     }
@@ -89,7 +90,8 @@ pub fn render_fullscreen_to_html(lines: &[RenderedLine], _cols: u16) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
-    format!("<pre class=\"term-screen\"><code>{inner}</code></pre>\n")
+    let style = fontsize.map(|s| format!(" style=\"font-size:{s}\"")).unwrap_or_default();
+    format!("<pre class=\"term-screen\"{style}><code>{inner}</code></pre>\n")
 }
 
 fn line_to_text(line: &Line) -> String {
