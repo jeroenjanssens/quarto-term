@@ -19,13 +19,13 @@ tutorials about command-line data processing — similar to
 ### Creating Sample Data
 
 ```{term}
-cat << 'EOF' > /tmp/data.csv
-name,age,city
-Alice,30,New York
-Bob,25,San Francisco
-Charlie,35,Chicago
-Diana,28,Boston
-Eve,32,Seattle
+cat << 'EOF' > /tmp/data.csv #! expect_prompt: false
+name,age,city #! expect_prompt: false
+Alice,30,New York #! expect_prompt: false
+Bob,25,San Francisco #! expect_prompt: false
+Charlie,35,Chicago #! expect_prompt: false
+Diana,28,Boston #! expect_prompt: false
+Eve,32,Seattle #! expect_prompt: false
 EOF
 cat /tmp/data.csv
 ```
