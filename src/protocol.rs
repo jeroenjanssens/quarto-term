@@ -26,6 +26,8 @@ pub struct Config {
     #[serde(default)]
     pub env: HashMap<String, String>,
     #[serde(default)]
+    pub init: Option<String>,
+    #[serde(default)]
     pub spacing: bool,
     #[serde(default)]
     pub fontsize: Option<String>,

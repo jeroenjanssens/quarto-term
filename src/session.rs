@@ -111,6 +111,16 @@ impl PtySession {
         };
 
         session.wait_for_prompt()?;
+
+        if let Some(ref init_file) = config.init {
+            let cmd = format!("source {}\r", init_file);
+            session.writer.write_all(cmd.as_bytes())
+                .map_err(|_| TermError::ShellExited)?;
+            session.writer.flush().map_err(|_| TermError::ShellExited)?;
+            session.drain_pty();
+            session.wait_for_prompt()?;
+        }
+
         session.save_position();
 
         Ok(session)

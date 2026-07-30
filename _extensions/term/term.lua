@@ -205,6 +205,7 @@ local function extract_config(meta)
   if term_meta["rows"] then config.rows = meta_num(term_meta["rows"]) or config.rows end
   if term_meta["ansi"] ~= nil then config.ansi = meta_bool(term_meta["ansi"]) end
   if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
+  if term_meta["init"] then config.init = meta_str(term_meta["init"]) end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
   if term_meta["theme"] then config.theme = meta_str(term_meta["theme"]) end
