@@ -362,10 +362,15 @@ impl PtySession {
 
             match format {
                 "latex" => {
+                    let theme = latex::LatexTheme {
+                        bg: self.config.theme_bg.as_deref(),
+                        fg: self.config.theme_fg.as_deref(),
+                        fontsize,
+                    };
                     if cell.options.fullscreen {
-                        out.push_str(&latex::render_fullscreen_to_latex(&lines, fontsize));
+                        out.push_str(&latex::render_fullscreen_to_latex(&lines, &theme));
                     } else {
-                        out.push_str(&latex::render_lines_to_latex(&lines, "term-output", fontsize));
+                        out.push_str(&latex::render_lines_to_latex(&lines, &theme));
                     }
                 }
                 "markdown" => {

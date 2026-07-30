@@ -29,6 +29,10 @@ pub struct Config {
     pub spacing: bool,
     #[serde(default)]
     pub fontsize: Option<String>,
+    #[serde(default)]
+    pub theme_bg: Option<String>,
+    #[serde(default)]
+    pub theme_fg: Option<String>,
     #[serde(default = "default_format")]
     pub format: String,
     #[serde(default)]

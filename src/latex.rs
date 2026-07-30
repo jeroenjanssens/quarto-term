@@ -54,7 +54,13 @@ pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
     RenderedLine { html: latex, text }
 }
 
-pub fn render_lines_to_latex(lines: &[RenderedLine], _css_class: &str, fontsize: Option<&str>) -> String {
+pub struct LatexTheme<'a> {
+    pub bg: Option<&'a str>,
+    pub fg: Option<&'a str>,
+    pub fontsize: Option<&'a str>,
+}
+
+pub fn render_lines_to_latex(lines: &[RenderedLine], theme: &LatexTheme) -> String {
     if lines.is_empty() {
         return String::new();
     }
@@ -65,9 +71,10 @@ pub fn render_lines_to_latex(lines: &[RenderedLine], _css_class: &str, fontsize:
         .collect::<Vec<_>>()
         .join("\n");
 
-    let font_cmd = css_fontsize_to_latex(fontsize);
+    let font_cmd = css_fontsize_to_latex(theme.fontsize);
+    let box_opts = tcolorbox_opts(theme.bg, theme.fg);
     format!(
-        "\\begin{{tcolorbox}}[colback=black!5!white,colframe=black!50!white,boxrule=0.5pt,arc=3pt,left=6pt,right=6pt,top=4pt,bottom=4pt]\n\
+        "\\begin{{tcolorbox}}[{box_opts}]\n\
          {font_cmd}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
          {inner}\n\
          \\end{{Verbatim}}\n\
@@ -75,7 +82,7 @@ pub fn render_lines_to_latex(lines: &[RenderedLine], _css_class: &str, fontsize:
     )
 }
 
-pub fn render_fullscreen_to_latex(lines: &[RenderedLine], fontsize: Option<&str>) -> String {
+pub fn render_fullscreen_to_latex(lines: &[RenderedLine], theme: &LatexTheme) -> String {
     if lines.is_empty() {
         return String::new();
     }
@@ -86,14 +93,23 @@ pub fn render_fullscreen_to_latex(lines: &[RenderedLine], fontsize: Option<&str>
         .collect::<Vec<_>>()
         .join("\n");
 
-    let font_cmd = css_fontsize_to_latex(fontsize);
+    let font_cmd = css_fontsize_to_latex(theme.fontsize);
+    let box_opts = tcolorbox_opts(theme.bg, theme.fg);
     format!(
-        "\\begin{{tcolorbox}}[colback=black!90!white,colframe=black!70!white,colupper=white,boxrule=0.5pt,arc=3pt,left=6pt,right=6pt,top=4pt,bottom=4pt]\n\
+        "\\begin{{tcolorbox}}[{box_opts}]\n\
          {font_cmd}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
          {inner}\n\
          \\end{{Verbatim}}\n\
          \\end{{tcolorbox}}\n"
     )
+}
+
+fn tcolorbox_opts(bg: Option<&str>, fg: Option<&str>) -> String {
+    let colback = if bg.is_some() { "termbg" } else { "black!5!white" };
+    let colupper = if fg.is_some() { "termfg" } else { "black" };
+    let colframe = if bg.is_some() { "termbg!80!black" } else { "black!50!white" };
+
+    format!("colback={colback},colframe={colframe},colupper={colupper},boxrule=0.5pt,arc=3pt,left=6pt,right=6pt,top=4pt,bottom=4pt")
 }
 
 fn css_fontsize_to_latex(fontsize: Option<&str>) -> String {

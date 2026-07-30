@@ -23,6 +23,19 @@ end
 
 local ENGINE = find_engine()
 
+local function read_theme_colors(theme_name)
+  if not theme_name then return nil, nil end
+  local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+  local path = filter_dir .. "themes/" .. theme_name .. ".css"
+  local f = io.open(path, "r")
+  if not f then return nil, nil end
+  local content = f:read("*a")
+  f:close()
+  local bg = content:match("%-%-term%-bg:%s*#(%x+)")
+  local fg = content:match("%-%-term%-fg:%s*#(%x+)")
+  return bg, fg
+end
+
 local function escape_pattern(s)
   return s:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
 end
@@ -277,6 +290,10 @@ function Pandoc(doc)
     end
   end
 
+  local theme_bg, theme_fg = read_theme_colors(config.theme)
+  if theme_bg then config.theme_bg = theme_bg end
+  if theme_fg then config.theme_fg = theme_fg end
+
   local term_positions = {}
   local cells = {}
 
@@ -337,7 +354,14 @@ function Pandoc(doc)
 
   if config.format == "latex" then
     if quarto and quarto.doc and quarto.doc.include_text then
-      quarto.doc.include_text("in-header", "\\usepackage[HTML]{xcolor}\n\\usepackage{tcolorbox}\n\\usepackage{fvextra}\n")
+      local preamble = "\\usepackage[HTML]{xcolor}\n\\usepackage{tcolorbox}\n\\usepackage{fvextra}\n"
+      if config.theme_bg then
+        preamble = preamble .. "\\definecolor{termbg}{HTML}{" .. config.theme_bg .. "}\n"
+      end
+      if config.theme_fg then
+        preamble = preamble .. "\\definecolor{termfg}{HTML}{" .. config.theme_fg .. "}\n"
+      end
+      quarto.doc.include_text("in-header", preamble)
     end
   else
     if quarto and quarto.doc and quarto.doc.add_html_dependency then
