@@ -3,10 +3,10 @@ title: "Fullscreen Terminal Capture"
 format: html
 engine: markdown
 term:
-  shell: "bash"
-  shell_args: ["`--norc`", "`--noprofile`"]
+  shell: "zsh"
+  shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
-  rows: 16
+  rows: 24
   env:
     PS1: "`$ `"
     TERM: "`xterm-256color`"
@@ -17,14 +17,20 @@ term:
 The `fullscreen: true` option captures the entire visible terminal grid,
 like taking a screenshot. This is useful for TUI applications.
 
-### System Processes (top)
+### System Processes (htop)
 
-Launch `top` and capture a snapshot of the screen:
+Launch `htop` and capture a snapshot of the screen:
 
 ```{term}
 #| fullscreen: true
-top -l 1 -n 5 #! hold: 2.0, expect_prompt: false
-q #! literal: false, hold: 0.5, expect_prompt: true
+#| scroll: false
+htop #! hold: 2.0, expect_prompt: false
+```
+
+```{term}
+#| echo: false
+#| output: false
+q #! literal: false, hold: 0.5
 ```
 
 ### Directory Listing as Table

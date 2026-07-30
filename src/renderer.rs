@@ -32,9 +32,9 @@ pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
 
         let mut j = i;
         while j < cells.len() && pens_equal(cells[j].pen(), pen) {
-            let ch = cells[j].char();
-            if ch != '\0' && cells[j].width() > 0 {
-                chunk_text.push(ch);
+            if cells[j].width() > 0 {
+                let ch = cells[j].char();
+                chunk_text.push(if ch == '\0' { ' ' } else { ch });
             }
             j += 1;
         }
@@ -78,7 +78,7 @@ pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str) -> String {
     format!("<pre class=\"{css_class}\"><code>{inner}</code></pre>\n")
 }
 
-pub fn render_fullscreen_to_html(lines: &[RenderedLine], cols: u16) -> String {
+pub fn render_fullscreen_to_html(lines: &[RenderedLine], _cols: u16) -> String {
     if lines.is_empty() {
         return String::new();
     }
@@ -89,11 +89,7 @@ pub fn render_fullscreen_to_html(lines: &[RenderedLine], cols: u16) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
-    format!(
-        "<pre class=\"term-screen\" style=\"width:{}ch\">\
-         <code>{inner}</code></pre>\n",
-        cols
-    )
+    format!("<pre class=\"term-screen\"><code>{inner}</code></pre>\n")
 }
 
 fn line_to_text(line: &Line) -> String {

@@ -324,12 +324,20 @@ impl PtySession {
                 self.capture_new_lines(before_cursor_row, before_scrollback, ansi)
             };
 
-            if !cell.options.keep_last_prompt && !cell.options.fullscreen {
-                if let Some(last) = lines.last() {
-                    if self.prompt_re.is_match(&last.text) {
+            if !cell.options.keep_last_prompt {
+                // Strip trailing empty lines and prompt line(s)
+                while let Some(last) = lines.last() {
+                    if last.text.is_empty() || self.prompt_re.is_match(&last.text) {
                         lines.pop();
+                    } else {
+                        break;
                     }
                 }
+            }
+
+            let use_spacing = cell.options.spacing.unwrap_or(self.config.spacing);
+            if use_spacing && !cell.options.fullscreen {
+                apply_spacing(&mut lines, &self.prompt_re);
             }
 
             apply_remove(&mut lines, &cell.options.remove);
@@ -376,6 +384,21 @@ impl PtySession {
             .view()
             .map(|line| renderer::render_line(line, ansi))
             .collect()
+    }
+}
+
+fn apply_spacing(lines: &mut Vec<RenderedLine>, prompt_re: &Regex) {
+    let mut insertions = Vec::new();
+    for (i, line) in lines.iter().enumerate() {
+        if i > 0 && prompt_re.is_match(&line.text) {
+            insertions.push(i);
+        }
+    }
+    for (offset, idx) in insertions.into_iter().enumerate() {
+        lines.insert(idx + offset, RenderedLine {
+            html: String::new(),
+            text: String::new(),
+        });
     }
 }
 

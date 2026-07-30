@@ -25,6 +25,8 @@ pub struct Config {
     pub timeout: f64,
     #[serde(default)]
     pub env: HashMap<String, String>,
+    #[serde(default)]
+    pub spacing: bool,
     #[serde(default = "default_format")]
     pub format: String,
     #[serde(default)]
@@ -56,6 +58,8 @@ pub struct CellOptions {
     pub keep_last_prompt: bool,
     #[serde(default)]
     pub ansi: Option<bool>,
+    #[serde(default)]
+    pub spacing: Option<bool>,
     #[serde(default)]
     pub callouts: Vec<AnnotationSpec>,
     #[serde(default)]

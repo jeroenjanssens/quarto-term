@@ -3,8 +3,8 @@ title: "Quarto Term Demo"
 format: html
 engine: markdown
 term:
-  shell: "bash"
-  shell_args: ["`--norc`", "`--noprofile`"]
+  shell: "zsh"
+  shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
   record: "_session.cast"
   verbose: true
@@ -78,7 +78,14 @@ Capture the entire terminal screen (useful for TUI apps like htop, top, vim):
 
 ```{term}
 #| fullscreen: true
-top -l 1 -n 5 #! hold: 2.0
+#| scroll: false
+htop #! hold: 2.0, expect_prompt: false
+```
+
+```{term}
+#| echo: false
+#| output: false
+q #! literal: false, hold: 0.5
 ```
 
 ## Cleanup

@@ -3,8 +3,8 @@ title: "Data Science at the Command Line"
 format: html
 engine: markdown
 term:
-  shell: "bash"
-  shell_args: ["`--norc`", "`--noprofile`"]
+  shell: "zsh"
+  shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
   env:
     PS1: "`$ `"

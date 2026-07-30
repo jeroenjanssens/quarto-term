@@ -92,7 +92,7 @@ end
 
 local function extract_config(meta)
   local config = {
-    shell = "bash",
+    shell = "zsh",
     shell_args = {},
     prompt = "[\\$#>]\\s*$",
     cols = 80,
@@ -113,14 +113,29 @@ local function extract_config(meta)
     if not val then return nil end
     if type(val) == "string" then return val end
     if type(val) == "number" then return tostring(val) end
-    -- If it's MetaInlines with a single Code element, extract the raw code text
-    -- This allows users to write `value` in YAML to prevent Pandoc processing
     if type(val) == "table" then
       local inlines = val
       if val.t == "MetaInlines" then inlines = val end
+      -- Single Code element: extract raw text (backtick syntax)
       if #inlines == 1 and inlines[1].t == "Code" then
         return inlines[1].text
       end
+      -- Reconstruct text from inlines preserving spaces
+      local parts = {}
+      for _, el in ipairs(inlines) do
+        if el.t == "Str" then
+          table.insert(parts, el.text)
+        elseif el.t == "Space" then
+          table.insert(parts, " ")
+        elseif el.t == "Code" then
+          table.insert(parts, el.text)
+        elseif el.t == "SoftBreak" then
+          table.insert(parts, "\n")
+        else
+          table.insert(parts, pandoc.utils.stringify(el))
+        end
+      end
+      return table.concat(parts)
     end
     return pandoc.utils.stringify(val)
   end
@@ -178,6 +193,7 @@ local function extract_config(meta)
   if term_meta["ansi"] ~= nil then config.ansi = meta_bool(term_meta["ansi"]) end
   if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
+  if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
   if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
 
   if term_meta["env"] then
@@ -188,6 +204,14 @@ local function extract_config(meta)
           config.env[k] = meta_str(v)
         end
       end
+    end
+  end
+
+  -- Pandoc strips trailing spaces from YAML values; restore for prompt vars
+  for _, key in ipairs({"PS1", "PS2", "PROMPT"}) do
+    local val = config.env[key]
+    if val and not val:match("%s$") then
+      config.env[key] = val .. " "
     end
   end
 
@@ -227,6 +251,7 @@ local function build_cell(block, cell_id, config)
   if cell_opts["scroll"] ~= nil then options.scroll = cell_opts["scroll"] end
   if cell_opts["keep_last_prompt"] ~= nil then options.keep_last_prompt = cell_opts["keep_last_prompt"] end
   if cell_opts["ansi"] ~= nil then options.ansi = cell_opts["ansi"] end
+  if cell_opts["spacing"] ~= nil then options.spacing = cell_opts["spacing"] end
   if cell_opts["callouts"] ~= nil then options.callouts = cell_opts["callouts"] end
   if cell_opts["remove"] ~= nil then options.remove = cell_opts["remove"] end
   if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end
