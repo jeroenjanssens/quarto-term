@@ -285,6 +285,14 @@ impl PtySession {
         false
     }
 
+    fn is_only_prompt(&self, text: &str) -> bool {
+        if let Some(m) = self.prompt_re.find(text) {
+            m.end() >= text.len()
+        } else {
+            false
+        }
+    }
+
     fn save_position(&mut self) {
         let scrollback_count = self.vt.lines().count().saturating_sub(self.config.rows as usize);
         self.scrollback_after_last_cell = scrollback_count;
@@ -354,7 +362,7 @@ impl PtySession {
 
             if !cell.options.keep_last_prompt {
                 while let Some(last) = lines.last() {
-                    if last.text.is_empty() || self.prompt_re.is_match(&last.text) {
+                    if last.text.is_empty() || self.is_only_prompt(&last.text) {
                         lines.pop();
                     } else {
                         break;
