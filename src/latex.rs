@@ -104,8 +104,8 @@ fn wrap_with_pen(text: &str, pen: &Pen) -> String {
     };
 
     if let Some(color) = fg {
-        let latex_color = color_to_latex(color);
-        result = format!("\\textcolor{{{latex_color}}}{{{result}}}");
+        let hex = color_to_hex(color);
+        result = format!("\\textcolor[HTML]{{{hex}}}{{{result}}}");
     }
 
     if pen.is_bold() {
@@ -121,14 +121,14 @@ fn wrap_with_pen(text: &str, pen: &Pen) -> String {
     result
 }
 
-fn color_to_latex(color: Color) -> String {
+fn color_to_hex(color: Color) -> String {
     match color {
         Color::RGB(rgb) => {
-            format!("[HTML]{{{:02X}{:02X}{:02X}}}", rgb.r, rgb.g, rgb.b)
+            format!("{:02X}{:02X}{:02X}", rgb.r, rgb.g, rgb.b)
         }
         Color::Indexed(i) if i < 16 => {
             let (r, g, b) = ansi_index_to_rgb(i);
-            format!("[HTML]{{{:02X}{:02X}{:02X}}}", r, g, b)
+            format!("{:02X}{:02X}{:02X}", r, g, b)
         }
         Color::Indexed(i) if i < 232 => {
             let idx = i - 16;
@@ -136,11 +136,11 @@ fn color_to_latex(color: Color) -> String {
             let g = (idx % 36) / 6;
             let b = idx % 6;
             let to_byte = |v: u8| -> u8 { if v == 0 { 0 } else { 55 + v * 40 } };
-            format!("[HTML]{{{:02X}{:02X}{:02X}}}", to_byte(r), to_byte(g), to_byte(b))
+            format!("{:02X}{:02X}{:02X}", to_byte(r), to_byte(g), to_byte(b))
         }
         Color::Indexed(i) => {
             let l = 8 + 10 * (i as u16 - 232) as u8;
-            format!("[HTML]{{{:02X}{:02X}{:02X}}}", l, l, l)
+            format!("{:02X}{:02X}{:02X}", l, l, l)
         }
     }
 }
