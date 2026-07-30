@@ -105,6 +105,15 @@ local function extract_config(meta)
     if not val then return nil end
     if type(val) == "string" then return val end
     if type(val) == "number" then return tostring(val) end
+    -- If it's MetaInlines with a single Code element, extract the raw code text
+    -- This allows users to write `value` in YAML to prevent Pandoc processing
+    if type(val) == "table" then
+      local inlines = val
+      if val.t == "MetaInlines" then inlines = val end
+      if #inlines == 1 and inlines[1].t == "Code" then
+        return inlines[1].text
+      end
+    end
     return pandoc.utils.stringify(val)
   end
 
@@ -136,7 +145,26 @@ local function extract_config(meta)
     end
   end
 
-  if term_meta["prompt"] then config.prompt = meta_str(term_meta["prompt"]) end
+  if term_meta["shell_args"] then
+    local args_val = term_meta["shell_args"]
+    config.shell_args = {}
+    if type(args_val) == "table" then
+      for i = 1, #args_val do
+        table.insert(config.shell_args, meta_str(args_val[i]))
+      end
+    end
+  end
+
+  if term_meta["prompt"] then
+    -- Special handling: try to preserve regex syntax that Pandoc may mangle.
+    -- If the value is a MetaInlines with Code elements, extract from code.
+    local prompt_val = term_meta["prompt"]
+    if prompt_val.t == "MetaInlines" and #prompt_val == 1 and prompt_val[1].t == "Code" then
+      config.prompt = prompt_val[1].text
+    else
+      config.prompt = meta_str(prompt_val)
+    end
+  end
   if term_meta["cols"] then config.cols = meta_num(term_meta["cols"]) or config.cols end
   if term_meta["rows"] then config.rows = meta_num(term_meta["rows"]) or config.rows end
   if term_meta["ansi"] ~= nil then config.ansi = meta_bool(term_meta["ansi"]) end
@@ -144,9 +172,14 @@ local function extract_config(meta)
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
 
-  if term_meta["env"] and term_meta["env"].t == "MetaMap" then
-    for k, v in pairs(term_meta["env"]) do
-      config.env[k] = meta_str(v)
+  if term_meta["env"] then
+    local env_val = term_meta["env"]
+    if type(env_val) == "table" then
+      for k, v in pairs(env_val) do
+        if type(k) == "string" then
+          config.env[k] = meta_str(v)
+        end
+      end
     end
   end
 

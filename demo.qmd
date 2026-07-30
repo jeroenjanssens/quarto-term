@@ -4,8 +4,12 @@ format: html
 engine: markdown
 term:
   shell: "bash"
-  prompt: "bash-3.2"
+  shell_args: ["`--norc`", "`--noprofile`"]
+  prompt: "`\\$`"
+  record: "_session.cast"
   verbose: true
+  env:
+    PS1: "`$ `"
 ---
 
 ## Basic Usage
@@ -35,19 +39,46 @@ echo "line 3" >> /tmp/demo.txt
 cat /tmp/demo.txt
 ```
 
-## Piping and Commands
+## Piping and Arithmetic
 
 ```{term}
 seq 1 5 | paste -sd+ | bc
+```
+
+## ANSI Colors
+
+Commands that produce colored output:
+
+```{term}
+printf '\033[31mred\033[0m \033[32mgreen\033[0m \033[34mblue\033[0m\n'
 ```
 
 ## Per-line Options
 
 ### Interrupting a long-running command
 
+Send `sleep 100`, then after half a second send Ctrl-C:
+
 ```{term}
 sleep 100 #! expect_prompt: false
 ctrl-c #! literal: false, wait: 0.5, expect_prompt: true
+```
+
+### Navigating with arrow keys
+
+```{term}
+echo "first command"
+up #! literal: false, hold: 0.3
+enter #! literal: false
+```
+
+## Fullscreen Capture
+
+Capture the entire terminal screen (useful for TUI apps like htop, top, vim):
+
+```{term}
+#| fullscreen: true
+top -l 1 -n 5 #! hold: 2.0
 ```
 
 ## Cleanup
