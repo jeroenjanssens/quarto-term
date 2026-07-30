@@ -7,6 +7,7 @@ term:
   shell_args: ["`--no-rcs`"]
   prompt: "`\\$`"
   theme: one-dark
+  spacing: true
   record: "_session.cast"
   verbose: true
   env:
