@@ -1,0 +1,58 @@
+---
+title: "ANSI Colors Demo"
+format: html
+engine: markdown
+term:
+  shell: "bash"
+  shell_args: ["`--norc`", "`--noprofile`"]
+  prompt: "`\\$`"
+  env:
+    PS1: "`$ `"
+---
+
+## Basic Colors
+
+The terminal renderer preserves ANSI color codes:
+
+```{term}
+printf '\033[31mRed text\033[0m\n'
+printf '\033[32mGreen text\033[0m\n'
+printf '\033[33mYellow text\033[0m\n'
+printf '\033[34mBlue text\033[0m\n'
+printf '\033[35mMagenta text\033[0m\n'
+printf '\033[36mCyan text\033[0m\n'
+```
+
+## Bold and Styles
+
+```{term}
+printf '\033[1mBold\033[0m '
+printf '\033[3mItalic\033[0m '
+printf '\033[4mUnderline\033[0m '
+printf '\033[9mStrikethrough\033[0m\n'
+```
+
+## Combined Colors and Styles
+
+```{term}
+printf '\033[1;31mBold Red\033[0m '
+printf '\033[1;32mBold Green\033[0m '
+printf '\033[1;34mBold Blue\033[0m\n'
+```
+
+## 256-Color Support
+
+```{term}
+for i in $(seq 0 7); do printf "\033[48;5;${i}m  "; done
+printf '\033[0m\n'
+for i in $(seq 8 15); do printf "\033[48;5;${i}m  "; done
+printf '\033[0m\n'
+```
+
+## Background Colors
+
+```{term}
+printf '\033[41m Red BG \033[0m '
+printf '\033[42m Green BG \033[0m '
+printf '\033[44m Blue BG \033[0m\n'
+```

@@ -1,0 +1,73 @@
+---
+title: "Data Science at the Command Line"
+format: html
+engine: markdown
+term:
+  shell: "bash"
+  shell_args: ["`--norc`", "`--noprofile`"]
+  prompt: "`\\$`"
+  env:
+    PS1: "`$ `"
+---
+
+## Data Science at the Command Line
+
+This example demonstrates how quarto-term can be used to write
+tutorials about command-line data processing — similar to
+[Data Science at the Command Line](https://datascienceatthecommandline.com).
+
+### Creating Sample Data
+
+```{term}
+cat << 'EOF' > /tmp/data.csv
+name,age,city
+Alice,30,New York
+Bob,25,San Francisco
+Charlie,35,Chicago
+Diana,28,Boston
+Eve,32,Seattle
+EOF
+cat /tmp/data.csv
+```
+
+### Exploring with Standard Tools
+
+Count lines (including header):
+
+```{term}
+wc -l < /tmp/data.csv
+```
+
+Extract just the names:
+
+```{term}
+cut -d, -f1 /tmp/data.csv | tail -n +2
+```
+
+### Sorting and Filtering
+
+Sort by age:
+
+```{term}
+sort -t, -k2 -n /tmp/data.csv | tail -n +2
+```
+
+Find people over 30:
+
+```{term}
+awk -F, 'NR>1 && $2>30 {print $1, $2}' /tmp/data.csv
+```
+
+### Piping It All Together
+
+Get the oldest person's city:
+
+```{term}
+sort -t, -k2 -nr /tmp/data.csv | head -1 | cut -d, -f3
+```
+
+### Cleanup
+
+```{term}
+rm -f /tmp/data.csv
+```

@@ -1,0 +1,52 @@
+---
+title: "Basic Terminal Session"
+format: html
+engine: markdown
+term:
+  shell: "bash"
+  shell_args: ["`--norc`", "`--noprofile`"]
+  prompt: "`\\$`"
+  env:
+    PS1: "`$ `"
+---
+
+## Hello World
+
+```{term}
+echo 'Hello from quarto-term!'
+```
+
+## State Persists Across Cells
+
+Define a variable:
+
+```{term}
+export NAME="World"
+```
+
+Use it later:
+
+```{term}
+echo "Hello, $NAME!"
+```
+
+## Multiple Commands in One Cell
+
+```{term}
+for i in 1 2 3; do
+  echo "Item $i"
+done
+```
+
+## Working Directory
+
+```{term}
+cd /tmp
+pwd
+```
+
+```{term}
+pwd
+```
+
+The session remembers we changed directories.

@@ -1,0 +1,46 @@
+---
+title: "Fullscreen Terminal Capture"
+format: html
+engine: markdown
+term:
+  shell: "bash"
+  shell_args: ["`--norc`", "`--noprofile`"]
+  prompt: "`\\$`"
+  rows: 16
+  env:
+    PS1: "`$ `"
+    TERM: "`xterm-256color`"
+---
+
+## Fullscreen Mode
+
+The `fullscreen: true` option captures the entire visible terminal grid,
+like taking a screenshot. This is useful for TUI applications.
+
+### System Processes (top)
+
+Launch `top` and capture a snapshot of the screen:
+
+```{term}
+#| fullscreen: true
+top -l 1 -n 5 #! hold: 2.0, expect_prompt: false
+q #! literal: false, hold: 0.5, expect_prompt: true
+```
+
+### Directory Listing as Table
+
+Create some files and show them:
+
+```{term}
+mkdir -p /tmp/term-demo
+touch /tmp/term-demo/file{1..5}.txt
+echo "hello" > /tmp/term-demo/file1.txt
+echo "world" > /tmp/term-demo/file2.txt
+ls -la /tmp/term-demo/
+```
+
+### Cleanup
+
+```{term}
+rm -rf /tmp/term-demo
+```

@@ -1,5 +1,13 @@
 local function find_engine()
+  -- Get the directory of this Lua filter file
+  local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+
+  -- Project root is two levels up from _extensions/term/
+  local project_root = filter_dir:match("(.*/?)_extensions/term/") or "./"
+
   local candidates = {
+    project_root .. "target/release/quarto-term",
+    project_root .. "target/debug/quarto-term",
     "./target/release/quarto-term",
     "./target/debug/quarto-term",
   }

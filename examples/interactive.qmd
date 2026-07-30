@@ -1,0 +1,71 @@
+---
+title: "Interactive Commands"
+format: html
+engine: markdown
+term:
+  shell: "bash"
+  shell_args: ["`--norc`", "`--noprofile`"]
+  prompt: "`\\$`"
+  env:
+    PS1: "`$ `"
+---
+
+## Interrupting Commands
+
+Start a long-running process and send Ctrl-C:
+
+```{term}
+sleep 999 #! expect_prompt: false
+ctrl-c #! literal: false, wait: 1.0, expect_prompt: true
+```
+
+## Sending Special Keys
+
+### Tab Completion
+
+```{term}
+echo /us #! enter: false
+tab #! literal: false, hold: 0.3, enter: false, expect_prompt: false
+enter #! literal: false
+```
+
+### Arrow Keys (Command History)
+
+```{term}
+echo "first"
+echo "second"
+echo "third"
+```
+
+Now press up three times to recall "first":
+
+```{term}
+up #! literal: false, hold: 0.1, enter: false, expect_prompt: false
+up #! literal: false, hold: 0.1, enter: false, expect_prompt: false
+up #! literal: false, hold: 0.1, enter: false, expect_prompt: false
+enter #! literal: false
+```
+
+## Waiting for Slow Commands
+
+Use `hold` to give commands time to produce output:
+
+```{term}
+sleep 1 && echo "Done sleeping" #! hold: 1.5
+```
+
+## Hidden Setup Cells
+
+Sometimes you need to run setup that shouldn't appear in the document:
+
+```{term}
+#| output: false
+export SECRET_TOKEN="abc123"
+alias ll='ls -la'
+```
+
+Now use the alias (the setup isn't shown):
+
+```{term}
+echo "Token is: $SECRET_TOKEN"
+```
