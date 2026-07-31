@@ -57,17 +57,28 @@ end
 
 local ENGINE = find_engine()
 
-local function read_theme_colors(theme_name)
-  if not theme_name then return nil, nil end
+local function read_theme_file(theme_name)
+  if not theme_name then return nil end
   local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
   local path = filter_dir .. "themes/" .. theme_name .. ".css"
   local f = io.open(path, "r")
-  if not f then return nil, nil end
+  if not f then return nil end
   local content = f:read("*a")
   f:close()
+  return content
+end
+
+local function read_theme_colors(theme_name)
+  local content = read_theme_file(theme_name)
+  if not content then return nil, nil end
   local bg = content:match("%-%-term%-bg:%s*#(%x+)")
   local fg = content:match("%-%-term%-fg:%s*#(%x+)")
   return bg, fg
+end
+
+local function rescope_theme_css(css_content, selector)
+  -- Replace `:root {` with `selector {`
+  return css_content:gsub(":root%s*{", selector .. " {")
 end
 
 local function escape_pattern(s)
@@ -255,7 +266,16 @@ local function extract_config(meta)
   if term_meta["init"] then config.init = meta_str(term_meta["init"]) end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
-  if term_meta["theme"] then config.theme = meta_str(term_meta["theme"]) end
+  if term_meta["theme"] then
+    local theme_val = term_meta["theme"]
+    if type(theme_val) == "table" and theme_val.t == nil then
+      -- Map with light/dark keys
+      if theme_val["light"] then config.theme_light = meta_str(theme_val["light"]) end
+      if theme_val["dark"] then config.theme_dark = meta_str(theme_val["dark"]) end
+    else
+      config.theme = meta_str(theme_val)
+    end
+  end
 
   -- Accept both kebab-case (preferred) and snake_case (compat) for theme-bg / theme-fg
   local theme_bg_val = term_meta["theme-bg"] or term_meta["theme_bg"]
@@ -431,9 +451,16 @@ function Pandoc(doc)
     end
   end
 
-  local theme_bg, theme_fg = read_theme_colors(config.theme)
-  if theme_bg then config.theme_bg = theme_bg end
-  if theme_fg then config.theme_fg = theme_fg end
+  -- Resolve theme colors for Rust (used in non-ANSI rendering)
+  if config.theme then
+    local theme_bg, theme_fg = read_theme_colors(config.theme)
+    if theme_bg then config.theme_bg = theme_bg end
+    if theme_fg then config.theme_fg = theme_fg end
+  elseif config.theme_light then
+    local theme_bg, theme_fg = read_theme_colors(config.theme_light)
+    if theme_bg then config.theme_bg = theme_bg end
+    if theme_fg then config.theme_fg = theme_fg end
+  end
 
   -- Resolve per-format fontsize
   if config._fontsize_map then
@@ -442,9 +469,15 @@ function Pandoc(doc)
     config._fontsize_map = nil
   end
 
-  -- marker is only used in Lua; remove before sending to Rust
+  -- These fields are only used in Lua; remove before sending to Rust
   local _marker = config.marker
+  local _theme = config.theme
+  local _theme_light = config.theme_light
+  local _theme_dark = config.theme_dark
   config.marker = nil
+  config.theme = nil
+  config.theme_light = nil
+  config.theme_dark = nil
 
   local term_positions = {}
   local cells = {}
@@ -520,16 +553,34 @@ function Pandoc(doc)
     end
   else
     if quarto and quarto.doc and quarto.doc.add_html_dependency then
-      local stylesheets = { "term.css" }
-      if config.theme then
-        local theme_file = "themes/" .. config.theme .. ".css"
-        table.insert(stylesheets, theme_file)
-      end
       quarto.doc.add_html_dependency({
         name = "quarto-term",
         version = "0.2.0",
-        stylesheets = stylesheets,
+        stylesheets = { "term.css" },
       })
+
+      if _theme_light and _theme_dark then
+        -- Dual theme: scope each theme's CSS vars under body.quarto-light / body.quarto-dark
+        local light_css = read_theme_file(_theme_light)
+        local dark_css = read_theme_file(_theme_dark)
+        local scoped = ""
+        if light_css then
+          scoped = scoped .. rescope_theme_css(light_css, "body.quarto-light")
+        end
+        if dark_css then
+          scoped = scoped .. "\n" .. rescope_theme_css(dark_css, "body.quarto-dark")
+        end
+        if scoped ~= "" then
+          quarto.doc.include_text("in-header", "<style>\n" .. scoped .. "</style>")
+        end
+      elseif _theme then
+        -- Single theme: include the theme file directly
+        quarto.doc.add_html_dependency({
+          name = "quarto-term-theme",
+          version = "0.2.0",
+          stylesheets = { "themes/" .. _theme .. ".css" },
+        })
+      end
     end
   end
 

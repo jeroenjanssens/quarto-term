@@ -86,7 +86,7 @@ Set these under `term:` in your YAML front matter:
 | `marker` | `#!` | Prefix for line option annotations |
 | `typing` | `false` | Human typing simulation (see below) |
 | `record` | (none) | File path to record session (`.cast` or `.termshow`) |
-| `theme` | (none) | Color theme name |
+| `theme` | (none) | Color theme name, or `{light: ..., dark: ...}` for auto-switching |
 | `theme-bg` | (from theme) | Background color override (hex) |
 | `theme-fg` | (from theme) | Foreground color override (hex) |
 | `fontsize` | (none) | Font size (or per-format map: `{html: "0.85em", pdf: "0.75em"}`) |
@@ -215,10 +215,30 @@ Built-in themes:
 - `solarized-light`
 - `tokyo-night`
 
+Single theme:
+
 ```yaml
 term:
   theme: solarized-dark
 ```
+
+### Light/Dark Mode
+
+For documents or websites that support Quarto's light/dark toggle, provide both themes:
+
+```yaml
+format:
+  html:
+    theme:
+      light: flatly
+      dark: darkly
+term:
+  theme:
+    light: solarized-light
+    dark: solarized-dark
+```
+
+The terminal blocks automatically switch themes when the user toggles the page between light and dark mode.
 
 ## Multi-Line Commands
 
