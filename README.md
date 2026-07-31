@@ -1,22 +1,22 @@
 # quarto-term
 
-A [Quarto](https://quarto.org) extension that provides persistent, interactive terminal sessions across code chunks. Commands run in a real shell with a PTY, so state (variables, working directory, background processes) carries over between chunks exactly as it would in an interactive terminal.
+A [Quarto](https://quarto.org) extension that provides persistent, interactive terminal sessions across code cells. Commands run in a real shell with a PTY, so state (variables, working directory, background processes) carries over between cells exactly as it would in an interactive terminal.
 
 ## Why quarto-term?
 
-Quarto's built-in `bash` engine executes each code chunk in an isolated subshell. That means:
+Quarto's built-in `bash` engine executes each code cell in an isolated subshell. That means:
 
-- Variables, `cd`, and other state don't persist between chunks.
+- Variables, `cd`, and other state don't persist between cells.
 - You can't show interactive TUI applications (htop, vim, nyancat).
 - Output is plain text with no ANSI color support.
 - There's no way to send special keys (Ctrl-C, arrow keys, Enter separately from a command).
 - You can't produce terminal recordings alongside your document.
 
-quarto-term solves all of these by running a single persistent shell session that all chunks share. It captures output using a real terminal emulator (including colors, cursor movement, and fullscreen apps), and can optionally produce [asciicast](https://docs.asciinema.org/) or [termshow](https://posit-dev.github.io/great-docs/user-guide/terminal-recordings.html) recordings for playback.
+quarto-term solves all of these by running a single persistent shell session that all cells share. It captures output using a real terminal emulator (including colors, cursor movement, and fullscreen apps), and can optionally produce [asciicast](https://docs.asciinema.org/) or [termshow](https://posit-dev.github.io/great-docs/user-guide/terminal-recordings.html) recordings for playback.
 
 ## Features
 
-- **Persistent sessions** -- State carries across chunks (variables, working directory, shell history).
+- **Persistent sessions** -- State carries across cells (variables, working directory, shell history).
 - **ANSI color rendering** -- Faithfully renders colored output as HTML/LaTeX.
 - **Fullscreen capture** -- Capture TUI apps like htop, vim, or nyancat.
 - **Special keys** -- Send Ctrl-C, arrow keys, Enter, Escape, and more.
@@ -97,7 +97,7 @@ Set these under `term:` in your YAML front matter:
 
 ## Chunk Options
 
-Set these with `#|` at the top of a chunk:
+Set these with `#|` at the top of a cell:
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -107,14 +107,14 @@ Set these with `#|` at the top of a chunk:
 | `fullscreen` | `false` | Capture the entire terminal screen |
 | `scroll` | `!fullscreen` | Include scrollback in capture |
 | `keep-last-prompt` | `false` | Keep the trailing prompt in output |
-| `ansi` | (from config) | Override ANSI rendering for this chunk |
-| `spacing` | (from config) | Override spacing for this chunk |
+| `ansi` | (from config) | Override ANSI rendering for this cell |
+| `spacing` | (from config) | Override spacing for this cell |
 | `trailing-spaces` | (from config) | Override trailing space handling |
 | `typing` | (from config) | Override typing simulation |
-| `timeout` | (from config) | Override timeout for this chunk |
-| `hold` | (none) | Seconds to wait after chunk completes (captures ongoing output) |
+| `timeout` | (from config) | Override timeout for this cell |
+| `hold` | (none) | Seconds to wait after cell completes (captures ongoing output) |
 | `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
-| `marker` | (from config) | Override line marker for this chunk |
+| `marker` | (from config) | Override line marker for this cell |
 
 ## Line Options
 
@@ -165,11 +165,11 @@ term:
 
 When a "typo" occurs, the simulated typist hits a QWERTY-adjacent key and then corrects with backspace. Timing follows a log-normal distribution with bigram-aware adjustments.
 
-Disable typing for individual chunks with `#| typing: false`.
+Disable typing for individual cells with `#| typing: false`.
 
 ## Fullscreen Applications
 
-Capture TUI apps by splitting the interaction across chunks:
+Capture TUI apps by splitting the interaction across cells:
 
 ````markdown
 ```{term}
@@ -185,7 +185,7 @@ q #! literal: false
 ```
 ````
 
-The first chunk launches htop and captures the screen after 3 seconds. The second chunk sends `q` to quit (hidden from output).
+The first cell launches htop and captures the screen after 3 seconds. The second cell sends `q` to quit (hidden from output).
 
 ## Terminal Recordings
 
