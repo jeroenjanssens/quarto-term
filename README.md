@@ -86,6 +86,8 @@ knitr::knit_engines$set(term = function(options) {
 
 This tells knitr to emit `{term}` blocks unchanged, allowing the Lua filter to process them.
 
+Note that `{term}` cells are always executed after all knitr/Jupyter cells have finished. The terminal session runs during the Pandoc filter phase, not during engine execution.
+
 ## Document-Level Options
 
 Set these under `term:` in your YAML front matter:
