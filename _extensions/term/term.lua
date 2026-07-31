@@ -144,7 +144,6 @@ local function parse_cell_options(text, line_marker)
       table.insert(line_options, opts)
     else
       table.insert(parsed_lines, raw_line)
-      table.insert(line_options, { line_index = idx - 1 })
     end
   end
 
@@ -469,6 +468,9 @@ local function build_cell(block, cell_id, config)
   if cell_opts["remove"] ~= nil then options.remove = cell_opts["remove"] end
   if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end
 
+  if cell_opts["literal"] ~= nil then options.literal = cell_opts["literal"] end
+  if cell_opts["delay"] ~= nil then options.delay = cell_opts["delay"] end
+
   -- Accept both kebab-case (preferred) and snake_case (compat) for trailing-spaces
   local ts = cell_opts["trailing-spaces"]
   if ts == nil then ts = cell_opts["trailing_spaces"] end
@@ -550,6 +552,23 @@ function Pandoc(doc)
   -- Ensure arrays are encoded as JSON arrays, not objects
   if #config.shell_args == 0 then
     config.shell_args = pandoc.List({})
+  end
+  if not config.init or #config.init == 0 then
+    config.init = pandoc.List({})
+  end
+  for _, cell in ipairs(cells) do
+    if #cell.line_options == 0 then
+      cell.line_options = pandoc.List({})
+    end
+    if #cell.source_lines == 0 then
+      cell.source_lines = pandoc.List({})
+    end
+    if #cell.options.callouts == 0 then
+      cell.options.callouts = pandoc.List({})
+    end
+    if #cell.options.remove == 0 then
+      cell.options.remove = pandoc.List({})
+    end
   end
 
   local request = {

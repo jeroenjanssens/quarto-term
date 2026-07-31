@@ -93,6 +93,10 @@ pub struct CellOptions {
     #[serde(default)]
     pub trailing_spaces: Option<bool>,
     #[serde(default)]
+    pub literal: Option<bool>,
+    #[serde(default)]
+    pub delay: Option<f64>,
+    #[serde(default)]
     pub callouts: Vec<AnnotationSpec>,
     #[serde(default)]
     pub remove: Vec<AnnotationSpec>,
@@ -126,6 +130,8 @@ impl fmt::Display for CellOptions {
         if let Some(t) = self.timeout { parts.push(format!("timeout: {}", t)); }
         if let Some(h) = self.hold { parts.push(format!("hold: {}", h)); }
         if let Some(ts) = self.trailing_spaces { parts.push(format!("trailing-spaces: {}", ts)); }
+        if let Some(l) = self.literal { parts.push(format!("literal: {}", l)); }
+        if let Some(d) = self.delay { parts.push(format!("delay: {}", d)); }
         if parts.is_empty() {
             write!(f, "no options")
         } else {
@@ -200,26 +206,16 @@ impl TypingConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct LineOptions {
     pub line_index: u32,
-    #[serde(default = "default_true")]
-    pub literal: bool,
+    #[serde(default)]
+    pub literal: Option<bool>,
     #[serde(default)]
     pub enter: Option<bool>,
     #[serde(default)]
-    pub delay: f64,
-    #[serde(default = "default_hold")]
-    pub hold: f64,
+    pub delay: Option<f64>,
+    #[serde(default)]
+    pub hold: Option<f64>,
     #[serde(default)]
     pub expect_prompt: Option<bool>,
-}
-
-impl LineOptions {
-    pub fn effective_enter(&self) -> bool {
-        self.enter.unwrap_or(self.literal)
-    }
-
-    pub fn effective_expect_prompt(&self) -> bool {
-        self.expect_prompt.unwrap_or(self.effective_enter())
-    }
 }
 
 #[derive(Debug, Serialize)]
@@ -257,9 +253,6 @@ fn default_format() -> String {
     "html".to_string()
 }
 
-fn default_hold() -> f64 {
-    0.1
-}
 
 fn default_echo() -> EchoMode {
     EchoMode::Mode("terminal".to_string())

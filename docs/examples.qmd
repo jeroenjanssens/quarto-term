@@ -7,6 +7,16 @@ engine: markdown
 
 State persists across cells:
 
+````markdown
+```{term}
+export GREETING="Hello from quarto-term"
+```
+
+```{term}
+echo $GREETING
+```
+````
+
 ```{term}
 export GREETING="Hello from quarto-term"
 ```
@@ -19,6 +29,14 @@ echo $GREETING
 
 Loops and other multi-line constructs work automatically via PS2 detection:
 
+````markdown
+```{term}
+for i in 1 2 3; do
+  echo "Item $i"
+done
+```
+````
+
 ```{term}
 for i in 1 2 3; do
   echo "Item $i"
@@ -29,11 +47,26 @@ done
 
 Colored output renders faithfully:
 
+````markdown
+```{term}
+printf '\033[31mred\033[0m \033[32mgreen\033[0m \033[34mblue\033[0m\n'
+```
+````
+
 ```{term}
 printf '\033[31mred\033[0m \033[32mgreen\033[0m \033[34mblue\033[0m\n'
 ```
 
 ## Working with Files
+
+````markdown
+```{term}
+echo "line 1" > /tmp/demo.txt
+echo "line 2" >> /tmp/demo.txt
+echo "line 3" >> /tmp/demo.txt
+cat /tmp/demo.txt
+```
+````
 
 ```{term}
 echo "line 1" > /tmp/demo.txt
@@ -46,6 +79,14 @@ cat /tmp/demo.txt
 
 Multi-line pipes work naturally:
 
+````markdown
+```{term}
+seq 1 5 |
+paste -sd+ |
+bc
+```
+````
+
 ```{term}
 seq 1 5 |
 paste -sd+ |
@@ -56,6 +97,13 @@ bc
 
 Send a long-running command, then interrupt it:
 
+````markdown
+```{term}
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
+```
+````
+
 ```{term}
 sleep 100 #! expect-prompt: false
 ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
@@ -63,16 +111,43 @@ ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
 
 ## Arrow Key Navigation
 
-Recall and re-execute the previous command:
+Recall and re-execute the previous command using multiple keys on one line:
+
+````markdown
+```{term}
+echo "first command"
+up enter #! literal: false, delay: 0.3
+```
+````
 
 ```{term}
 echo "first command"
-up #! literal: false, hold: 0.3
-enter #! literal: false
+up enter #! literal: false, delay: 0.3
 ```
 
-## Cleanup
+## Cell-Level Key Defaults
+
+Set `literal: false` and `delay` as cell defaults to avoid repeating line options:
+
+````markdown
+```{term}
+#| literal: false
+#| delay: 0.2
+echo "first command" #! literal: true
+up
+enter
+```
+````
 
 ```{term}
+#| literal: false
+#| delay: 0.2
+echo "first command" #! literal: true
+up
+enter
+```
+
+```{term}
+#| include: false
 rm -f /tmp/demo.txt
 ```

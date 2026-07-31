@@ -11,11 +11,16 @@ use crate::error::TermError;
 use crate::keymap;
 use crate::latex;
 use crate::markdown;
-use crate::protocol::{
-    AnnotationSpec, CellResult, Config, EchoMode, InputCell, LineOptions,
-};
+use crate::protocol::{AnnotationSpec, CellResult, Config, EchoMode, InputCell};
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
+
+struct ResolvedLineOpts {
+    literal: bool,
+    enter: bool,
+    hold: f64,
+    expect_prompt: bool,
+}
 
 pub struct PtySession {
     writer: Box<dyn Write + Send>,
@@ -174,30 +179,75 @@ impl PtySession {
         let lines: Vec<&str> = cell.code.lines().collect();
         let mut error: Option<String> = None;
 
+        let cell_literal = cell.options.literal.unwrap_or(true);
+        let cell_delay = cell.options.delay.unwrap_or(0.0);
+
         for (idx, line_text) in lines.iter().enumerate() {
             let line_opts = cell
                 .line_options
                 .iter()
                 .find(|lo| lo.line_index == idx as u32);
 
-            let default_opts = LineOptions {
-                line_index: idx as u32,
-                literal: true,
-                enter: None,
-                delay: 0.0,
-                hold: 0.1,
-                expect_prompt: None,
-            };
-            let opts = line_opts.unwrap_or(&default_opts);
+            let literal = line_opts
+                .and_then(|lo| lo.literal)
+                .unwrap_or(cell_literal);
+            let delay = line_opts
+                .and_then(|lo| lo.delay)
+                .unwrap_or(cell_delay);
+            let hold = line_opts
+                .and_then(|lo| lo.hold)
+                .unwrap_or(0.1);
+            let enter = line_opts
+                .and_then(|lo| lo.enter)
+                .unwrap_or(literal);
+            let expect_prompt = line_opts
+                .and_then(|lo| lo.expect_prompt)
+                .unwrap_or(enter);
 
             if self.config.verbose {
                 let source = cell.source_lines.get(idx).map(|s| s.as_str()).unwrap_or(line_text);
                 eprintln!("quarto-term:   > {}", source);
             }
 
-            if let Err(e) = self.send_line(line_text, opts, is_human, speed, error_rate) {
-                error = Some(e.to_string());
-                break;
+            if delay > 0.0 {
+                thread::sleep(Duration::from_secs_f64(delay));
+            }
+
+            if !literal && line_text.contains(' ') {
+                let keys: Vec<&str> = line_text.split_whitespace().collect();
+                for (ki, key) in keys.iter().enumerate() {
+                    let is_last = ki == keys.len() - 1;
+                    let key_enter = if is_last { enter } else { false };
+                    let key_expect = if is_last { expect_prompt } else { false };
+                    let key_hold = if is_last { hold } else { 0.0 };
+                    let key_opts = ResolvedLineOpts {
+                        literal: false,
+                        enter: key_enter,
+                        hold: key_hold,
+                        expect_prompt: key_expect,
+                    };
+                    if ki > 0 && delay > 0.0 {
+                        thread::sleep(Duration::from_secs_f64(delay));
+                    }
+                    if let Err(e) = self.send_line_resolved(key, &key_opts, false, speed, error_rate) {
+                        error = Some(e.to_string());
+                        break;
+                    }
+                }
+                if error.is_some() {
+                    break;
+                }
+            } else {
+                let resolved = ResolvedLineOpts {
+                    literal,
+                    enter,
+                    hold,
+                    expect_prompt,
+                };
+                if let Err(e) = self.send_line_resolved(line_text, &resolved, is_human, speed, error_rate) {
+                    error = Some(e.to_string());
+                    break;
+                }
             }
         }
 
@@ -225,21 +275,17 @@ impl PtySession {
         }
     }
 
-    fn send_line(
+    fn send_line_resolved(
         &mut self,
         text: &str,
-        opts: &LineOptions,
+        opts: &ResolvedLineOpts,
         human: bool,
         speed: f64,
         error_rate: f64,
     ) -> Result<(), TermError> {
-        if opts.delay > 0.0 {
-            thread::sleep(Duration::from_secs_f64(opts.delay));
-        }
-
         if human && opts.literal {
             self.type_human(text, speed, error_rate)?;
-            if opts.effective_enter() {
+            if opts.enter {
                 let cr = [b'\r'];
                 if let Some(rec) = &mut self.recorder {
                     rec.record_input(&cr);
@@ -250,13 +296,13 @@ impl PtySession {
         } else {
             let bytes = if opts.literal {
                 let mut b = text.as_bytes().to_vec();
-                if opts.effective_enter() {
+                if opts.enter {
                     b.push(b'\r');
                 }
                 b
             } else {
                 let mut b = keymap::translate_keycode(text);
-                if opts.effective_enter() && !is_keycode_name(text) {
+                if opts.enter && !is_keycode_name(text) {
                     b.push(b'\r');
                 }
                 b
@@ -278,7 +324,7 @@ impl PtySession {
             self.drain_pty();
         }
 
-        if opts.effective_expect_prompt() {
+        if opts.expect_prompt {
             if !self.last_line_matches_prompt() {
                 self.wait_for_prompt()?;
             }

@@ -5,7 +5,7 @@ engine: markdown
 
 ## Document-Level Options
 
-Set these under `extensions: term:` in your YAML front matter (the legacy `term:` top-level key is also supported):
+Set these under `extensions: term:` in your YAML front matter:
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -49,6 +49,8 @@ Set these with `#|` at the top of a cell:
 | `typing` | (from config) | Override typing simulation |
 | `timeout` | (from config) | Override timeout for this cell |
 | `hold` | (none) | Seconds to wait after cell completes (captures ongoing output) |
+| `literal` | `true` | Default `literal` for all lines in this cell |
+| `delay` | `0` | Default `delay` for all lines in this cell |
 | `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
 | `marker` | (from config) | Override line marker for this cell |
 
@@ -76,6 +78,32 @@ ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
 | `expect-prompt` | (from enter) | Wait for prompt after the line |
 | `delay` | `0` | Seconds to wait *before* executing this line |
 | `hold` | `0.1` | Seconds to wait after executing (captures output) |
+
+### Multiple Keys Per Line
+
+When `literal: false`, you can put multiple space-separated key names on a single line. Each key is sent individually, with the line's `delay` value as a pause between them:
+
+````markdown
+```{term}
+echo "hello"
+up enter #! literal: false, delay: 0.2
+```
+````
+
+This sends the `up` key, waits 0.2 seconds, then sends `enter`. Only the last key on the line triggers `hold` and `expect-prompt`.
+
+To avoid repeating `#! literal: false` on every line, set it as a cell default:
+
+````markdown
+```{term}
+#| literal: false
+#| delay: 0.2
+up
+enter
+```
+````
+
+Individual lines can still override the cell default with explicit line options.
 
 ## Special Keys
 
