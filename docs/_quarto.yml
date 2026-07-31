@@ -5,6 +5,7 @@ project:
 extensions:
   term:
     shell: zsh
+    init: zsh-syntax-highlighting
     theme:
       light: solarized-dark
       dark: solarized-light

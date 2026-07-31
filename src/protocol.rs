@@ -31,7 +31,7 @@ pub struct Config {
     #[serde(default)]
     pub env: HashMap<String, String>,
     #[serde(default)]
-    pub init: Option<String>,
+    pub init: Vec<String>,
     #[serde(default)]
     pub spacing: bool,
     #[serde(default)]

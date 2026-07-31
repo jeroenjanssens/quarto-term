@@ -27,7 +27,7 @@ Set these under `extensions: term:` in your YAML front matter (the legacy `term:
 | `theme-fg` | (from theme) | Foreground color override (hex) |
 | `fontsize` | (none) | Font size (or per-format map: `{html: "0.85em", pdf: "0.75em"}`) |
 | `verbose` | `false` | Print execution details to stderr |
-| `init` | (none) | Shell script to source at session start |
+| `init` | (none) | Script(s) to source at session start (string or list) |
 | `env` | `{}` | Additional environment variables |
 
 ## Cell Options
@@ -124,6 +124,41 @@ extensions:
 ```
 
 PS2 (continuation prompt) is auto-set to `"> "` for multi-line command detection.
+
+## Init Scripts
+
+Source one or more scripts at session start using `init`. This is useful for loading zsh plugins like syntax highlighting:
+
+```yaml
+extensions:
+  term:
+    init: zsh-syntax-highlighting
+```
+
+You can provide a list to source multiple scripts:
+
+```yaml
+extensions:
+  term:
+    init:
+      - zsh-syntax-highlighting
+      - zsh-autosuggestions
+```
+
+For plugin names (not starting with `/`), quarto-term searches common installation paths:
+
+- `/opt/homebrew/share/<name>/<name>.zsh` (macOS Homebrew)
+- `/usr/local/share/<name>/<name>.zsh` (manual installs)
+- `/usr/share/<name>/<name>.zsh` (Linux packages)
+- `/home/linuxbrew/.linuxbrew/share/<name>/<name>.zsh` (Linuxbrew)
+
+You can also pass an absolute path directly:
+
+```yaml
+extensions:
+  term:
+    init: "/path/to/my-plugin.zsh"
+```
 
 ## Terminal Recordings
 

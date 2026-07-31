@@ -26,7 +26,7 @@ jobs:
       - uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Install dependencies
-        run: sudo apt-get install -y zsh htop
+        run: sudo apt-get install -y zsh htop zsh-syntax-highlighting
 
       - name: Render
         run: quarto render docs

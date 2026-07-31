@@ -128,7 +128,7 @@ impl PtySession {
 
         session.wait_for_prompt()?;
 
-        if let Some(ref init_file) = config.init {
+        for init_file in &config.init {
             let cmd = format!("source {}\r", init_file);
             session.writer.write_all(cmd.as_bytes())
                 .map_err(|_| TermError::ShellExited)?;

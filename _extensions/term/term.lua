@@ -151,6 +151,33 @@ local function parse_cell_options(text, line_marker)
   return cell_opts, table.concat(parsed_lines, "\n"), line_options, code_lines
 end
 
+local function resolve_init_path(path)
+  if path:sub(1, 1) == "/" then
+    return path
+  end
+  -- Check current working directory first
+  local local_file = io.open(path, "r")
+  if local_file then
+    local_file:close()
+    return path
+  end
+  local search_dirs = {
+    "/opt/homebrew/share",
+    "/usr/local/share",
+    "/usr/share",
+    "/home/linuxbrew/.linuxbrew/share",
+  }
+  for _, dir in ipairs(search_dirs) do
+    local candidate = dir .. "/" .. path .. "/" .. path .. ".zsh"
+    local f = io.open(candidate, "r")
+    if f then
+      f:close()
+      return candidate
+    end
+  end
+  return path
+end
+
 local function extract_config(meta)
   local config = {
     shell = "zsh",
@@ -263,7 +290,21 @@ local function extract_config(meta)
   if term_meta["rows"] then config.rows = meta_num(term_meta["rows"]) or config.rows end
   if term_meta["ansi"] ~= nil then config.ansi = meta_bool(term_meta["ansi"]) end
   if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
-  if term_meta["init"] then config.init = meta_str(term_meta["init"]) end
+  if term_meta["init"] then
+    local init_val = term_meta["init"]
+    local init_list = {}
+    if type(init_val) == "table" and init_val.t == nil then
+      for i = 1, #init_val do
+        table.insert(init_list, meta_str(init_val[i]))
+      end
+    else
+      table.insert(init_list, meta_str(init_val))
+    end
+    config.init = {}
+    for _, entry in ipairs(init_list) do
+      table.insert(config.init, resolve_init_path(entry))
+    end
+  end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
   if term_meta["theme"] then
