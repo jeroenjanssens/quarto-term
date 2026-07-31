@@ -535,7 +535,7 @@ impl PtySession {
 
             let use_spacing = cell.options.spacing.unwrap_or(self.config.spacing);
             if use_spacing && !cell.options.fullscreen {
-                apply_spacing(&mut lines, &self.prompt_re);
+                apply_spacing(&mut lines, &self.config.prompt);
             }
 
             apply_remove(&mut lines, &cell.options.remove);
@@ -620,10 +620,11 @@ impl PtySession {
     }
 }
 
-fn apply_spacing(lines: &mut Vec<RenderedLine>, prompt_re: &Regex) {
+fn apply_spacing(lines: &mut Vec<RenderedLine>, prompt: &str) {
     let mut insertions = Vec::new();
+    let prefix = format!("{} ", prompt);
     for (i, line) in lines.iter().enumerate() {
-        if i > 0 && prompt_re.is_match(&line.text) {
+        if i > 0 && line.text.starts_with(&prefix) {
             insertions.push(i);
         }
     }
