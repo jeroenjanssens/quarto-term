@@ -118,6 +118,12 @@ Set these with `#|` at the top of a chunk:
 
 ## Per-Line Options
 
+Traditional code engines just *execute* code -- they send an entire block to an interpreter and capture whatever comes back. quarto-term is different: it *simulates a human typing at a terminal*. Each line is sent to the shell individually, keystroke by keystroke, just as you would type it yourself.
+
+This distinction matters because a real terminal session has *timing*. You might type a command, wait for output to settle, then send a keystroke to interact with what's on screen. You can't express that in a flat code block -- but you can with per-line options.
+
+Per-line options give you control over *how* each line is delivered to the shell: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, how long to pause before or after, and whether to wait for the prompt to return. This is what makes it possible to drive interactive applications, interrupt long-running commands, and produce recordings with natural pacing.
+
 Append options to any line using the marker (default `#!`):
 
 ````markdown
