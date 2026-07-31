@@ -27,6 +27,9 @@ website:
       - icon: github
         href: https://github.com/jeroenjanssens/quarto-term
 
+filters:
+  - term
+
 format:
   html:
     theme:

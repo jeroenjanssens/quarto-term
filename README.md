@@ -71,7 +71,7 @@ The `engine: markdown` line tells Quarto to skip its built-in execution engines.
 
 For documents that only contain terminal cells, `engine: markdown` is recommended. However, if you need to mix `{term}` cells with `{r}` or `{python}` cells, you can use knitr or Jupyter as the engine with some extra setup.
 
-**Jupyter** works without changes — `{term}` blocks are not recognized as kernel code and pass through to the Lua filter.
+**Jupyter** works without changes. `{term}` blocks are not recognized as kernel code and pass through to the Lua filter.
 
 **knitr** requires registering a pass-through engine so it doesn't try to execute `{term}` blocks. Add a setup chunk at the top of your document:
 
