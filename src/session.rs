@@ -180,7 +180,7 @@ impl PtySession {
         let mut error: Option<String> = None;
 
         let cell_literal = cell.options.literal.unwrap_or(true);
-        let cell_delay = cell.options.delay.unwrap_or(0.0);
+        let cell_delay = cell.options.delay.unwrap_or(0.1);
 
         for (idx, line_text) in lines.iter().enumerate() {
             let line_opts = cell

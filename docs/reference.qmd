@@ -50,7 +50,7 @@ Set these with `#|` at the top of a cell:
 | `timeout` | (from config) | Override timeout for this cell |
 | `hold` | (none) | Seconds to wait after cell completes (captures ongoing output) |
 | `literal` | `true` | Default `literal` for all lines in this cell |
-| `delay` | `0` | Default `delay` for all lines in this cell |
+| `delay` | `0.1` | Default `delay` for all lines in this cell |
 | `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
 | `marker` | (from config) | Override line marker for this cell |
 
@@ -76,7 +76,7 @@ ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
 | `literal` | `true` | Send text as typed characters. Set to `false` for key names. |
 | `enter` | (from literal) | Press Enter after the line |
 | `expect-prompt` | (from enter) | Wait for prompt after the line |
-| `delay` | `0` | Seconds to wait *before* executing this line |
+| `delay` | `0.1` | Seconds to wait *before* executing this line |
 | `hold` | `0.1` | Seconds to wait after executing (captures output) |
 
 ### Multiple Keys Per Line
