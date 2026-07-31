@@ -145,11 +145,14 @@ ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
 
 When `literal: false`, these key names are recognized:
 
-- `enter`, `tab`, `escape`, `backspace`, `delete`
+- `enter` (also `return`, `cr`), `tab`, `space`
+- `escape` (also `esc`), `backspace` (also `bs`), `delete` (also `del`)
 - `up`, `down`, `left`, `right`, `home`, `end`
-- `page-up`, `page-down`
-- `ctrl-c`, `ctrl-d`, `ctrl-z`, `ctrl-l`, etc.
+- `page-up` (also `pageup`), `page-down` (also `pagedown`), `insert`
+- `ctrl-c`, `ctrl-d`, `ctrl-z`, `ctrl-l`, etc. (also `c-c` shorthand)
 - `f1` through `f12`
+
+Any other text is sent as raw bytes (e.g., `q` sends the letter q without pressing Enter).
 
 ## Human Typing Simulation
 

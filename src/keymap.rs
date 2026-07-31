@@ -20,8 +20,8 @@ pub fn translate_keycode(name: &str) -> Vec<u8> {
         "left" => b"\x1b[D".to_vec(),
         "home" => b"\x1b[H".to_vec(),
         "end" => b"\x1b[F".to_vec(),
-        "pageup" | "page_up" => b"\x1b[5~".to_vec(),
-        "pagedown" | "page_down" => b"\x1b[6~".to_vec(),
+        "pageup" | "page-up" | "page_up" => b"\x1b[5~".to_vec(),
+        "pagedown" | "page-down" | "page_down" => b"\x1b[6~".to_vec(),
         "insert" => b"\x1b[2~".to_vec(),
 
         "f1" => b"\x1bOP".to_vec(),
