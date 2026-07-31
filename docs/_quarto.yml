@@ -5,8 +5,8 @@ project:
 term:
   shell: zsh
   theme:
-    light: solarized-light
-    dark: solarized-dark
+    light: solarized-dark
+    dark: solarized-light
   spacing: true
 
 website:

@@ -11,11 +11,19 @@ export NAME="quarto-term"
 ```
 
 ```{term}
-echo 'Hello, ${NAME}!'
+echo "Hello, $NAME"
+htop # let's run htop for 3 seconds #! enter: false, hold: 0.5
 ```
 
 ```{term}
-printf '\033[31mcolors\033[0m \033[32mjust\033[0m \033[34mwork\033[0m\n'
+#| fullscreen: true
+#| timeout: 4
+enter #! literal: false, hold: 3.0
+```
+
+```{term}
+#| include: false
+q #! literal: false
 ```
 
 ## Why quarto-term?

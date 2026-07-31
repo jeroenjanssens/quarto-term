@@ -398,6 +398,11 @@ local function build_cell(block, cell_id, config)
     highlight = "bash",
   }
 
+  local include = cell_opts["include"]
+  if include == false then
+    options.echo = "false"
+    options.output = false
+  end
   if cell_opts["echo"] ~= nil then options.echo = cell_opts["echo"] end
   if cell_opts["output"] ~= nil then options.output = cell_opts["output"] end
   if cell_opts["fullscreen"] ~= nil then options.fullscreen = cell_opts["fullscreen"] end
@@ -437,6 +442,7 @@ local function build_cell(block, cell_id, config)
     options = options,
     line_options = line_options,
     source_lines = source_lines,
+    _include = include ~= false,
   }
 end
 
@@ -489,8 +495,10 @@ function Pandoc(doc)
       config.marker = _marker
       local cell = build_cell(block, cell_id, config)
       config.marker = nil
+      local cell_include = cell._include
+      cell._include = nil
       table.insert(cells, cell)
-      table.insert(term_positions, { block_i = i, cell_i = cell_id })
+      table.insert(term_positions, { block_i = i, cell_i = cell_id, include = cell_include })
     end
   end
 
@@ -531,11 +539,15 @@ function Pandoc(doc)
       if result.error and result.error ~= pandoc.json.null and result.error ~= "" then
         io.stderr:write("quarto-term: cell " .. pos.cell_i .. " error: " .. tostring(result.error) .. "\n")
       end
-      local content = result.html
-      if type(content) == "string" and content ~= "" then
-        doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
-      else
+      if pos.include == false then
         doc.blocks[pos.block_i] = pandoc.Null()
+      else
+        local content = result.html
+        if type(content) == "string" and content ~= "" then
+          doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
+        else
+          doc.blocks[pos.block_i] = pandoc.Null()
+        end
       end
     end
   end

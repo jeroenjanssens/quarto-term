@@ -36,6 +36,7 @@ Set these with `#|` at the top of a cell:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `include` | `true` | Execute the cell but hide it entirely from output |
 | `label` | (none) | Cell label (shown in verbose mode) |
 | `echo` | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
 | `output` | `true` | Show terminal output |
