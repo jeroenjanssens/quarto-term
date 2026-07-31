@@ -26,6 +26,8 @@ enter #! literal: false, hold: 3.0
 q #! literal: false
 ```
 
+All of the above was produced from a single `.qmd` file using quarto-term.
+
 ## Why quarto-term?
 
 Quarto's built-in `bash` engine executes each code cell in an isolated subshell. That means:
