@@ -361,7 +361,17 @@ local function extract_config(meta)
       if error_rate_val then config.typing.error_rate = meta_num(error_rate_val) end
     end
   end
-  if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
+  if term_meta["record"] then
+    local record_val = term_meta["record"]
+    if type(record_val) == "table" and record_val.t == nil then
+      config.record = {}
+      for i = 1, #record_val do
+        table.insert(config.record, meta_str(record_val[i]))
+      end
+    else
+      config.record = { meta_str(record_val) }
+    end
+  end
 
   if term_meta["env"] then
     local env_val = term_meta["env"]
@@ -555,6 +565,9 @@ function Pandoc(doc)
   end
   if not config.init or #config.init == 0 then
     config.init = pandoc.List({})
+  end
+  if not config.record or #config.record == 0 then
+    config.record = pandoc.List({})
   end
   for _, cell in ipairs(cells) do
     if #cell.line_options == 0 then

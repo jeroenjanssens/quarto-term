@@ -45,7 +45,7 @@ pub struct Config {
     #[serde(default)]
     pub typing: TypingConfig,
     #[serde(default)]
-    pub record: Option<String>,
+    pub record: Vec<String>,
     #[serde(default)]
     pub verbose: bool,
     #[serde(default)]

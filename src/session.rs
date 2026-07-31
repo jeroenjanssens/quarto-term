@@ -29,7 +29,7 @@ pub struct PtySession {
     prompt_re: Regex,
     ps2_re: Option<Regex>,
     config: Config,
-    recorder: Option<Recorder>,
+    recorders: Vec<Recorder>,
     output_since_cell_start: Vec<u8>,
     cursor_row_after_last_cell: usize,
     scrollback_after_last_cell: usize,
@@ -113,10 +113,11 @@ impl PtySession {
             .scrollback_limit(10000)
             .build();
 
-        let recorder = config
+        let recorders: Vec<Recorder> = config
             .record
-            .as_ref()
-            .and_then(|path| Recorder::new(path, config.cols, config.rows).ok());
+            .iter()
+            .filter_map(|path| Recorder::new(path, config.cols, config.rows).ok())
+            .collect();
 
         let mut session = Self {
             writer,
@@ -125,7 +126,7 @@ impl PtySession {
             prompt_re,
             ps2_re,
             config: config.clone(),
-            recorder,
+            recorders,
             output_since_cell_start: Vec::new(),
             cursor_row_after_last_cell: 0,
             scrollback_after_last_cell: 0,
@@ -148,13 +149,12 @@ impl PtySession {
     }
 
     pub fn finish(&mut self) {
-        if self.recorder.is_some() {
-            // Send "exit" so the recording shows a clean session end
+        if !self.recorders.is_empty() {
             let _ = self.writer.write_all(b"exit\r");
             let _ = self.writer.flush();
             thread::sleep(Duration::from_millis(200));
             self.drain_pty();
-            if let Some(rec) = &mut self.recorder {
+            for rec in &mut self.recorders {
                 rec.finish();
             }
         }
@@ -287,7 +287,7 @@ impl PtySession {
             self.type_human(text, speed, error_rate)?;
             if opts.enter {
                 let cr = [b'\r'];
-                if let Some(rec) = &mut self.recorder {
+                for rec in &mut self.recorders {
                     rec.record_input(&cr);
                 }
                 self.writer.write_all(&cr).map_err(|_| TermError::ShellExited)?;
@@ -308,7 +308,7 @@ impl PtySession {
                 b
             };
 
-            if let Some(rec) = &mut self.recorder {
+            for rec in &mut self.recorders {
                 rec.record_input(&bytes);
             }
 
@@ -351,7 +351,7 @@ impl PtySession {
 
             match self.rx.recv_timeout(remaining.min(Duration::from_millis(50))) {
                 Ok(bytes) => {
-                    if let Some(rec) = &mut self.recorder {
+                    for rec in &mut self.recorders {
                         rec.record_output(&bytes);
                     }
                     self.output_since_cell_start.extend_from_slice(&bytes);
@@ -415,7 +415,7 @@ impl PtySession {
     fn emit_char(&mut self, ch: char) -> Result<(), TermError> {
         let mut buf = [0u8; 4];
         let bytes = ch.encode_utf8(&mut buf).as_bytes();
-        if let Some(rec) = &mut self.recorder {
+        for rec in &mut self.recorders {
             rec.record_input(bytes);
         }
         self.writer.write_all(bytes).map_err(|_| TermError::ShellExited)?;
@@ -425,7 +425,7 @@ impl PtySession {
 
     fn emit_byte(&mut self, b: u8) -> Result<(), TermError> {
         let bytes = [b];
-        if let Some(rec) = &mut self.recorder {
+        for rec in &mut self.recorders {
             rec.record_input(&bytes);
         }
         self.writer.write_all(&bytes).map_err(|_| TermError::ShellExited)?;
@@ -442,7 +442,7 @@ impl PtySession {
             }
             match self.rx.recv_timeout(remaining.min(Duration::from_millis(50))) {
                 Ok(bytes) => {
-                    if let Some(rec) = &mut self.recorder {
+                    for rec in &mut self.recorders {
                         rec.record_output(&bytes);
                     }
                     self.output_since_cell_start.extend_from_slice(&bytes);
@@ -459,7 +459,7 @@ impl PtySession {
         loop {
             match self.rx.try_recv() {
                 Ok(bytes) => {
-                    if let Some(rec) = &mut self.recorder {
+                    for rec in &mut self.recorders {
                         rec.record_output(&bytes);
                     }
                     self.output_since_cell_start.extend_from_slice(&bytes);

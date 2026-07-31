@@ -53,7 +53,7 @@ fn main() {
 
     if request.config.verbose {
         eprintln!("quarto-term: session ready, executing {} cells", request.cells.len());
-        if let Some(ref path) = request.config.record {
+        for path in &request.config.record {
             eprintln!("quarto-term: recording to {}", path);
         }
     }
@@ -84,7 +84,7 @@ fn main() {
     session.finish();
 
     if request.config.verbose {
-        if let Some(ref path) = request.config.record {
+        for path in &request.config.record {
             eprintln!("quarto-term: recording finished: {}", path);
         }
     }

@@ -113,10 +113,29 @@ When `literal: false`, these key names are recognized:
 - `escape` (also `esc`), `backspace` (also `bs`), `delete` (also `del`)
 - `up`, `down`, `left`, `right`, `home`, `end`
 - `page-up` (also `pageup`), `page-down` (also `pagedown`), `insert`
-- `ctrl-c`, `ctrl-d`, `ctrl-z`, `ctrl-l`, etc. (also `c-c` shorthand)
 - `f1` through `f12`
 
 Any other text is sent as raw bytes (e.g., `q` sends the letter q without pressing Enter).
+
+### Modifier Combinations
+
+All modifier prefixes can be combined freely in any order:
+
+| Prefix | Shorthand | Example |
+|--------|-----------|---------|
+| `ctrl-` | `c-` | `ctrl-c`, `c-c` |
+| `shift-` | `s-` | `shift-a`, `s-a` |
+| `alt-` | `m-`, `meta-` | `alt-a`, `m-a` |
+
+Combinations are supported: `ctrl-shift-a`, `ctrl-alt-a`, `alt-shift-up`, `ctrl-alt-shift-a`.
+
+Modifiers work with single characters and with special keys:
+
+- `shift-a` sends uppercase `A`
+- `ctrl-c` sends the control character (0x03)
+- `alt-f` sends the CSI u sequence for Alt+f
+- `ctrl-shift-up` sends the modified arrow sequence
+- `shift-f5` sends the modified function key sequence
 
 ## Human Typing Simulation
 
@@ -173,8 +192,9 @@ extensions:
       - zsh-autosuggestions
 ```
 
-For plugin names (not starting with `/`), quarto-term searches common installation paths:
+For plugin names (not starting with `/`), quarto-term first checks the current working directory, then searches common installation paths:
 
+- `./<name>` (current working directory)
 - `/opt/homebrew/share/<name>/<name>.zsh` (macOS Homebrew)
 - `/usr/local/share/<name>/<name>.zsh` (manual installs)
 - `/usr/share/<name>/<name>.zsh` (Linux packages)
@@ -195,25 +215,55 @@ Record your session for playback:
 ```yaml
 extensions:
   term:
-    record: "session.cast"       # asciicast v2 format
-    # or
-    record: "session.termshow"   # termshow format (generates .termshow.yml)
+    record: "session.cast"
 ```
 
-Asciicast files can be played with [asciinema](https://asciinema.org/). Termshow files work with the [termshow](https://github.com/posit-dev/great-docs/) player.
+Supported formats (detected by file extension):
+
+- `.cast` - asciicast v2 format, playable with [asciinema](https://asciinema.org/)
+- `.termshow` - termshow format (auto-generates a companion `.termshow.yml`), works with the [termshow](https://github.com/posit-dev/great-docs/) player
+
+You can record to multiple files simultaneously. This is useful for producing both formats in a single render:
+
+```yaml
+extensions:
+  term:
+    record:
+      - "session.cast"
+      - "session.termshow"
+```
 
 ## Themes
 
-Built-in themes:
+### Dark Themes
 
-- `catppuccin-mocha`
-- `dracula`
-- `gruvbox-dark`
-- `nord`
-- `one-dark`
-- `solarized-dark`
-- `solarized-light`
-- `tokyo-night`
+| Theme | Description |
+|-------|-------------|
+| `ayu-dark` | Near-black with warm orange accents |
+| `catppuccin-frappe` | Medium dark with pastel accents |
+| `catppuccin-macchiato` | Deeper variant of Catppuccin |
+| `catppuccin-mocha` | Darkest Catppuccin variant |
+| `dracula` | Classic purple-accented dark theme |
+| `everforest-dark` | Nature-inspired earthy greens |
+| `gruvbox-dark` | Retro groove with warm colors |
+| `kanagawa` | Japanese-inspired blues and purples |
+| `nightfox` | Deep navy with cool accents |
+| `nord` | Arctic blue-grey palette |
+| `one-dark` | Atom-inspired balanced dark theme |
+| `rose-pine` | Muted pinks and dusty purples |
+| `solarized-dark` | Precision-engineered dark palette |
+| `tokyo-night` | City-lights inspired blues |
+
+### Light Themes
+
+| Theme | Description |
+|-------|-------------|
+| `ayu-light` | Crisp white with warm accents |
+| `catppuccin-latte` | Cream-colored with pastels |
+| `everforest-light` | Warm paper with nature greens |
+| `github-light` | Clean GitHub-standard palette |
+| `rose-pine-dawn` | Warm rose-tinged light theme |
+| `solarized-light` | Precision-engineered light palette |
 
 Single theme:
 
