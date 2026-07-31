@@ -12,7 +12,7 @@ export NAME="quarto-term"
 
 ```{term}
 echo "Hello, $NAME"
-htop # let's run htop for 3 seconds #! enter: false, hold: 0.5
+htop #! enter: false, hold: 0.5
 ```
 
 ```{term}
