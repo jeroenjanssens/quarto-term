@@ -1,11 +1,16 @@
 ---
 title: "Nyancat"
 format:
-  html: default
+  html:
+    theme:
+      light: flatly
+      dark: darkly
 engine: markdown
 term:
   shell: "zsh"
-  theme: solarized-dark
+  theme:
+    light: solarized-light
+    dark: solarized-dark
   spacing: true
   fontsize:
     html: "0.85em"
