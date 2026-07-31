@@ -2,6 +2,9 @@ project:
   type: website
   output-dir: _site
 
+execute:
+  enabled: false
+
 website:
   title: "quarto-term"
   repo-url: https://github.com/jeroenjanssens/quarto-term
