@@ -33,14 +33,13 @@ quarto-term solves all of these by running a single persistent shell session tha
 quarto add jeroenjanssens/quarto-term
 ```
 
-You also need the `quarto-term` binary. Build it from source (requires [Rust](https://rustup.rs/)):
+This installs the extension with pre-built binaries for macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows. No additional setup needed.
+
+To build from source instead (requires [Rust](https://rustup.rs/)):
 
 ```bash
-cd _extensions/term
 cargo build --release
 ```
-
-Or install it globally and ensure it's on your `PATH`.
 
 ## Quick Start
 

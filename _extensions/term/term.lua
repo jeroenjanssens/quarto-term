@@ -1,23 +1,57 @@
-local function find_engine()
-  -- Get the directory of this Lua filter file
-  local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+local function detect_platform()
+  local os_name = pandoc.system.os
+  local arch = pandoc.system.arch
 
-  -- Project root is two levels up from _extensions/term/
+  if os_name == "darwin" then
+    if arch == "aarch64" or arch == "arm64" then
+      return "aarch64-apple-darwin"
+    else
+      return "x86_64-apple-darwin"
+    end
+  elseif os_name == "linux" then
+    if arch == "aarch64" or arch == "arm64" then
+      return "aarch64-unknown-linux-gnu"
+    else
+      return "x86_64-unknown-linux-gnu"
+    end
+  elseif os_name == "windows" or os_name == "mingw32" then
+    return "x86_64-pc-windows-msvc"
+  end
+  return nil
+end
+
+local function find_engine()
+  local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
   local project_root = filter_dir:match("(.*/?)_extensions/term/") or "./"
 
-  local candidates = {
+  -- 1. Check for platform-specific binary bundled with the extension
+  local platform = detect_platform()
+  if platform then
+    local ext = platform:match("windows") and ".exe" or ""
+    local bundled = filter_dir .. "bin/quarto-term-" .. platform .. ext
+    local f = io.open(bundled, "r")
+    if f then
+      f:close()
+      return bundled
+    end
+  end
+
+  -- 2. Check for development build (cargo build)
+  local dev_candidates = {
     project_root .. "target/release/quarto-term",
     project_root .. "target/debug/quarto-term",
     "./target/release/quarto-term",
     "./target/debug/quarto-term",
   }
-  for _, path in ipairs(candidates) do
+  for _, path in ipairs(dev_candidates) do
     local f = io.open(path, "r")
     if f then
       f:close()
       return path
     end
   end
+
+  -- 3. Fall back to PATH
   return "quarto-term"
 end
 
