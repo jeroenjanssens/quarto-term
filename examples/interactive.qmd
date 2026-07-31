@@ -2,11 +2,12 @@
 title: "Interactive Commands"
 format: html
 engine: markdown
-term:
-  shell: "zsh"
-  prompt: "`\\$`"
-  env:
-    PS1: "$ "
+extensions:
+  term:
+    shell: "zsh"
+    prompt: "`\\$`"
+    env:
+      PS1: "$ "
 ---
 
 ## Interrupting Commands

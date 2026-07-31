@@ -2,8 +2,9 @@
 title: "Basic Terminal Session"
 format: html
 engine: markdown
-term:
-  shell: "zsh"
+extensions:
+  term:
+    shell: "zsh"
 ---
 
 ## Hello World

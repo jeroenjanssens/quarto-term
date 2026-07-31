@@ -165,7 +165,7 @@ local function extract_config(meta)
     format = "html",
   }
 
-  local term_meta = meta and meta["term"]
+  local term_meta = meta and meta["extensions"] and meta["extensions"]["term"]
   if not term_meta then
     return config
   end

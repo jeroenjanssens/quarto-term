@@ -2,13 +2,14 @@
 title: "Fullscreen Terminal Capture"
 format: html
 engine: markdown
-term:
-  shell: "zsh"
-  prompt: "`\\$`"
-  rows: 24
-  env:
-    PS1: "$ "
-    TERM: "`xterm-256color`"
+extensions:
+  term:
+    shell: "zsh"
+    prompt: "`\\$`"
+    rows: 24
+    env:
+      PS1: "$ "
+      TERM: "`xterm-256color`"
 ---
 
 ## Fullscreen Mode

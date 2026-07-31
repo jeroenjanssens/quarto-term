@@ -26,8 +26,9 @@ Create a file called `hello.qmd`:
 title: "Hello Terminal"
 format: html
 engine: markdown
-term:
-  shell: zsh
+extensions:
+  term:
+    shell: zsh
 ---
 
 ```{term}
@@ -69,7 +70,7 @@ sleep 100 #! expect-prompt: false
 ctrl-c #! literal: false, delay: 0.5
 ```
 
-The `engine: markdown` line tells Quarto to skip its built-in execution engines. The `term` key holds all configuration.
+The `engine: markdown` line tells Quarto to skip its built-in execution engines. The `extensions: term:` key holds all configuration (the legacy top-level `term:` key also works).
 
 ## How it works
 
@@ -82,14 +83,15 @@ Because the shell session persists, variables, the working directory, and all ot
 
 ## Configuration
 
-All configuration goes under the `term:` key in your YAML front matter:
+All configuration goes under `extensions: term:` in your YAML front matter:
 
 ```yaml
-term:
-  shell: zsh
-  theme: solarized-dark
-  spacing: true
-  timeout: 15.0
+extensions:
+  term:
+    shell: zsh
+    theme: solarized-dark
+    spacing: true
+    timeout: 15.0
 ```
 
 See the [Reference](reference.qmd) for the full list of options.
@@ -105,9 +107,10 @@ project:
 filters:
   - term
 
-term:
-  shell: zsh
-  theme: solarized-dark
+extensions:
+  term:
+    shell: zsh
+    theme: solarized-dark
 ```
 
 Individual pages still need `engine: markdown` in their front matter (or use the knitr/Jupyter setup described below).

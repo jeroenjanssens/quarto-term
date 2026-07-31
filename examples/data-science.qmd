@@ -2,11 +2,12 @@
 title: "Data Science at the Command Line"
 format: html
 engine: markdown
-term:
-  shell: "zsh"
-  prompt: "`\\$`"
-  env:
-    PS1: "$ "
+extensions:
+  term:
+    shell: "zsh"
+    prompt: "`\\$`"
+    env:
+      PS1: "$ "
 ---
 
 ## Data Science at the Command Line

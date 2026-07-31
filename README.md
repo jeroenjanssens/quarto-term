@@ -48,8 +48,9 @@ cargo build --release
 title: "My Terminal Demo"
 format: html
 engine: markdown
-term:
-  shell: zsh
+extensions:
+  term:
+    shell: zsh
 ---
 
 ```{term}
@@ -179,11 +180,12 @@ Any other text is sent as raw bytes (e.g., `q` sends the letter q without pressi
 Simulate realistic human typing for recordings:
 
 ```yaml
-term:
-  typing:
-    mode: human
-    speed: 100        # characters per minute
-    error-rate: 0.02  # probability of a typo per character
+extensions:
+  term:
+    typing:
+      mode: human
+      speed: 100        # characters per minute
+      error-rate: 0.02  # probability of a typo per character
 ```
 
 When a "typo" occurs, the simulated typist hits a QWERTY-adjacent key and then corrects with backspace. Timing follows a log-normal distribution with bigram-aware adjustments.
@@ -215,10 +217,11 @@ The first cell launches htop and captures the screen after 3 seconds. The second
 Record your session for playback:
 
 ```yaml
-term:
-  record: "session.cast"       # asciicast v2 format
-  # or
-  record: "session.termshow"   # termshow format (generates .termshow.yml)
+extensions:
+  term:
+    record: "session.cast"       # asciicast v2 format
+    # or
+    record: "session.termshow"   # termshow format (generates .termshow.yml)
 ```
 
 Asciicast files can be played with [asciinema](https://asciinema.org/). Termshow files work with the [termshow](https://github.com/posit-dev/great-docs/) player.
@@ -239,8 +242,9 @@ Built-in themes:
 Single theme:
 
 ```yaml
-term:
-  theme: solarized-dark
+extensions:
+  term:
+    theme: solarized-dark
 ```
 
 ### Light/Dark Mode
@@ -253,10 +257,11 @@ format:
     theme:
       light: flatly
       dark: darkly
-term:
-  theme:
-    light: solarized-light
-    dark: solarized-dark
+extensions:
+  term:
+    theme:
+      light: solarized-light
+      dark: solarized-dark
 ```
 
 The terminal blocks automatically switch themes when the user toggles the page between light and dark mode.
