@@ -3,6 +3,10 @@
 *_files/
 *.html
 *.cast
+*.termshow
+*.termshow.yml
+*.pdf
+demo.md
 
 /.quarto/
 **/*.quarto_ipynb

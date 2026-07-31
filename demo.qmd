@@ -1,82 +1,26 @@
 ---
-title: "Quarto Term Demo"
+title: "Nyancat"
 format:
   html: default
-  pdf: default
-  gfm: default
 engine: markdown
 term:
   shell: "zsh"
-  prompt: "`\\$`"
-  theme: solarized-light
+  theme: solarized-dark
   spacing: true
   fontsize:
     html: "0.85em"
     pdf: "0.75em"
-  record: "_session.cast"
+  record: "_nyancat.cast"
   verbose: true
-  env:
-    PS1: "$ "
 ---
 
 ## Basic Usage
 
 Simple commands in a persistent session:
 
+
 ```{term}
 echo 'Hello, world!'
-```
-
-Variables persist across cells:
-
-```{term}
-export GREETING="Hello from quarto-term"
-```
-
-```{term}
-echo $GREETING
-```
-
-## Working with Files
-
-```{term}
-echo "line 1" > /tmp/demo.txt
-echo "line 2" >> /tmp/demo.txt
-echo "line 3" >> /tmp/demo.txt
-cat /tmp/demo.txt
-```
-
-## Piping and Arithmetic
-
-```{term}
-seq 1 5 | paste -sd+ | bc
-```
-
-## ANSI Colors
-
-Commands that produce colored output:
-
-```{term}
-printf '\033[31mred\033[0m \033[32mgreen\033[0m \033[34mblue\033[0m\n'
-```
-
-## Per-line Options
-
-### Interrupting a long-running command
-
-Send `sleep 100`, then after half a second send Ctrl-C:
-
-```{term}
-sleep 100 #! expect_prompt: false
-ctrl-c #! literal: false, wait: 0.5, expect_prompt: true
-```
-
-### Navigating with arrow keys
-
-```{term}
-echo "first command"
-up #! literal: false, hold: 0.3
-enter #! literal: false
 ```
 
 ## Fullscreen Capture
@@ -84,19 +28,20 @@ enter #! literal: false
 Capture the entire terminal screen (useful for TUI apps like htop, top, vim):
 
 ```{term}
+nyancat #! enter: false, expect-prompt: false
+```
+
+```{term}
 #| fullscreen: true
-#| scroll: false
-htop #! hold: 2.0, expect_prompt: false
+enter #! literal: false, delay: 1.0, hold: 5.0
 ```
 
 ```{term}
 #| echo: false
 #| output: false
-q #! literal: false, hold: 0.5
+ctrl-c #! literal: false, hold: 0.5
 ```
 
-## Cleanup
-
 ```{term}
-rm -f /tmp/demo.txt
+echo 'Bye'
 ```

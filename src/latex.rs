@@ -2,12 +2,13 @@ use avt::{Color, Line, Pen};
 
 use crate::renderer::RenderedLine;
 
-pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
+pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
     let text = line_to_text(line);
 
     if !ansi {
+        let src = if trailing_spaces { line_to_text_raw(line) } else { text.clone() };
         return RenderedLine {
-            html: latex_escape(&text),
+            html: latex_escape(&src),
             text,
         };
     }
@@ -49,7 +50,7 @@ pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
         i = j;
     }
 
-    let latex = latex.trim_end().to_string();
+    let latex = if trailing_spaces { latex } else { latex.trim_end().to_string() };
 
     RenderedLine { html: latex, text }
 }
@@ -217,7 +218,11 @@ fn latex_escape(s: &str) -> String {
 }
 
 fn line_to_text(line: &Line) -> String {
-    let s: String = line
+    line_to_text_raw(line).trim_end().to_string()
+}
+
+fn line_to_text_raw(line: &Line) -> String {
+    line
         .cells()
         .iter()
         .filter(|c| c.width() > 0)
@@ -225,8 +230,7 @@ fn line_to_text(line: &Line) -> String {
             let ch = c.char();
             if ch == '\0' { ' ' } else { ch }
         })
-        .collect();
-    s.trim_end().to_string()
+        .collect()
 }
 
 fn pens_equal(a: &Pen, b: &Pen) -> bool {

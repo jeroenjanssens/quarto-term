@@ -5,14 +5,16 @@ pub struct RenderedLine {
     pub text: String,
 }
 
-pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
+pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
     let text = line_to_text(line);
 
     if !ansi {
-        return RenderedLine {
-            html: html_escape(&text),
-            text,
+        let html = if trailing_spaces {
+            html_escape(&line_to_text_raw(line))
+        } else {
+            html_escape(&text)
         };
+        return RenderedLine { html, text };
     }
 
     let cells: Vec<&Cell> = line.cells().iter().collect();
@@ -59,7 +61,7 @@ pub fn render_line(line: &Line, ansi: bool) -> RenderedLine {
         i = j;
     }
 
-    let html = trim_trailing_spaces_html(&html);
+    let html = if trailing_spaces { html } else { trim_trailing_spaces_html(&html) };
 
     RenderedLine { html, text }
 }
@@ -95,7 +97,11 @@ pub fn render_fullscreen_to_html(lines: &[RenderedLine], fontsize: Option<&str>)
 }
 
 fn line_to_text(line: &Line) -> String {
-    let s: String = line
+    line_to_text_raw(line).trim_end().to_string()
+}
+
+fn line_to_text_raw(line: &Line) -> String {
+    line
         .cells()
         .iter()
         .filter(|c| c.width() > 0)
@@ -103,8 +109,7 @@ fn line_to_text(line: &Line) -> String {
             let ch = c.char();
             if ch == '\0' { ' ' } else { ch }
         })
-        .collect();
-    s.trim_end().to_string()
+        .collect()
 }
 
 fn pens_equal(a: &Pen, b: &Pen) -> bool {

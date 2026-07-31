@@ -30,7 +30,7 @@ fn main() {
     };
 
     if request.config.verbose {
-        eprintln!("quarto-term: starting session (shell={}, prompt={:?})",
+        eprintln!("quarto-term: starting session (shell: {}, prompt: {:?})",
             request.config.shell, request.config.prompt);
     }
 
@@ -53,13 +53,21 @@ fn main() {
 
     if request.config.verbose {
         eprintln!("quarto-term: session ready, executing {} cells", request.cells.len());
+        if let Some(ref path) = request.config.record {
+            eprintln!("quarto-term: recording to {}", path);
+        }
     }
 
     let mut results = Vec::with_capacity(request.cells.len());
 
     for (idx, cell) in request.cells.iter().enumerate() {
         if request.config.verbose {
-            eprintln!("quarto-term: executing cell {} (id={})", idx + 1, cell.id);
+            let label = cell.label.as_deref().unwrap_or_else(|| "");
+            if label.is_empty() {
+                eprintln!("quarto-term: executing cell {} ({})", idx + 1, cell.options);
+            } else {
+                eprintln!("quarto-term: executing cell {} \"{}\" ({})", idx + 1, label, cell.options);
+            }
         }
 
         let result = session.execute_cell(cell);
@@ -71,6 +79,14 @@ fn main() {
         }
 
         results.push(result);
+    }
+
+    session.finish();
+
+    if request.config.verbose {
+        if let Some(ref path) = request.config.record {
+            eprintln!("quarto-term: recording finished: {}", path);
+        }
     }
 
     println!("{}", serde_json::to_string(&results).unwrap());

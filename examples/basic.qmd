@@ -32,8 +32,8 @@ echo "Hello, $NAME"
 ## Multiple Commands in One Cell
 
 ```{term}
-for i in 1 2 3; do #! expect_prompt: false
-  echo "Item $i" #! expect_prompt: false
+for i in 1 2 3; do
+  echo "Item $i"
 done
 ```
 

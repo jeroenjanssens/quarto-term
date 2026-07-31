@@ -89,8 +89,11 @@ local function parse_cell_options(text, line_marker)
     local code_part, opts_str = raw_line:match("^(.-)" .. marker_pat)
     if opts_str then
       local opts = { line_index = idx - 1 }
-      for k, v in opts_str:gmatch("(%a[%a_]*):%s*([^,]+),?%s*") do
-        opts[k] = coerce_value(v)
+      -- Pattern matches keys with letters, underscores, or hyphens for compat
+      for k, v in opts_str:gmatch("(%a[%a_%-]*):%s*([^,]+),?%s*") do
+        -- Normalize hyphens to underscores so Rust structs (snake_case) receive correct keys
+        local norm_k = k:gsub("%-", "_")
+        opts[norm_k] = coerce_value(v)
       end
       table.insert(parsed_lines, code_part)
       table.insert(line_options, opts)
@@ -100,14 +103,14 @@ local function parse_cell_options(text, line_marker)
     end
   end
 
-  return cell_opts, table.concat(parsed_lines, "\n"), line_options
+  return cell_opts, table.concat(parsed_lines, "\n"), line_options, code_lines
 end
 
 local function extract_config(meta)
   local config = {
     shell = "zsh",
     shell_args = {},
-    prompt = "[\\$#>]\\s*$",
+    prompt = "$",
     cols = 80,
     rows = 24,
     ansi = true,
@@ -181,12 +184,13 @@ local function extract_config(meta)
     end
   end
 
-  if term_meta["shell_args"] then
-    local args_val = term_meta["shell_args"]
+  -- Accept both kebab-case (preferred) and snake_case (compat) for shell-args
+  local shell_args_val = term_meta["shell-args"] or term_meta["shell_args"]
+  if shell_args_val then
     config.shell_args = {}
-    if type(args_val) == "table" then
-      for i = 1, #args_val do
-        table.insert(config.shell_args, meta_str(args_val[i]))
+    if type(shell_args_val) == "table" then
+      for i = 1, #shell_args_val do
+        table.insert(config.shell_args, meta_str(shell_args_val[i]))
       end
     end
   else
@@ -202,14 +206,13 @@ local function extract_config(meta)
   end
 
   if term_meta["prompt"] then
-    -- Special handling: try to preserve regex syntax that Pandoc may mangle.
-    -- If the value is a MetaInlines with Code elements, extract from code.
-    local prompt_val = term_meta["prompt"]
-    if prompt_val.t == "MetaInlines" and #prompt_val == 1 and prompt_val[1].t == "Code" then
-      config.prompt = prompt_val[1].text
-    else
-      config.prompt = meta_str(prompt_val)
-    end
+    config.prompt = meta_str(term_meta["prompt"])
+  end
+
+  -- prompt-regex: raw regex override for prompt matching
+  local prompt_regex_val = term_meta["prompt-regex"] or term_meta["prompt_regex"]
+  if prompt_regex_val then
+    config.prompt_regex = meta_str(prompt_regex_val)
   end
   if term_meta["cols"] then config.cols = meta_num(term_meta["cols"]) or config.cols end
   if term_meta["rows"] then config.rows = meta_num(term_meta["rows"]) or config.rows end
@@ -219,6 +222,24 @@ local function extract_config(meta)
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
   if term_meta["theme"] then config.theme = meta_str(term_meta["theme"]) end
+
+  -- Accept both kebab-case (preferred) and snake_case (compat) for theme-bg / theme-fg
+  local theme_bg_val = term_meta["theme-bg"] or term_meta["theme_bg"]
+  if theme_bg_val then config.theme_bg = meta_str(theme_bg_val) end
+  local theme_fg_val = term_meta["theme-fg"] or term_meta["theme_fg"]
+  if theme_fg_val then config.theme_fg = meta_str(theme_fg_val) end
+
+  -- Accept both kebab-case (preferred) and snake_case (compat) for trailing-spaces
+  local trailing_spaces_val = term_meta["trailing-spaces"] or term_meta["trailing_spaces"]
+  if trailing_spaces_val ~= nil then
+    config.trailing_spaces = meta_bool(trailing_spaces_val)
+  end
+
+  -- marker option (used only in Lua, not sent to Rust)
+  if term_meta["marker"] then
+    config.marker = meta_str(term_meta["marker"])
+  end
+
   if term_meta["fontsize"] then
     local fs = term_meta["fontsize"]
     if type(fs) == "table" and fs.t == nil then
@@ -231,6 +252,19 @@ local function extract_config(meta)
       end
     else
       config.fontsize = meta_str(fs)
+    end
+  end
+  if term_meta["typing"] then
+    local typing_val = term_meta["typing"]
+    if meta_bool(typing_val) == false then
+      config.typing = false
+    elseif type(typing_val) == "table" and typing_val.t == nil then
+      config.typing = {}
+      if typing_val["mode"] then config.typing.mode = meta_str(typing_val["mode"]) end
+      if typing_val["speed"] then config.typing.speed = meta_num(typing_val["speed"]) end
+      -- Accept both kebab-case and snake_case for error-rate
+      local error_rate_val = typing_val["error-rate"] or typing_val["error_rate"]
+      if error_rate_val then config.typing.error_rate = meta_num(error_rate_val) end
     end
   end
   if term_meta["record"] then config.record = meta_str(term_meta["record"]) end
@@ -246,6 +280,11 @@ local function extract_config(meta)
     end
   end
 
+  -- Auto-set PS1 from prompt if not explicitly provided in env
+  if not config.env["PS1"] then
+    config.env["PS1"] = config.prompt .. " "
+  end
+
   -- Pandoc strips trailing spaces from YAML values; restore for prompt vars
   for _, key in ipairs({"PS1", "PS2", "PROMPT"}) do
     local val = config.env[key]
@@ -253,6 +292,12 @@ local function extract_config(meta)
       config.env[key] = val .. " "
     end
   end
+
+  -- Set a known PS2 so we can detect continuation prompts
+  if not config.env["PS2"] then
+    config.env["PS2"] = "> "
+  end
+  config.ps2 = config.env["PS2"]
 
   return config
 end
@@ -270,14 +315,29 @@ local function is_term_block(block)
 end
 
 local function build_cell(block, cell_id, config)
+  -- Determine the line marker: chunk-level overrides document-level, default "#!"
   local line_marker = "#!"
-  local cell_opts, code, line_options = parse_cell_options(block.text, line_marker)
+  if config.marker then
+    line_marker = config.marker
+  end
+
+  local cell_opts, code, line_options, source_lines = parse_cell_options(block.text, line_marker)
+
+  -- Allow chunk-level marker override (read before other opts since it affects parsing,
+  -- but parsing already happened above with the doc-level marker; this override applies
+  -- to future use if re-parsing is needed -- for now just store it)
+  if cell_opts["marker"] then
+    -- Re-parse with the chunk-level marker if it differs
+    local chunk_marker = cell_opts["marker"]
+    if chunk_marker ~= line_marker then
+      cell_opts, code, line_options, source_lines = parse_cell_options(block.text, chunk_marker)
+    end
+  end
 
   local options = {
     echo = "terminal",
     output = true,
     fullscreen = false,
-    scroll = true,
     keep_last_prompt = false,
     callouts = pandoc.List({}),
     remove = pandoc.List({}),
@@ -288,18 +348,41 @@ local function build_cell(block, cell_id, config)
   if cell_opts["output"] ~= nil then options.output = cell_opts["output"] end
   if cell_opts["fullscreen"] ~= nil then options.fullscreen = cell_opts["fullscreen"] end
   if cell_opts["scroll"] ~= nil then options.scroll = cell_opts["scroll"] end
-  if cell_opts["keep_last_prompt"] ~= nil then options.keep_last_prompt = cell_opts["keep_last_prompt"] end
+
+  -- Accept both kebab-case (preferred) and snake_case (compat) for keep-last-prompt
+  local klp = cell_opts["keep-last-prompt"]
+  if klp == nil then klp = cell_opts["keep_last_prompt"] end
+  if klp ~= nil then options.keep_last_prompt = klp end
+
   if cell_opts["ansi"] ~= nil then options.ansi = cell_opts["ansi"] end
   if cell_opts["spacing"] ~= nil then options.spacing = cell_opts["spacing"] end
+  if cell_opts["typing"] ~= nil then
+    if cell_opts["typing"] == false then
+      options.typing = false
+    elseif cell_opts["typing"] == true then
+      options.typing = {}
+    end
+  end
+  if cell_opts["timeout"] ~= nil then options.timeout = cell_opts["timeout"] end
+  if cell_opts["hold"] ~= nil then options.hold = cell_opts["hold"] end
   if cell_opts["callouts"] ~= nil then options.callouts = cell_opts["callouts"] end
   if cell_opts["remove"] ~= nil then options.remove = cell_opts["remove"] end
   if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end
 
+  -- Accept both kebab-case (preferred) and snake_case (compat) for trailing-spaces
+  local ts = cell_opts["trailing-spaces"]
+  if ts == nil then ts = cell_opts["trailing_spaces"] end
+  if ts ~= nil then options.trailing_spaces = ts end
+
+  local label = cell_opts["label"]
+
   return {
     id = cell_id,
     code = code,
+    label = label,
     options = options,
     line_options = line_options,
+    source_lines = source_lines,
   }
 end
 
@@ -325,13 +408,20 @@ function Pandoc(doc)
     config._fontsize_map = nil
   end
 
+  -- marker is only used in Lua; remove before sending to Rust
+  local _marker = config.marker
+  config.marker = nil
+
   local term_positions = {}
   local cells = {}
 
   for i, block in ipairs(doc.blocks) do
     if is_term_block(block) then
       local cell_id = #cells + 1
+      -- Pass config with marker still set so build_cell can use it
+      config.marker = _marker
       local cell = build_cell(block, cell_id, config)
+      config.marker = nil
       table.insert(cells, cell)
       table.insert(term_positions, { block_i = i, cell_i = cell_id })
     end

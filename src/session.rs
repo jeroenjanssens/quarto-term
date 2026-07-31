@@ -4,6 +4,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use rand::Rng;
 use regex::Regex;
 
 use crate::error::TermError;
@@ -21,6 +22,7 @@ pub struct PtySession {
     rx: Receiver<Vec<u8>>,
     vt: avt::Vt,
     prompt_re: Regex,
+    ps2_re: Option<Regex>,
     config: Config,
     recorder: Option<Recorder>,
     output_since_cell_start: Vec<u8>,
@@ -30,7 +32,20 @@ pub struct PtySession {
 
 impl PtySession {
     pub fn new(config: &Config) -> Result<Self, TermError> {
-        let prompt_re = Regex::new(&config.prompt)
+        let prompt_pattern = match &config.prompt_regex {
+            Some(re) => re.clone(),
+            None => format!("{}\\s*$", regex::escape(&config.prompt)),
+        };
+        let prompt_re = Regex::new(&prompt_pattern)
+            .map_err(|e| TermError::RegexCompile(e.to_string()))?;
+        let ps2_re = config
+            .ps2
+            .as_ref()
+            .map(|s| {
+                let escaped = regex::escape(s.trim_end());
+                Regex::new(&format!("^{}\\s*$", escaped))
+            })
+            .transpose()
             .map_err(|e| TermError::RegexCompile(e.to_string()))?;
 
         let pty_system = native_pty_system();
@@ -103,6 +118,7 @@ impl PtySession {
             rx,
             vt,
             prompt_re,
+            ps2_re,
             config: config.clone(),
             recorder,
             output_since_cell_start: Vec::new(),
@@ -126,11 +142,34 @@ impl PtySession {
         Ok(session)
     }
 
+    pub fn finish(&mut self) {
+        if self.recorder.is_some() {
+            // Send "exit" so the recording shows a clean session end
+            let _ = self.writer.write_all(b"exit\r");
+            let _ = self.writer.flush();
+            thread::sleep(Duration::from_millis(200));
+            self.drain_pty();
+            if let Some(rec) = &mut self.recorder {
+                rec.finish();
+            }
+        }
+    }
+
     pub fn execute_cell(&mut self, cell: &InputCell) -> CellResult {
         self.output_since_cell_start.clear();
 
         let before_cursor_row = self.cursor_row_after_last_cell;
         let before_scrollback = self.scrollback_after_last_cell;
+
+        let orig_timeout = self.config.timeout;
+        if let Some(t) = cell.options.timeout {
+            self.config.timeout = t;
+        }
+
+        let typing = cell.options.typing.as_ref().unwrap_or(&self.config.typing);
+        let is_human = typing.is_enabled();
+        let speed = typing.speed();
+        let error_rate = typing.error_rate();
 
         let lines: Vec<&str> = cell.code.lines().collect();
         let mut error: Option<String> = None;
@@ -145,22 +184,37 @@ impl PtySession {
                 line_index: idx as u32,
                 literal: true,
                 enter: None,
-                wait: 0.0,
+                delay: 0.0,
                 hold: 0.1,
                 expect_prompt: None,
             };
             let opts = line_opts.unwrap_or(&default_opts);
 
-            if let Err(e) = self.send_line(line_text, opts) {
+            if self.config.verbose {
+                let source = cell.source_lines.get(idx).map(|s| s.as_str()).unwrap_or(line_text);
+                eprintln!("quarto-term:   > {}", source);
+            }
+
+            if let Err(e) = self.send_line(line_text, opts, is_human, speed, error_rate) {
                 error = Some(e.to_string());
                 break;
             }
         }
 
+        if let Some(hold) = cell.options.hold {
+            if hold > 0.0 {
+                self.drain_during(Duration::from_secs_f64(hold));
+            }
+        }
+
+
+        self.config.timeout = orig_timeout;
+
         let use_ansi = cell.options.ansi.unwrap_or(self.config.ansi);
         let html = self.build_cell_html(cell, before_cursor_row, before_scrollback, use_ansi);
 
-        if cell.options.scroll {
+        let scroll = cell.options.scroll.unwrap_or(!cell.options.fullscreen);
+        if scroll {
             self.save_position();
         }
 
@@ -171,39 +225,58 @@ impl PtySession {
         }
     }
 
-    fn send_line(&mut self, text: &str, opts: &LineOptions) -> Result<(), TermError> {
-        if opts.wait > 0.0 {
-            thread::sleep(Duration::from_secs_f64(opts.wait));
+    fn send_line(
+        &mut self,
+        text: &str,
+        opts: &LineOptions,
+        human: bool,
+        speed: f64,
+        error_rate: f64,
+    ) -> Result<(), TermError> {
+        if opts.delay > 0.0 {
+            thread::sleep(Duration::from_secs_f64(opts.delay));
         }
 
-        let bytes = if opts.literal {
-            let mut b = text.as_bytes().to_vec();
+        if human && opts.literal {
+            self.type_human(text, speed, error_rate)?;
             if opts.effective_enter() {
-                b.push(b'\r');
+                let cr = [b'\r'];
+                if let Some(rec) = &mut self.recorder {
+                    rec.record_input(&cr);
+                }
+                self.writer.write_all(&cr).map_err(|_| TermError::ShellExited)?;
+                self.writer.flush().map_err(|_| TermError::ShellExited)?;
             }
-            b
         } else {
-            let mut b = keymap::translate_keycode(text);
-            if opts.effective_enter() && !is_keycode_name(text) {
-                b.push(b'\r');
+            let bytes = if opts.literal {
+                let mut b = text.as_bytes().to_vec();
+                if opts.effective_enter() {
+                    b.push(b'\r');
+                }
+                b
+            } else {
+                let mut b = keymap::translate_keycode(text);
+                if opts.effective_enter() && !is_keycode_name(text) {
+                    b.push(b'\r');
+                }
+                b
+            };
+
+            if let Some(rec) = &mut self.recorder {
+                rec.record_input(&bytes);
             }
-            b
-        };
 
-        if let Some(rec) = &mut self.recorder {
-            rec.record_input(&bytes);
+            self.writer
+                .write_all(&bytes)
+                .map_err(|_| TermError::ShellExited)?;
+            self.writer.flush().map_err(|_| TermError::ShellExited)?;
         }
-
-        self.writer
-            .write_all(&bytes)
-            .map_err(|_| TermError::ShellExited)?;
-        self.writer.flush().map_err(|_| TermError::ShellExited)?;
 
         if opts.hold > 0.0 {
-            thread::sleep(Duration::from_secs_f64(opts.hold));
+            self.drain_during(Duration::from_secs_f64(opts.hold));
+        } else {
+            self.drain_pty();
         }
-
-        self.drain_pty();
 
         if opts.effective_expect_prompt() {
             if !self.last_line_matches_prompt() {
@@ -257,6 +330,85 @@ impl PtySession {
         }
     }
 
+    fn type_human(&mut self, text: &str, speed: f64, error_rate: f64) -> Result<(), TermError> {
+        let mut rng = rand::thread_rng();
+        let base_ms = 12_000.0 / speed.max(1.0);
+        let chars: Vec<char> = text.chars().collect();
+
+        let mut i = 0;
+        while i < chars.len() {
+            let ch = chars[i];
+
+            // Decide whether to make a typo
+            if error_rate > 0.0 && rng.gen::<f64>() < error_rate {
+                let wrong = adjacent_key(ch, &mut rng);
+                self.emit_char(wrong)?;
+                // Recognition delay before correction
+                let pause = lognormal_ms(400.0, 0.4, &mut rng);
+                thread::sleep(Duration::from_millis(pause));
+                self.drain_pty();
+                // Backspace
+                self.emit_byte(0x7f)?;
+                let pause = lognormal_ms(80.0, 0.3, &mut rng);
+                thread::sleep(Duration::from_millis(pause));
+                self.drain_pty();
+            }
+
+            // Compute delay based on context
+            let factor = bigram_factor(if i > 0 { Some(chars[i - 1]) } else { None }, ch);
+            let delay = lognormal_ms(base_ms * factor, 0.4, &mut rng);
+            thread::sleep(Duration::from_millis(delay));
+
+            self.emit_char(ch)?;
+            self.drain_pty();
+            i += 1;
+        }
+        Ok(())
+    }
+
+    fn emit_char(&mut self, ch: char) -> Result<(), TermError> {
+        let mut buf = [0u8; 4];
+        let bytes = ch.encode_utf8(&mut buf).as_bytes();
+        if let Some(rec) = &mut self.recorder {
+            rec.record_input(bytes);
+        }
+        self.writer.write_all(bytes).map_err(|_| TermError::ShellExited)?;
+        self.writer.flush().map_err(|_| TermError::ShellExited)?;
+        Ok(())
+    }
+
+    fn emit_byte(&mut self, b: u8) -> Result<(), TermError> {
+        let bytes = [b];
+        if let Some(rec) = &mut self.recorder {
+            rec.record_input(&bytes);
+        }
+        self.writer.write_all(&bytes).map_err(|_| TermError::ShellExited)?;
+        self.writer.flush().map_err(|_| TermError::ShellExited)?;
+        Ok(())
+    }
+
+    fn drain_during(&mut self, duration: Duration) {
+        let deadline = Instant::now() + duration;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+            match self.rx.recv_timeout(remaining.min(Duration::from_millis(50))) {
+                Ok(bytes) => {
+                    if let Some(rec) = &mut self.recorder {
+                        rec.record_output(&bytes);
+                    }
+                    self.output_since_cell_start.extend_from_slice(&bytes);
+                    let text = String::from_utf8_lossy(&bytes);
+                    self.vt.feed_str(&text);
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+    }
+
     fn drain_pty(&mut self) {
         loop {
             match self.rx.try_recv() {
@@ -279,7 +431,13 @@ impl PtySession {
         for line in view_lines.iter().rev() {
             let text = line_text(line);
             if !text.is_empty() {
-                return self.prompt_re.is_match(&text);
+                if self.prompt_re.is_match(&text) {
+                    return true;
+                }
+                if let Some(ref ps2) = self.ps2_re {
+                    return ps2.is_match(&text);
+                }
+                return false;
             }
         }
         false
@@ -287,10 +445,14 @@ impl PtySession {
 
     fn is_only_prompt(&self, text: &str) -> bool {
         if let Some(m) = self.prompt_re.find(text) {
-            m.end() >= text.len()
-        } else {
-            false
+            if m.end() >= text.len() {
+                return true;
+            }
         }
+        if let Some(ref ps2) = self.ps2_re {
+            return ps2.is_match(text);
+        }
+        false
     }
 
     fn save_position(&mut self) {
@@ -310,6 +472,7 @@ impl PtySession {
         before_scrollback: usize,
         ansi: bool,
     ) -> String {
+        let trailing_spaces = cell.options.trailing_spaces.unwrap_or(self.config.trailing_spaces);
         let mut out = String::new();
         let format = self.config.format.as_str();
         let fontsize = self.config.fontsize.as_deref();
@@ -355,9 +518,9 @@ impl PtySession {
         if show_output {
             let is_latex = format == "latex";
             let mut lines = if cell.options.fullscreen {
-                self.capture_fullscreen(ansi, is_latex)
+                self.capture_fullscreen(ansi, is_latex, trailing_spaces)
             } else {
-                self.capture_new_lines(before_cursor_row, before_scrollback, ansi, is_latex)
+                self.capture_new_lines(before_cursor_row, before_scrollback, ansi, is_latex, trailing_spaces)
             };
 
             if !cell.options.keep_last_prompt {
@@ -417,6 +580,7 @@ impl PtySession {
         before_scrollback: usize,
         ansi: bool,
         is_latex: bool,
+        trailing_spaces: bool,
     ) -> Vec<RenderedLine> {
         let current_scrollback = self.scrollback_count();
         let current_cursor_row = self.vt.cursor().row;
@@ -425,6 +589,14 @@ impl PtySession {
 
         let start_line = before_scrollback + before_cursor_row;
         let end_line = current_scrollback + current_cursor_row;
+
+        // Include the current cursor line if it has content
+        let end_line = if end_line < all_lines.len() {
+            let text = line_text(&all_lines[end_line]);
+            if !text.is_empty() { end_line + 1 } else { end_line }
+        } else {
+            end_line
+        };
 
         if end_line <= start_line || start_line >= all_lines.len() {
             return Vec::new();
@@ -435,15 +607,15 @@ impl PtySession {
         let render_fn = if is_latex { latex::render_line } else { renderer::render_line };
         all_lines[start_line..end]
             .iter()
-            .map(|line| render_fn(line, ansi))
+            .map(|line| render_fn(line, ansi, trailing_spaces))
             .collect()
     }
 
-    fn capture_fullscreen(&self, ansi: bool, is_latex: bool) -> Vec<RenderedLine> {
+    fn capture_fullscreen(&self, ansi: bool, is_latex: bool, trailing_spaces: bool) -> Vec<RenderedLine> {
         let render_fn = if is_latex { latex::render_line } else { renderer::render_line };
         self.vt
             .view()
-            .map(|line| render_fn(line, ansi))
+            .map(|line| render_fn(line, ansi, trailing_spaces))
             .collect()
     }
 }
@@ -573,6 +745,89 @@ fn html_escape_basic(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+}
+
+fn lognormal_ms(mean: f64, sigma: f64, rng: &mut impl Rng) -> u64 {
+    let mu = mean.ln() - (sigma * sigma) / 2.0;
+    // Box-Muller transform for normal sample
+    let u1: f64 = rng.gen::<f64>().max(1e-10);
+    let u2: f64 = rng.gen::<f64>();
+    let z = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
+    let sample = (mu + sigma * z).exp();
+    (sample as u64).max(10)
+}
+
+fn bigram_factor(prev: Option<char>, curr: char) -> f64 {
+    match prev {
+        None => 1.0,
+        Some(p) => {
+            if curr == ' ' { return 1.0; }
+            if p == ' ' { return 1.3; }
+            if p == '.' || p == ',' || p == ';' || p == ':' { return 1.8; }
+            let same_hand = on_same_hand(p, curr);
+            if p == curr { return 1.4; }
+            if same_hand { 1.1 } else { 0.9 }
+        }
+    }
+}
+
+fn on_same_hand(a: char, b: char) -> bool {
+    let left = "qwertasdfgzxcvb12345`~!@#$%";
+    let a_left = left.contains(a.to_ascii_lowercase());
+    let b_left = left.contains(b.to_ascii_lowercase());
+    a_left == b_left
+}
+
+fn adjacent_key(ch: char, rng: &mut impl Rng) -> char {
+    let neighbors: &[(char, &[char])] = &[
+        ('a', &['s', 'q', 'z', 'w']),
+        ('b', &['v', 'g', 'h', 'n']),
+        ('c', &['x', 'd', 'f', 'v']),
+        ('d', &['s', 'e', 'r', 'f', 'c', 'x']),
+        ('e', &['w', 'r', 'd', 's', '3', '4']),
+        ('f', &['d', 'r', 't', 'g', 'v', 'c']),
+        ('g', &['f', 't', 'y', 'h', 'b', 'v']),
+        ('h', &['g', 'y', 'u', 'j', 'n', 'b']),
+        ('i', &['u', 'o', 'k', 'j', '8', '9']),
+        ('j', &['h', 'u', 'i', 'k', 'm', 'n']),
+        ('k', &['j', 'i', 'o', 'l', ',', 'm']),
+        ('l', &['k', 'o', 'p', ';', '.', ',']),
+        ('m', &['n', 'j', 'k', ',']),
+        ('n', &['b', 'h', 'j', 'm']),
+        ('o', &['i', 'p', 'l', 'k', '9', '0']),
+        ('p', &['o', '[', ';', 'l', '0', '-']),
+        ('q', &['w', 'a', '1', '2']),
+        ('r', &['e', 't', 'f', 'd', '4', '5']),
+        ('s', &['a', 'w', 'e', 'd', 'x', 'z']),
+        ('t', &['r', 'y', 'g', 'f', '5', '6']),
+        ('u', &['y', 'i', 'j', 'h', '7', '8']),
+        ('v', &['c', 'f', 'g', 'b']),
+        ('w', &['q', 'e', 's', 'a', '2', '3']),
+        ('x', &['z', 's', 'd', 'c']),
+        ('y', &['t', 'u', 'h', 'g', '6', '7']),
+        ('z', &['a', 's', 'x']),
+        ('1', &['2', 'q']),
+        ('2', &['1', '3', 'q', 'w']),
+        ('3', &['2', '4', 'w', 'e']),
+        ('4', &['3', '5', 'e', 'r']),
+        ('5', &['4', '6', 'r', 't']),
+        ('6', &['5', '7', 't', 'y']),
+        ('7', &['6', '8', 'y', 'u']),
+        ('8', &['7', '9', 'u', 'i']),
+        ('9', &['8', '0', 'i', 'o']),
+        ('0', &['9', '-', 'o', 'p']),
+        (' ', &[' ']),
+    ];
+
+    let lower = ch.to_ascii_lowercase();
+    for (k, adj) in neighbors {
+        if *k == lower {
+            let picked = adj[rng.gen_range(0..adj.len())];
+            if ch.is_uppercase() { return picked.to_ascii_uppercase(); }
+            return picked;
+        }
+    }
+    ch
 }
 
 use crate::protocol::HighlightSpec;
