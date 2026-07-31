@@ -5,7 +5,13 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "_extensions/term/term.lua"
+      - "_extensions/term/term.css"
       - ".github/workflows/publish-docs.yml"
+  workflow_run:
+    workflows: ["Build binaries"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,13 +21,16 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: quarto-dev/quarto-actions/setup@v2
 
