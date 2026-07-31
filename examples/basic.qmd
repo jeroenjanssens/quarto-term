@@ -4,9 +4,6 @@ format: html
 engine: markdown
 term:
   shell: "zsh"
-  prompt: "`\\$`"
-  env:
-    PS1: "$ "
 ---
 
 ## Hello World
