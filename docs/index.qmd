@@ -1,9 +1,23 @@
 ---
 title: "quarto-term"
 subtitle: "Persistent interactive terminal sessions for Quarto"
+engine: markdown
 ---
 
 **quarto-term** is a [Quarto](https://quarto.org) extension that runs commands in a real, persistent shell session. State carries across cells, colors render faithfully, and you can drive fullscreen TUI apps --- all from your `.qmd` file.
+
+```{term}
+echo 'Hello from quarto-term!'
+```
+
+```{term}
+export GREETING="State persists across cells"
+echo $GREETING
+```
+
+```{term}
+printf '\033[31mred\033[0m \033[32mgreen\033[0m \033[34mblue\033[0m\n'
+```
 
 ## Why quarto-term?
 

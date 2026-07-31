@@ -1,12 +1,12 @@
 ---
 title: "Examples"
+engine: markdown
 ---
 
 ## Basic Usage
 
 State persists across cells:
 
-````markdown
 ```{term}
 export GREETING="Hello from quarto-term"
 ```
@@ -14,119 +14,65 @@ export GREETING="Hello from quarto-term"
 ```{term}
 echo $GREETING
 ```
-````
 
 ## Multi-Line Commands
 
 Loops and other multi-line constructs work automatically via PS2 detection:
 
-````markdown
 ```{term}
 for i in 1 2 3; do
   echo "Item $i"
 done
 ```
-````
 
 ## ANSI Colors
 
 Colored output renders faithfully:
 
-````markdown
 ```{term}
 printf '\033[31mred\033[0m \033[32mgreen\033[0m \033[34mblue\033[0m\n'
 ```
-````
-
-## Fullscreen Applications
-
-Capture TUI apps by splitting the interaction across cells:
-
-````markdown
-```{term}
-nyancat #! enter: false, expect-prompt: false
-```
-
-```{term}
-#| fullscreen: true
-enter #! literal: false, delay: 1.0, hold: 5.0
-```
-
-```{term}
-#| echo: false
-#| output: false
-ctrl-c #! literal: false, hold: 0.5
-```
-````
-
-The first cell types the command without pressing Enter. The second cell presses Enter, waits 1 second, then holds for 5 seconds while capturing the fullscreen output. The third cell sends Ctrl-C to exit (hidden from output).
-
-## Interrupting a Command
-
-Send a long-running command, then interrupt it:
-
-````markdown
-```{term}
-sleep 100 #! expect-prompt: false
-ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
-```
-````
-
-The `expect-prompt: false` tells quarto-term not to wait for a prompt after `sleep 100` (since it won't return one). After 0.5 seconds, Ctrl-C is sent to interrupt it.
-
-## Arrow Key Navigation
-
-Recall and re-execute the previous command:
-
-````markdown
-```{term}
-echo "first command"
-up #! literal: false, hold: 0.3
-enter #! literal: false
-```
-````
-
-## Human Typing with Recordings
-
-Create a realistic terminal recording:
-
-````markdown
----
-title: "Demo"
-format: html
-engine: markdown
-term:
-  shell: zsh
-  typing:
-    mode: human
-    speed: 120
-    error-rate: 0.02
-  record: "demo.cast"
----
-
-```{term}
-echo 'This is typed with realistic human timing'
-```
-````
 
 ## Working with Files
 
-````markdown
 ```{term}
 echo "line 1" > /tmp/demo.txt
 echo "line 2" >> /tmp/demo.txt
+echo "line 3" >> /tmp/demo.txt
 cat /tmp/demo.txt
 ```
-````
 
 ## Piping
 
 Multi-line pipes work naturally:
 
-````markdown
 ```{term}
 seq 1 5 |
 paste -sd+ |
 bc
 ```
-````
+
+## Interrupting a Command
+
+Send a long-running command, then interrupt it:
+
+```{term}
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
+```
+
+## Arrow Key Navigation
+
+Recall and re-execute the previous command:
+
+```{term}
+echo "first command"
+up #! literal: false, hold: 0.3
+enter #! literal: false
+```
+
+## Cleanup
+
+```{term}
+rm -f /tmp/demo.txt
+```

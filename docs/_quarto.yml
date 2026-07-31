@@ -2,8 +2,12 @@ project:
   type: website
   output-dir: _site
 
-execute:
-  enabled: false
+term:
+  shell: zsh
+  theme:
+    light: solarized-light
+    dark: solarized-dark
+  spacing: true
 
 website:
   title: "quarto-term"
