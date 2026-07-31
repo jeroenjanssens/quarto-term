@@ -1,0 +1,41 @@
+---
+title: "quarto-term"
+subtitle: "Persistent interactive terminal sessions for Quarto"
+---
+
+**quarto-term** is a [Quarto](https://quarto.org) extension that runs commands in a real, persistent shell session. State carries across cells, colors render faithfully, and you can drive fullscreen TUI apps --- all from your `.qmd` file.
+
+## Why quarto-term?
+
+Quarto's built-in `bash` engine executes each code cell in an isolated subshell. That means:
+
+- Variables, `cd`, and other state don't persist between cells.
+- You can't show interactive TUI applications (htop, vim, nyancat).
+- Output is plain text with no ANSI color support.
+- There's no way to send special keys (Ctrl-C, arrow keys).
+- You can't produce terminal recordings alongside your document.
+
+quarto-term solves all of these by running a single persistent shell session that all cells share. It captures output using a real terminal emulator (including colors, cursor movement, and fullscreen apps), and can optionally produce [asciicast](https://docs.asciinema.org/) or [termshow](https://posit-dev.github.io/great-docs/user-guide/terminal-recordings.html) recordings for playback.
+
+## Features
+
+- **Persistent sessions** --- State carries across cells (variables, working directory, shell history).
+- **ANSI color rendering** --- Faithfully renders colored output as HTML/LaTeX.
+- **Fullscreen capture** --- Capture TUI apps like htop, vim, or nyancat.
+- **Special keys** --- Send Ctrl-C, arrow keys, Enter, Escape, and more.
+- **Human typing simulation** --- Configurable speed and error rate for realistic recordings.
+- **Terminal recordings** --- Produce `.cast` (asciicast v2) or `.termshow` files alongside your document.
+- **Line options** --- Control timing, key behavior, and prompt expectations per line.
+- **Multi-line commands** --- Automatic PS2 continuation prompt detection.
+- **Themes** --- Built-in color themes with light/dark mode support.
+- **Multiple output formats** --- HTML, LaTeX/PDF, and Markdown.
+
+## Quick install
+
+```bash
+quarto add jeroenjanssens/quarto-term
+```
+
+Pre-built binaries for macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows are included. No additional setup needed.
+
+See [Get Started](get-started.qmd) for a complete walkthrough.

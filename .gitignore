@@ -7,6 +7,7 @@
 *.termshow.yml
 *.pdf
 demo.md
+docs/_site/
 
 /.quarto/
 **/*.quarto_ipynb

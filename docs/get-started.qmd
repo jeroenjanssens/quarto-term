@@ -1,0 +1,93 @@
+---
+title: "Get Started"
+---
+
+## Installation
+
+```bash
+quarto add jeroenjanssens/quarto-term
+```
+
+This installs the extension with pre-built binaries for macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
+
+To build from source instead (requires [Rust](https://rustup.rs/)):
+
+```bash
+cargo build --release
+```
+
+## Your first document
+
+Create a file called `hello.qmd`:
+
+````markdown
+---
+title: "Hello Terminal"
+format: html
+engine: markdown
+term:
+  shell: zsh
+---
+
+```{term}
+echo 'Hello, world!'
+```
+
+```{term}
+export NAME="Quarto"
+```
+
+```{term}
+echo "Hello, $NAME"
+```
+````
+
+Render it:
+
+```bash
+quarto render hello.qmd
+```
+
+The `engine: markdown` line tells Quarto to skip its built-in execution engines. The `term` key holds all configuration.
+
+## How it works
+
+1. The Lua filter collects all `` ```{term} `` cells from your document.
+2. It sends them to the `quarto-term` binary, which spawns a persistent shell.
+3. Each line is typed into the shell (simulating a real user), and output is captured via a terminal emulator.
+4. The rendered output (with ANSI colors, prompts, etc.) replaces the original code cells in the document.
+
+Because the shell session persists, variables, the working directory, and all other state carry over between cells.
+
+## Configuration
+
+All configuration goes under the `term:` key in your YAML front matter:
+
+```yaml
+term:
+  shell: zsh
+  theme: solarized-dark
+  spacing: true
+  timeout: 15.0
+```
+
+See the [Reference](reference.qmd) for the full list of options.
+
+## Using with knitr or Jupyter
+
+For documents that only contain terminal cells, `engine: markdown` is recommended. If you need to mix `{term}` cells with `{r}` or `{python}` cells:
+
+**Jupyter** works without changes --- `{term}` blocks pass through to the Lua filter.
+
+**knitr** requires registering a pass-through engine in a setup chunk:
+
+````markdown
+```{r}
+#| include: false
+knitr::knit_engines$set(term = function(options) {
+  knitr:::one_string(c("```{term}", options$code, "```"))
+})
+```
+````
+
+Note that `{term}` cells are always executed after all knitr/Jupyter cells have finished. The terminal session runs during the Pandoc filter phase, not during engine execution.

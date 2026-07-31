@@ -1,0 +1,173 @@
+---
+title: "Reference"
+---
+
+## Document-Level Options
+
+Set these under `term:` in your YAML front matter:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `shell` | `zsh` | Shell to use |
+| `shell-args` | auto | Shell arguments (defaults: `--no-rcs` for zsh, `--norc --noprofile` for bash) |
+| `prompt` | `$` | Literal prompt string. Auto-sets `PS1` and builds the matching regex. |
+| `prompt-regex` | (derived) | Raw regex override for prompt detection |
+| `cols` | `80` | Terminal width |
+| `rows` | `24` | Terminal height |
+| `ansi` | `true` | Render ANSI colors in output |
+| `timeout` | `10.0` | Seconds to wait for prompt before error |
+| `spacing` | `false` | Add blank lines between commands in output |
+| `trailing-spaces` | `false` | Preserve trailing whitespace in output |
+| `marker` | `#!` | Prefix for line option annotations |
+| `typing` | `false` | Human typing simulation (see below) |
+| `record` | (none) | File path to record session (`.cast` or `.termshow`) |
+| `theme` | (none) | Color theme name, or `{light: ..., dark: ...}` for auto-switching |
+| `theme-bg` | (from theme) | Background color override (hex) |
+| `theme-fg` | (from theme) | Foreground color override (hex) |
+| `fontsize` | (none) | Font size (or per-format map: `{html: "0.85em", pdf: "0.75em"}`) |
+| `verbose` | `false` | Print execution details to stderr |
+| `init` | (none) | Shell script to source at session start |
+| `env` | `{}` | Additional environment variables |
+
+## Cell Options
+
+Set these with `#|` at the top of a cell:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `label` | (none) | Cell label (shown in verbose mode) |
+| `echo` | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
+| `output` | `true` | Show terminal output |
+| `fullscreen` | `false` | Capture the entire terminal screen |
+| `scroll` | `!fullscreen` | Include scrollback in capture |
+| `keep-last-prompt` | `false` | Keep the trailing prompt in output |
+| `ansi` | (from config) | Override ANSI rendering for this cell |
+| `spacing` | (from config) | Override spacing for this cell |
+| `trailing-spaces` | (from config) | Override trailing space handling |
+| `typing` | (from config) | Override typing simulation |
+| `timeout` | (from config) | Override timeout for this cell |
+| `hold` | (none) | Seconds to wait after cell completes (captures ongoing output) |
+| `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
+| `marker` | (from config) | Override line marker for this cell |
+
+## Line Options
+
+Traditional code engines just *execute* code --- they send an entire block to an interpreter and capture whatever comes back. quarto-term is different: it *simulates a human typing at a terminal*. Each line is sent to the shell individually, keystroke by keystroke, just as you would type it yourself.
+
+This distinction matters because a real terminal session has *timing*. You might type a command, wait for output to settle, then send a keystroke to interact with what's on screen. You can't express that in a flat code block --- but you can with line options.
+
+Line options give you control over *how* each line is delivered to the shell: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, how long to pause before or after, and whether to wait for the prompt to return. This is what makes it possible to drive interactive applications, interrupt long-running commands, and produce recordings with natural pacing.
+
+Append options to any line using the marker (default `#!`):
+
+````markdown
+```{term}
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
+```
+````
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `literal` | `true` | Send text as typed characters. Set to `false` for key names. |
+| `enter` | (from literal) | Press Enter after the line |
+| `expect-prompt` | (from enter) | Wait for prompt after the line |
+| `delay` | `0` | Seconds to wait *before* executing this line |
+| `hold` | `0.1` | Seconds to wait after executing (captures output) |
+
+## Special Keys
+
+When `literal: false`, these key names are recognized:
+
+- `enter` (also `return`, `cr`), `tab`, `space`
+- `escape` (also `esc`), `backspace` (also `bs`), `delete` (also `del`)
+- `up`, `down`, `left`, `right`, `home`, `end`
+- `page-up` (also `pageup`), `page-down` (also `pagedown`), `insert`
+- `ctrl-c`, `ctrl-d`, `ctrl-z`, `ctrl-l`, etc. (also `c-c` shorthand)
+- `f1` through `f12`
+
+Any other text is sent as raw bytes (e.g., `q` sends the letter q without pressing Enter).
+
+## Human Typing Simulation
+
+Simulate realistic human typing for recordings:
+
+```yaml
+term:
+  typing:
+    mode: human
+    speed: 100        # characters per minute
+    error-rate: 0.02  # probability of a typo per character
+```
+
+When a "typo" occurs, the simulated typist hits a QWERTY-adjacent key and then corrects with backspace. Timing follows a log-normal distribution with bigram-aware adjustments.
+
+Disable typing for individual cells with `#| typing: false`.
+
+## Prompt Detection
+
+By default, quarto-term uses the literal `prompt` value (default `$`) to detect when a command has finished. It:
+
+1. Sets `PS1` to `prompt + " "` (e.g., `$ `) in the shell environment.
+2. Builds a regex from `regex::escape(prompt) + "\\s*$"` to match the prompt in output.
+
+For advanced use cases, override the regex directly:
+
+```yaml
+term:
+  prompt: "myhost>"
+  prompt-regex: "(\\$|#|myhost>)\\s*$"
+```
+
+PS2 (continuation prompt) is auto-set to `"> "` for multi-line command detection.
+
+## Terminal Recordings
+
+Record your session for playback:
+
+```yaml
+term:
+  record: "session.cast"       # asciicast v2 format
+  # or
+  record: "session.termshow"   # termshow format (generates .termshow.yml)
+```
+
+Asciicast files can be played with [asciinema](https://asciinema.org/). Termshow files work with the [termshow](https://github.com/posit-dev/great-docs/) player.
+
+## Themes
+
+Built-in themes:
+
+- `catppuccin-mocha`
+- `dracula`
+- `gruvbox-dark`
+- `nord`
+- `one-dark`
+- `solarized-dark`
+- `solarized-light`
+- `tokyo-night`
+
+Single theme:
+
+```yaml
+term:
+  theme: solarized-dark
+```
+
+### Light/Dark Mode
+
+For documents that support Quarto's light/dark toggle, provide both:
+
+```yaml
+format:
+  html:
+    theme:
+      light: flatly
+      dark: darkly
+term:
+  theme:
+    light: solarized-light
+    dark: solarized-dark
+```
+
+The terminal blocks automatically switch themes when the user toggles the page between light and dark mode.

@@ -1,0 +1,28 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "quarto-term"
+  repo-url: https://github.com/jeroenjanssens/quarto-term
+  repo-actions: [issue]
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: get-started.qmd
+        text: Get Started
+      - href: reference.qmd
+        text: Reference
+      - href: examples.qmd
+        text: Examples
+    right:
+      - icon: github
+        href: https://github.com/jeroenjanssens/quarto-term
+
+format:
+  html:
+    theme:
+      light: flatly
+      dark: darkly
+    toc: true
