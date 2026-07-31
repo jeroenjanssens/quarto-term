@@ -22,7 +22,7 @@ quarto-term solves all of these by running a single persistent shell session tha
 - **Special keys** -- Send Ctrl-C, arrow keys, Enter, Escape, and more.
 - **Human typing simulation** -- Configurable speed and error rate for realistic recordings.
 - **Terminal recordings** -- Produce `.cast` (asciicast v2) or `.termshow` files alongside your document.
-- **Per-line options** -- Control timing, key behavior, and prompt expectations per line.
+- **Line options** -- Control timing, key behavior, and prompt expectations per line.
 - **Multi-line commands** -- Automatic PS2 continuation prompt detection.
 - **Themes** -- Built-in color themes (solarized-dark, dracula, nord, tokyo-night, and more).
 - **Multiple output formats** -- HTML, LaTeX/PDF, and Markdown.
@@ -84,7 +84,7 @@ Set these under `term:` in your YAML front matter:
 | `timeout` | `10.0` | Seconds to wait for prompt before error |
 | `spacing` | `false` | Add blank lines between commands in output |
 | `trailing-spaces` | `false` | Preserve trailing whitespace in output |
-| `marker` | `#!` | Prefix for per-line option annotations |
+| `marker` | `#!` | Prefix for line option annotations |
 | `typing` | `false` | Human typing simulation (see below) |
 | `record` | (none) | File path to record session (`.cast` or `.termshow`) |
 | `theme` | (none) | Color theme name |
@@ -114,15 +114,15 @@ Set these with `#|` at the top of a chunk:
 | `timeout` | (from config) | Override timeout for this chunk |
 | `hold` | (none) | Seconds to wait after chunk completes (captures ongoing output) |
 | `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
-| `marker` | (from config) | Override per-line marker for this chunk |
+| `marker` | (from config) | Override line marker for this chunk |
 
-## Per-Line Options
+## Line Options
 
 Traditional code engines just *execute* code -- they send an entire block to an interpreter and capture whatever comes back. quarto-term is different: it *simulates a human typing at a terminal*. Each line is sent to the shell individually, keystroke by keystroke, just as you would type it yourself.
 
-This distinction matters because a real terminal session has *timing*. You might type a command, wait for output to settle, then send a keystroke to interact with what's on screen. You can't express that in a flat code block -- but you can with per-line options.
+This distinction matters because a real terminal session has *timing*. You might type a command, wait for output to settle, then send a keystroke to interact with what's on screen. You can't express that in a flat code block -- but you can with line options.
 
-Per-line options give you control over *how* each line is delivered to the shell: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, how long to pause before or after, and whether to wait for the prompt to return. This is what makes it possible to drive interactive applications, interrupt long-running commands, and produce recordings with natural pacing.
+Line options give you control over *how* each line is delivered to the shell: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, how long to pause before or after, and whether to wait for the prompt to return. This is what makes it possible to drive interactive applications, interrupt long-running commands, and produce recordings with natural pacing.
 
 Append options to any line using the marker (default `#!`):
 
