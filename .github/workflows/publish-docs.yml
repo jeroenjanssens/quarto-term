@@ -7,9 +7,10 @@ on:
       - "docs/**"
       - "_extensions/term/term.lua"
       - "_extensions/term/term.css"
+      - "_extensions/term/themes/**"
       - ".github/workflows/publish-docs.yml"
   workflow_run:
-    workflows: ["Build binaries"]
+    workflows: ["Release"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -33,6 +34,11 @@ jobs:
           ref: main
 
       - uses: quarto-dev/quarto-actions/setup@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build quarto-term
+        run: cargo build --release
 
       - name: Install dependencies
         run: sudo apt-get install -y zsh htop zsh-syntax-highlighting

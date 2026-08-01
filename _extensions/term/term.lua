@@ -40,6 +40,8 @@ local function find_engine()
   local dev_candidates = {
     project_root .. "target/release/quarto-term",
     project_root .. "target/debug/quarto-term",
+    project_root .. "../target/release/quarto-term",
+    project_root .. "../target/debug/quarto-term",
     "./target/release/quarto-term",
     "./target/debug/quarto-term",
   }

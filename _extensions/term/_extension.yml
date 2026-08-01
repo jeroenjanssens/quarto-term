@@ -1,6 +1,10 @@
 title: Term
 author: Jeroen Janssens
-version: 0.2.0
+version: 0.3.0
 contributes:
   filters:
     - term.lua
+  metadata:
+    project:
+      pre-render:
+        - install-binary.ts

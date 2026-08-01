@@ -1,13 +1,9 @@
-name: Build binaries
+name: Release
 
 on:
   push:
-    paths:
-      - "src/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-    branches: [main]
-  workflow_dispatch:
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -47,20 +43,19 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Copy binary
+      - name: Rename binary
         shell: bash
         run: |
           src="target/${{ matrix.target }}/release/quarto-term${{ matrix.ext }}"
-          dst="_extensions/term/bin/quarto-term-${{ matrix.target }}${{ matrix.ext }}"
-          mkdir -p _extensions/term/bin
+          dst="quarto-term-${{ matrix.target }}${{ matrix.ext }}"
           cp "$src" "$dst"
 
       - uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.target }}
-          path: _extensions/term/bin/quarto-term-${{ matrix.target }}${{ matrix.ext }}
+          path: quarto-term-${{ matrix.target }}${{ matrix.ext }}
 
-  commit:
+  release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -71,21 +66,15 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: _extensions/term/bin
+          path: assets
           pattern: binary-*
           merge-multiple: true
 
-      - name: Make binaries executable
-        run: chmod +x _extensions/term/bin/quarto-term-*
-
-      - name: Commit binaries
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "Jeroen Janssens"
-          git config user.email "jeroen@jeroenjanssens.com"
-          git add _extensions/term/bin/
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update pre-built binaries"
-            git push
-          fi
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            assets/*
