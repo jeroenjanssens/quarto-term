@@ -26,19 +26,25 @@
   color: var(--term-fg);
   font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Menlo", "Consolas", monospace;
   font-size: 0.9em;
-  line-height: 1.3;
+  line-height: 1.2;
   padding: 0.75em 1em;
   border-radius: 6px;
   overflow-x: auto;
   margin: 1rem 0;
 }
 
-.term-output code,
-.term-screen code,
-.term-source code {
+pre.term-output code,
+pre.term-screen code,
+pre.term-source code {
   background: none;
   padding: 0;
   font-size: inherit;
+  color: var(--term-fg);
+}
+
+pre.term-output code span,
+pre.term-screen code span,
+pre.term-source code span {
   color: inherit;
 }
 
