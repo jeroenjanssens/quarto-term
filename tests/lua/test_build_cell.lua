@@ -248,6 +248,18 @@ do
   assert_nil(cell._theme, "no theme -> nil")
 end
 
+-- Test: eval: false
+do
+  local cell = build_cell(mock_block("#| eval: false\necho hi\n"), 1, {})
+  assert_eq(cell._eval, false, "eval: false")
+end
+
+-- Test: eval not set -> true
+do
+  local cell = build_cell(mock_block("echo hi\n"), 1, {})
+  assert_true(cell._eval, "no eval -> true")
+end
+
 -- Report
 io.stderr:write(string.format("\nbuild_cell: %d passed, %d failed\n", pass_count, fail_count))
 if fail_count > 0 then

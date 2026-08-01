@@ -296,7 +296,8 @@ local function extract_config(meta)
   if term_meta["init"] then
     local init_val = term_meta["init"]
     local init_list = {}
-    if type(init_val) == "table" and init_val.t == nil then
+    if type(init_val) == "table" and init_val.t == nil
+        and #init_val > 0 and type(init_val[1]) ~= "userdata" then
       for i = 1, #init_val do
         table.insert(init_list, meta_str(init_val[i]))
       end
@@ -463,6 +464,7 @@ local function build_cell(block, cell_id, config)
     highlight = "bash",
   }
 
+  local eval = cell_opts["eval"]
   local include = cell_opts["include"]
   if include == false then
     options.echo = "false"
@@ -519,6 +521,7 @@ local function build_cell(block, cell_id, config)
     options = options,
     line_options = line_options,
     source_lines = source_lines,
+    _eval = eval ~= false,
     _include = include ~= false,
     _theme = cell_theme,
   }
@@ -568,17 +571,27 @@ function Pandoc(doc)
 
   for i, block in ipairs(doc.blocks) do
     if is_term_block(block) then
-      local cell_id = #cells + 1
       -- Pass config with marker still set so build_cell can use it
       config.marker = _marker
-      local cell = build_cell(block, cell_id, config)
+      local cell = build_cell(block, 0, config)
       config.marker = nil
+      local cell_eval = cell._eval
       local cell_include = cell._include
       local cell_theme = cell._theme
+      cell._eval = nil
       cell._include = nil
       cell._theme = nil
-      table.insert(cells, cell)
-      table.insert(term_positions, { block_i = i, cell_i = cell_id, include = cell_include, theme = cell_theme })
+      if cell_eval then
+        local cell_id = #cells + 1
+        cell.id = cell_id
+        table.insert(cells, cell)
+        table.insert(term_positions, { block_i = i, cell_i = cell_id, include = cell_include, theme = cell_theme })
+      else
+        -- Strip #| option lines from the code block
+        block.text = cell.code
+        block.classes = {"bash"}
+        doc.blocks[i] = block
+      end
     end
   end
 
