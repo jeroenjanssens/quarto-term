@@ -70,7 +70,7 @@ sleep 100 #! expect-prompt: false
 ctrl-c #! literal: false, delay: 0.5
 ```
 
-The `engine: markdown` line tells Quarto to skip its built-in execution engines. The `extensions: term:` key holds all configuration (the legacy top-level `term:` key also works).
+The `engine: markdown` line tells Quarto to skip its built-in execution engines. The `extensions: term:` key holds all configuration.
 
 ## How it works
 
