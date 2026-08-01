@@ -1,6 +1,7 @@
 /target
 .quarto/
 _extensions/term/bin/
+docs/_extensions/
 *_files/
 *.html
 *.cast
