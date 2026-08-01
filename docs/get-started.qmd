@@ -9,7 +9,7 @@ engine: markdown
 quarto add jeroenjanssens/quarto-term
 ```
 
-This installs the extension with pre-built binaries for macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
+On first render, the correct binary for your platform is automatically downloaded from GitHub Releases and cached locally. Supported platforms: macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
 
 To build from source instead (requires [Rust](https://rustup.rs/)):
 
