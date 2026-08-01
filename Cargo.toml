@@ -1,6 +1,6 @@
 [package]
 name = "quarto-term"
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
 description = "A Quarto extension that provides a persistent interactive terminal session across code chunks"
 license = "MIT"
