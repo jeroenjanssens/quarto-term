@@ -1,0 +1,43 @@
+name: Test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pandoc
+        run: sudo apt-get install -y pandoc
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Build binary
+        run: cargo build
+
+      - name: Rust tests
+        run: cargo test
+
+      - name: Lua filter tests
+        run: |
+          for f in tests/lua/test_*.lua; do
+            echo "Running $f..."
+            pandoc --lua-filter "$f" /dev/null -t plain 2>&1 || exit 1
+          done
+
+      - name: Deno tests
+        run: deno test tests/deno/ --allow-read --allow-write --allow-env
+
+      - name: End-to-end tests
+        run: |
+          export PATH="$PWD/target/debug:$PATH"
+          bash tests/e2e/run_e2e.sh

@@ -154,7 +154,9 @@ end
 
 local function resolve_init_path(path)
   if path:sub(1, 1) == "/" then
-    return path
+    local f = io.open(path, "r")
+    if f then f:close(); return path end
+    return nil
   end
   -- Check current working directory first
   local local_file = io.open(path, "r")
@@ -176,7 +178,7 @@ local function resolve_init_path(path)
       return candidate
     end
   end
-  return path
+  return nil
 end
 
 local function extract_config(meta)
@@ -303,7 +305,18 @@ local function extract_config(meta)
     end
     config.init = {}
     for _, entry in ipairs(init_list) do
-      table.insert(config.init, resolve_init_path(entry))
+      local resolved = resolve_init_path(entry)
+      if resolved then
+        table.insert(config.init, "source " .. resolved)
+      else
+        -- Inline command(s) — split multi-line blocks
+        for line in entry:gmatch("[^\n]+") do
+          local trimmed = line:match("^%s*(.-)%s*$")
+          if trimmed and trimmed ~= "" then
+            table.insert(config.init, trimmed)
+          end
+        end
+      end
     end
   end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
@@ -490,6 +503,15 @@ local function build_cell(block, cell_id, config)
 
   local label = cell_opts["label"]
 
+  -- Cell-level theme (not sent to Rust; handled in Lua for CSS scoping)
+  local cell_theme = nil
+  if cell_opts["theme"] ~= nil then
+    local tv = cell_opts["theme"]
+    if type(tv) == "string" then
+      cell_theme = tv
+    end
+  end
+
   return {
     id = cell_id,
     code = code,
@@ -498,6 +520,7 @@ local function build_cell(block, cell_id, config)
     line_options = line_options,
     source_lines = source_lines,
     _include = include ~= false,
+    _theme = cell_theme,
   }
 end
 
@@ -551,9 +574,11 @@ function Pandoc(doc)
       local cell = build_cell(block, cell_id, config)
       config.marker = nil
       local cell_include = cell._include
+      local cell_theme = cell._theme
       cell._include = nil
+      cell._theme = nil
       table.insert(cells, cell)
-      table.insert(term_positions, { block_i = i, cell_i = cell_id, include = cell_include })
+      table.insert(term_positions, { block_i = i, cell_i = cell_id, include = cell_include, theme = cell_theme })
     end
   end
 
@@ -608,6 +633,8 @@ function Pandoc(doc)
     raw_format = "markdown"
   end
 
+  local cell_theme_css = {}
+
   for _, pos in ipairs(term_positions) do
     local result = results[pos.cell_i]
     if result then
@@ -619,6 +646,16 @@ function Pandoc(doc)
       else
         local content = result.html
         if type(content) == "string" and content ~= "" then
+          if pos.theme and raw_format == "html" then
+            local scope_class = "term-theme-" .. pos.theme
+            content = "<div class=\"" .. scope_class .. "\">\n" .. content .. "</div>\n"
+            if not cell_theme_css[pos.theme] then
+              local css = read_theme_file(pos.theme)
+              if css then
+                cell_theme_css[pos.theme] = rescope_theme_css(css, "." .. scope_class)
+              end
+            end
+          end
           doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
         else
           doc.blocks[pos.block_i] = pandoc.Null()
@@ -667,6 +704,15 @@ function Pandoc(doc)
           version = "0.2.0",
           stylesheets = { "themes/" .. _theme .. ".css" },
         })
+      end
+
+      -- Inject per-cell theme CSS
+      local cell_css_parts = {}
+      for _, css in pairs(cell_theme_css) do
+        table.insert(cell_css_parts, css)
+      end
+      if #cell_css_parts > 0 then
+        quarto.doc.include_text("in-header", "<style>\n" .. table.concat(cell_css_parts, "\n") .. "</style>")
       end
     end
   end

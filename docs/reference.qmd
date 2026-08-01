@@ -3,6 +3,48 @@ title: "Reference"
 engine: markdown
 ---
 
+## All Options
+
+All project and document options are set under `extensions: term:` — in `_quarto.yml` for project-wide defaults, or in a document's front matter to override per file. Cell options use `#|` at the top of a cell. Line options use the marker (default `#!`) at the end of a line.
+
+| Option | Project | Document | Cell | Line | Default | Description |
+|--------|:-------:|:--------:|:----:|:----:|---------|-------------|
+| `ansi` | x | x | x | | `true` | Render ANSI colors in output |
+| `callouts` | | | x | | `[]` | Line indices or patterns to annotate with callout markers |
+| `cols` | x | x | | | `80` | Terminal width in columns |
+| `delay` | | | x | x | `0.1` | Seconds to wait before executing a line |
+| `echo` | | | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
+| `enter` | | | | x | (from `literal`) | Press Enter after the line |
+| `env` | x | x | | | `{}` | Additional environment variables |
+| `expect-prompt` | | | | x | (from `enter`) | Wait for prompt after the line |
+| `fontsize` | x | x | | | (none) | Font size, or per-format map `{html: ..., pdf: ...}` |
+| `fullscreen` | | | x | | `false` | Capture the entire terminal screen |
+| `highlight` | | | x | | `bash` | Syntax highlighting language (for `echo: source`) |
+| `hold` | | | x | x | `0.1` (line) | Seconds to wait after execution (captures ongoing output) |
+| `include` | | | x | | `true` | Execute the cell but hide it entirely from output |
+| `init` | x | x | | | (none) | Script(s) or command(s) to run at session start |
+| `keep-last-prompt` | | | x | | `false` | Keep the trailing prompt in output |
+| `label` | | | x | | (none) | Cell label (shown in verbose mode) |
+| `literal` | | | x | x | `true` | Send text as typed characters; `false` for key names |
+| `marker` | x | x | x | | `#!` | Prefix for line option annotations |
+| `output` | | | x | | `true` | Show terminal output |
+| `prompt` | x | x | | | `$` | Literal prompt string (auto-sets `PS1`) |
+| `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection |
+| `record` | x | x | | | (none) | File path(s) to record session (`.cast` or `.termshow`) |
+| `remove` | | | x | | `[]` | Line indices or patterns to remove from output |
+| `rows` | x | x | | | `24` | Terminal height in rows |
+| `scroll` | | | x | | `!fullscreen` | Include scrollback in capture |
+| `shell` | x | x | | | `zsh` | Shell to use |
+| `shell-args` | x | x | | | (auto) | Shell arguments |
+| `spacing` | x | x | x | | `false` | Add blank lines between commands in output |
+| `theme` | x | x | x | | (none) | Color theme name, or `{light: ..., dark: ...}` |
+| `theme-bg` | x | x | | | (from theme) | Background color override (hex) |
+| `theme-fg` | x | x | | | (from theme) | Foreground color override (hex) |
+| `timeout` | x | x | x | | `10.0` | Seconds to wait for prompt before error |
+| `trailing-spaces` | x | x | x | | `false` | Preserve trailing whitespace in output |
+| `typing` | x | x | x | | `false` | Human typing simulation |
+| `verbose` | x | x | | | `false` | Print execution details to stderr |
+
 ## Document-Level Options
 
 Set these under `extensions: term:` in your YAML front matter:
@@ -27,7 +69,7 @@ Set these under `extensions: term:` in your YAML front matter:
 | `theme-fg` | (from theme) | Foreground color override (hex) |
 | `fontsize` | (none) | Font size (or per-format map: `{html: "0.85em", pdf: "0.75em"}`) |
 | `verbose` | `false` | Print execution details to stderr |
-| `init` | (none) | Script(s) to source at session start (string or list) |
+| `init` | (none) | Script(s) or command(s) to run at session start (string or list) |
 | `env` | `{}` | Additional environment variables |
 
 ## Cell Options
@@ -53,6 +95,7 @@ Set these with `#|` at the top of a cell:
 | `delay` | `0.1` | Default `delay` for all lines in this cell |
 | `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
 | `marker` | (from config) | Override line marker for this cell |
+| `theme` | (from config) | Override color theme for this cell |
 
 ## Line Options
 
@@ -174,31 +217,36 @@ PS2 (continuation prompt) is auto-set to `"> "` for multi-line command detection
 
 ## Init Scripts
 
-Source one or more scripts at session start using `init`. This is useful for loading zsh plugins like syntax highlighting:
-
-```yaml
-extensions:
-  term:
-    init: zsh-syntax-highlighting
-```
-
-You can provide a list to source multiple scripts:
+Run commands or source scripts at session start using `init`. Each entry can be a plugin name, a file path, or an inline command:
 
 ```yaml
 extensions:
   term:
     init:
       - zsh-syntax-highlighting
-      - zsh-autosuggestions
+      - "setopt INTERACTIVE_COMMENTS"
 ```
 
-For plugin names (not starting with `/`), quarto-term first checks the current working directory, then searches common installation paths:
+For plugin names, quarto-term checks the current working directory, then searches common installation paths:
 
 - `./<name>` (current working directory)
 - `/opt/homebrew/share/<name>/<name>.zsh` (macOS Homebrew)
 - `/usr/local/share/<name>/<name>.zsh` (manual installs)
 - `/usr/share/<name>/<name>.zsh` (Linux packages)
 - `/home/linuxbrew/.linuxbrew/share/<name>/<name>.zsh` (Linuxbrew)
+
+Entries that resolve to a file are sourced; everything else is executed as an inline command. Multi-line blocks are split and run line by line:
+
+```yaml
+extensions:
+  term:
+    init:
+      - zsh-syntax-highlighting
+      - |
+        setopt INTERACTIVE_COMMENTS
+        alias ll="ls -la"
+        export EDITOR=vim
+```
 
 You can also pass an absolute path directly:
 

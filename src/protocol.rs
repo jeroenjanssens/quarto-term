@@ -269,3 +269,136 @@ fn default_typing_mode() -> String {
 fn default_speed() -> f64 {
     60.0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn minimal_json() -> &'static str {
+        r#"{"config":{},"cells":[{"id":1,"code":"echo hi","options":{},"line_options":[],"source_lines":[]}]}"#
+    }
+
+    #[test]
+    fn batch_request_minimal_deserialization() {
+        let req: BatchRequest = serde_json::from_str(minimal_json()).unwrap();
+        assert_eq!(req.config.shell, "bash");
+        assert_eq!(req.config.cols, 80);
+        assert_eq!(req.config.rows, 24);
+        assert_eq!(req.config.timeout, 10.0);
+        assert_eq!(req.config.format, "html");
+        assert!(req.config.record.is_empty());
+        assert!(req.config.init.is_empty());
+        assert_eq!(req.cells.len(), 1);
+        assert_eq!(req.cells[0].code, "echo hi");
+    }
+
+    #[test]
+    fn echo_mode_bool_false() {
+        let v: EchoMode = serde_json::from_str("false").unwrap();
+        assert_eq!(v, EchoMode::Bool(false));
+    }
+
+    #[test]
+    fn echo_mode_bool_true() {
+        let v: EchoMode = serde_json::from_str("true").unwrap();
+        assert_eq!(v, EchoMode::Bool(true));
+    }
+
+    #[test]
+    fn echo_mode_string() {
+        let v: EchoMode = serde_json::from_str(r#""source""#).unwrap();
+        assert_eq!(v, EchoMode::Mode("source".to_string()));
+    }
+
+    #[test]
+    fn annotation_spec_index() {
+        let v: AnnotationSpec = serde_json::from_str("1").unwrap();
+        matches!(v, AnnotationSpec::Index(1));
+    }
+
+    #[test]
+    fn annotation_spec_pattern() {
+        let v: AnnotationSpec = serde_json::from_str(r#""hello""#).unwrap();
+        matches!(v, AnnotationSpec::Pattern(s) if s == "hello");
+    }
+
+    #[test]
+    fn highlight_spec_bool() {
+        let v: HighlightSpec = serde_json::from_str("false").unwrap();
+        matches!(v, HighlightSpec::Bool(false));
+    }
+
+    #[test]
+    fn highlight_spec_language() {
+        let v: HighlightSpec = serde_json::from_str(r#""python""#).unwrap();
+        matches!(v, HighlightSpec::Language(s) if s == "python");
+    }
+
+    #[test]
+    fn typing_config_disabled() {
+        let v: TypingConfig = serde_json::from_str("false").unwrap();
+        assert!(!v.is_enabled());
+    }
+
+    #[test]
+    fn typing_config_enabled() {
+        let v: TypingConfig = serde_json::from_str(r#"{"speed":80.0,"error_rate":0.05}"#).unwrap();
+        assert!(v.is_enabled());
+        assert_eq!(v.speed(), 80.0);
+        assert_eq!(v.error_rate(), 0.05);
+    }
+
+    #[test]
+    fn record_empty_array_works() {
+        let json = r#"{"config":{"record":[]},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        assert!(req.config.record.is_empty());
+    }
+
+    #[test]
+    fn record_with_paths() {
+        let json = r#"{"config":{"record":["out.cast","out.termshow"]},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.config.record, vec!["out.cast", "out.termshow"]);
+    }
+
+    #[test]
+    fn cell_options_display_no_options() {
+        let json = r#"{"config":{},"cells":[{"id":1,"code":"x","options":{},"line_options":[],"source_lines":[]}]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(format!("{}", req.cells[0].options), "no options");
+    }
+
+    #[test]
+    fn cell_options_display_with_options() {
+        let json = r#"{"config":{},"cells":[{"id":1,"code":"x","options":{"echo":false,"fullscreen":true},"line_options":[],"source_lines":[]}]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        let display = format!("{}", req.cells[0].options);
+        assert!(display.contains("echo: false"));
+        assert!(display.contains("fullscreen: true"));
+    }
+
+    #[test]
+    fn line_options_all_fields() {
+        let json = r#"{"line_index":2,"literal":false,"enter":true,"delay":0.5,"hold":1.0,"expect_prompt":false}"#;
+        let lo: LineOptions = serde_json::from_str(json).unwrap();
+        assert_eq!(lo.line_index, 2);
+        assert_eq!(lo.literal, Some(false));
+        assert_eq!(lo.enter, Some(true));
+        assert_eq!(lo.delay, Some(0.5));
+        assert_eq!(lo.hold, Some(1.0));
+        assert_eq!(lo.expect_prompt, Some(false));
+    }
+
+    #[test]
+    fn line_options_minimal() {
+        let json = r#"{"line_index":0}"#;
+        let lo: LineOptions = serde_json::from_str(json).unwrap();
+        assert_eq!(lo.line_index, 0);
+        assert_eq!(lo.literal, None);
+        assert_eq!(lo.enter, None);
+        assert_eq!(lo.delay, None);
+        assert_eq!(lo.hold, None);
+        assert_eq!(lo.expect_prompt, None);
+    }
+}

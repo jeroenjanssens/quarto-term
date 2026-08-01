@@ -134,8 +134,8 @@ impl PtySession {
 
         session.wait_for_prompt()?;
 
-        for init_file in &config.init {
-            let cmd = format!("source {}\r", init_file);
+        for init_cmd in &config.init {
+            let cmd = format!("{}\r", init_cmd.trim_end());
             session.writer.write_all(cmd.as_bytes())
                 .map_err(|_| TermError::ShellExited)?;
             session.writer.flush().map_err(|_| TermError::ShellExited)?;
@@ -878,3 +878,290 @@ fn adjacent_key(ch: char, rng: &mut impl Rng) -> char {
 }
 
 use crate::protocol::HighlightSpec;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use rand::rngs::StdRng;
+
+    fn make_rendered(text: &str) -> RenderedLine {
+        RenderedLine { html: text.to_string(), text: text.to_string() }
+    }
+
+    // --- apply_spacing ---
+
+    #[test]
+    fn apply_spacing_single_command() {
+        let mut lines = vec![make_rendered("$ echo hi"), make_rendered("hi")];
+        apply_spacing(&mut lines, "$");
+        assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn apply_spacing_two_commands() {
+        let mut lines = vec![
+            make_rendered("$ echo a"),
+            make_rendered("a"),
+            make_rendered("$ echo b"),
+            make_rendered("b"),
+        ];
+        apply_spacing(&mut lines, "$");
+        assert_eq!(lines.len(), 5);
+        assert_eq!(lines[2].text, "");
+    }
+
+    #[test]
+    fn apply_spacing_custom_prompt() {
+        let mut lines = vec![
+            make_rendered("> cmd1"),
+            make_rendered("out1"),
+            make_rendered("> cmd2"),
+        ];
+        apply_spacing(&mut lines, ">");
+        assert_eq!(lines.len(), 4);
+        assert_eq!(lines[2].text, "");
+    }
+
+    #[test]
+    fn apply_spacing_no_prompt_prefix() {
+        let mut lines = vec![make_rendered("abc"), make_rendered("def")];
+        apply_spacing(&mut lines, "$");
+        assert_eq!(lines.len(), 2);
+    }
+
+    // --- apply_remove ---
+
+    #[test]
+    fn apply_remove_empty_specs() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b")];
+        apply_remove(&mut lines, &[]);
+        assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn apply_remove_positive_index() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        apply_remove(&mut lines, &[AnnotationSpec::Index(1)]);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].text, "b");
+    }
+
+    #[test]
+    fn apply_remove_negative_index() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        apply_remove(&mut lines, &[AnnotationSpec::Index(-1)]);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[1].text, "b");
+    }
+
+    #[test]
+    fn apply_remove_zero_index_skipped() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b")];
+        apply_remove(&mut lines, &[AnnotationSpec::Index(0)]);
+        assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn apply_remove_out_of_bounds() {
+        let mut lines = vec![make_rendered("a")];
+        apply_remove(&mut lines, &[AnnotationSpec::Index(99)]);
+        assert_eq!(lines.len(), 1);
+    }
+
+    #[test]
+    fn apply_remove_pattern() {
+        let mut lines = vec![
+            make_rendered("keep this"),
+            make_rendered("remove_me"),
+            make_rendered("also keep"),
+        ];
+        apply_remove(&mut lines, &[AnnotationSpec::Pattern("remove_me".to_string())]);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].text, "keep this");
+        assert_eq!(lines[1].text, "also keep");
+    }
+
+    #[test]
+    fn apply_remove_multiple_specs() {
+        let mut lines = vec![
+            make_rendered("a"),
+            make_rendered("b"),
+            make_rendered("c"),
+            make_rendered("d"),
+        ];
+        apply_remove(&mut lines, &[AnnotationSpec::Index(1), AnnotationSpec::Index(-1)]);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].text, "b");
+        assert_eq!(lines[1].text, "c");
+    }
+
+    // --- apply_callouts ---
+
+    #[test]
+    fn apply_callouts_empty_specs() {
+        let mut lines = vec![make_rendered("a")];
+        apply_callouts(&mut lines, &[]);
+        assert_eq!(lines[0].html, "a");
+    }
+
+    #[test]
+    fn apply_callouts_positive_index() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b")];
+        apply_callouts(&mut lines, &[AnnotationSpec::Index(1)]);
+        assert!(lines[0].html.contains("term-callout"));
+        assert!(lines[0].html.contains("&lt;1&gt;"));
+        assert!(!lines[1].html.contains("term-callout"));
+    }
+
+    #[test]
+    fn apply_callouts_negative_index() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        apply_callouts(&mut lines, &[AnnotationSpec::Index(-1)]);
+        assert!(lines[2].html.contains("term-callout"));
+        assert!(lines[2].html.contains("&lt;1&gt;"));
+    }
+
+    #[test]
+    fn apply_callouts_pattern() {
+        let mut lines = vec![
+            make_rendered("no match"),
+            make_rendered("target line"),
+            make_rendered("another"),
+        ];
+        apply_callouts(&mut lines, &[AnnotationSpec::Pattern("target".to_string())]);
+        assert!(lines[1].html.contains("term-callout"));
+        assert!(!lines[2].html.contains("term-callout"));
+    }
+
+    #[test]
+    fn apply_callouts_sequential_numbering() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        apply_callouts(&mut lines, &[AnnotationSpec::Index(1), AnnotationSpec::Index(3)]);
+        assert!(lines[0].html.contains("&lt;1&gt;"));
+        assert!(lines[2].html.contains("&lt;2&gt;"));
+    }
+
+    // --- is_keycode_name ---
+
+    #[test]
+    fn is_keycode_name_known_keys() {
+        assert!(is_keycode_name("enter"));
+        assert!(is_keycode_name("tab"));
+        assert!(is_keycode_name("escape"));
+        assert!(is_keycode_name("up"));
+        assert!(is_keycode_name("f1"));
+        assert!(is_keycode_name("backspace"));
+    }
+
+    #[test]
+    fn is_keycode_name_ctrl_prefix() {
+        assert!(is_keycode_name("ctrl-c"));
+        assert!(is_keycode_name("c-x"));
+    }
+
+    #[test]
+    fn is_keycode_name_plain_text() {
+        assert!(!is_keycode_name("hello"));
+        assert!(!is_keycode_name("a"));
+        assert!(!is_keycode_name("echo"));
+    }
+
+    #[test]
+    fn is_keycode_name_case_insensitive() {
+        assert!(is_keycode_name("Enter"));
+        assert!(is_keycode_name("TAB"));
+        assert!(is_keycode_name("Ctrl-C"));
+    }
+
+    // --- html_escape_basic ---
+
+    #[test]
+    fn html_escape_basic_works() {
+        assert_eq!(html_escape_basic("a&b"), "a&amp;b");
+        assert_eq!(html_escape_basic("<>"), "&lt;&gt;");
+        assert_eq!(html_escape_basic("hello"), "hello");
+    }
+
+    // --- lognormal_ms ---
+
+    #[test]
+    fn lognormal_ms_minimum_floor() {
+        let mut rng = StdRng::seed_from_u64(42);
+        for _ in 0..1000 {
+            let val = lognormal_ms(50.0, 0.4, &mut rng);
+            assert!(val >= 10);
+        }
+    }
+
+    #[test]
+    fn lognormal_ms_reasonable_range() {
+        let mut rng = StdRng::seed_from_u64(123);
+        let samples: Vec<u64> = (0..1000).map(|_| lognormal_ms(100.0, 0.4, &mut rng)).collect();
+        let mean: f64 = samples.iter().map(|&x| x as f64).sum::<f64>() / 1000.0;
+        assert!(mean > 50.0 && mean < 200.0);
+    }
+
+    // --- bigram_factor ---
+
+    #[test]
+    fn bigram_factor_none_prev() {
+        assert_eq!(bigram_factor(None, 'a'), 1.0);
+    }
+
+    #[test]
+    fn bigram_factor_space_after_punct() {
+        assert_eq!(bigram_factor(Some('.'), 'a'), 1.8);
+        assert_eq!(bigram_factor(Some(','), 'b'), 1.8);
+    }
+
+    #[test]
+    fn bigram_factor_same_char() {
+        assert_eq!(bigram_factor(Some('a'), 'a'), 1.4);
+    }
+
+    #[test]
+    fn bigram_factor_space_curr() {
+        assert_eq!(bigram_factor(Some('a'), ' '), 1.0);
+    }
+
+    #[test]
+    fn bigram_factor_space_prev() {
+        assert_eq!(bigram_factor(Some(' '), 'a'), 1.3);
+    }
+
+    #[test]
+    fn bigram_factor_same_hand() {
+        // q and w are both left hand
+        assert_eq!(bigram_factor(Some('q'), 'w'), 1.1);
+    }
+
+    #[test]
+    fn bigram_factor_cross_hand() {
+        // f is left, j is right
+        assert_eq!(bigram_factor(Some('f'), 'j'), 0.9);
+    }
+
+    // --- adjacent_key ---
+
+    #[test]
+    fn adjacent_key_known_char() {
+        let mut rng = StdRng::seed_from_u64(42);
+        let result = adjacent_key('a', &mut rng);
+        assert!(['s', 'q', 'z', 'w'].contains(&result));
+    }
+
+    #[test]
+    fn adjacent_key_uppercase() {
+        let mut rng = StdRng::seed_from_u64(42);
+        let result = adjacent_key('A', &mut rng);
+        assert!(result.is_uppercase());
+    }
+
+    #[test]
+    fn adjacent_key_unknown() {
+        let mut rng = StdRng::seed_from_u64(42);
+        let result = adjacent_key('!', &mut rng);
+        assert_eq!(result, '!');
+    }
+}

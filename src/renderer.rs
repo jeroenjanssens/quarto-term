@@ -202,3 +202,194 @@ fn html_escape(s: &str) -> String {
 fn trim_trailing_spaces_html(s: &str) -> String {
     s.trim_end().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_line(ansi_str: &str, cols: usize) -> Line {
+        let mut vt = avt::Vt::builder().size(cols, 1).build();
+        vt.feed_str(ansi_str);
+        let line = vt.view().next().unwrap().clone();
+        line
+    }
+
+    #[test]
+    fn html_escape_ampersand() {
+        assert_eq!(html_escape("a&b"), "a&amp;b");
+    }
+
+    #[test]
+    fn html_escape_lt_gt() {
+        assert_eq!(html_escape("<tag>"), "&lt;tag&gt;");
+    }
+
+    #[test]
+    fn html_escape_quote() {
+        assert_eq!(html_escape(r#"say "hi""#), "say &quot;hi&quot;");
+    }
+
+    #[test]
+    fn html_escape_passthrough() {
+        assert_eq!(html_escape("hello world"), "hello world");
+    }
+
+    #[test]
+    fn html_escape_empty() {
+        assert_eq!(html_escape(""), "");
+    }
+
+    #[test]
+    fn trim_trailing_spaces_removes_trailing() {
+        assert_eq!(trim_trailing_spaces_html("hello   "), "hello");
+    }
+
+    #[test]
+    fn trim_trailing_spaces_preserves_leading() {
+        assert_eq!(trim_trailing_spaces_html("  hello"), "  hello");
+    }
+
+    #[test]
+    fn trim_trailing_spaces_noop() {
+        assert_eq!(trim_trailing_spaces_html("hello"), "hello");
+    }
+
+    #[test]
+    fn color_to_css_rgb() {
+        let color = Color::rgb(255, 128, 0);
+        assert_eq!(color_to_css(color), "#ff8000");
+    }
+
+    #[test]
+    fn color_to_css_indexed_0() {
+        let color = Color::Indexed(0);
+        assert_eq!(color_to_css(color), "var(--term-0)");
+    }
+
+    #[test]
+    fn color_to_css_indexed_15() {
+        let color = Color::Indexed(15);
+        assert_eq!(color_to_css(color), "var(--term-15)");
+    }
+
+    #[test]
+    fn color_to_css_indexed_6cube_first() {
+        let color = Color::Indexed(16);
+        assert_eq!(color_to_css(color), "#000000");
+    }
+
+    #[test]
+    fn color_to_css_indexed_6cube_red() {
+        // index 196 = 16 + 5*36 + 0*6 + 0 = pure red in 6-cube
+        let color = Color::Indexed(196);
+        assert_eq!(color_to_css(color), "#ff0000");
+    }
+
+    #[test]
+    fn color_to_css_indexed_grayscale_first() {
+        let color = Color::Indexed(232);
+        assert_eq!(color_to_css(color), "#080808");
+    }
+
+    #[test]
+    fn color_to_css_indexed_grayscale_last() {
+        let color = Color::Indexed(255);
+        // 8 + 10 * (255-232) = 8 + 230 = 238
+        assert_eq!(color_to_css(color), "#eeeeee");
+    }
+
+    #[test]
+    fn render_line_plain_text_no_ansi() {
+        let line = make_line("hello", 80);
+        let result = render_line(&line, false, false);
+        assert_eq!(result.text, "hello");
+        assert_eq!(result.html, "hello");
+    }
+
+    #[test]
+    fn render_line_html_escape_no_ansi() {
+        let line = make_line("<b>&</b>", 80);
+        let result = render_line(&line, false, false);
+        assert_eq!(result.html, "&lt;b&gt;&amp;&lt;/b&gt;");
+    }
+
+    #[test]
+    fn render_line_bold_ansi() {
+        let line = make_line("\x1b[1mBOLD\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("font-weight:bold"));
+        assert!(result.html.contains("BOLD"));
+    }
+
+    #[test]
+    fn render_line_italic_ansi() {
+        let line = make_line("\x1b[3mitalic\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("font-style:italic"));
+    }
+
+    #[test]
+    fn render_line_fg_color_indexed() {
+        let line = make_line("\x1b[31mred\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("color:var(--term-1)"));
+    }
+
+    #[test]
+    fn render_line_fg_color_rgb() {
+        let line = make_line("\x1b[38;2;255;128;0morange\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("color:#ff8000"));
+    }
+
+    #[test]
+    fn render_line_underline_strikethrough() {
+        let line = make_line("\x1b[4;9mboth\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("text-decoration:underline line-through"));
+    }
+
+    #[test]
+    fn render_line_inverse() {
+        let line = make_line("\x1b[7minv\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("var(--term-bg"));
+        assert!(result.html.contains("var(--term-fg"));
+    }
+
+    #[test]
+    fn render_lines_to_html_empty() {
+        let result = render_lines_to_html(&[], "term-output", None);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn render_lines_to_html_wraps_correctly() {
+        let lines = vec![
+            RenderedLine { html: "line1".to_string(), text: "line1".to_string() },
+            RenderedLine { html: "line2".to_string(), text: "line2".to_string() },
+        ];
+        let result = render_lines_to_html(&lines, "term-output", None);
+        assert!(result.contains("<pre class=\"term-output\">"));
+        assert!(result.contains("line1\nline2"));
+        assert!(result.contains("</code></pre>"));
+    }
+
+    #[test]
+    fn render_lines_to_html_with_fontsize() {
+        let lines = vec![
+            RenderedLine { html: "x".to_string(), text: "x".to_string() },
+        ];
+        let result = render_lines_to_html(&lines, "term-output", Some("0.8em"));
+        assert!(result.contains("style=\"font-size:0.8em\""));
+    }
+
+    #[test]
+    fn render_fullscreen_to_html_uses_screen_class() {
+        let lines = vec![
+            RenderedLine { html: "x".to_string(), text: "x".to_string() },
+        ];
+        let result = render_fullscreen_to_html(&lines, None);
+        assert!(result.contains("<pre class=\"term-screen\">"));
+    }
+}

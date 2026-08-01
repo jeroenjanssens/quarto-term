@@ -12,3 +12,7 @@ avt = "0.18"
 portable-pty = "0.9"
 regex = "1"
 rand = "0.8"
+
+[dev-dependencies]
+serde_json = "1"
+tempfile = "3"

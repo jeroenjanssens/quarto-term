@@ -7,7 +7,7 @@ import { join, dirname, fromFileUrl } from "https://deno.land/std@0.224.0/path/m
 
 const REPO = "jeroenjanssens/quarto-term";
 
-function detectPlatform(): string {
+export function detectPlatform(): string {
   const os = Deno.build.os;
   const arch = Deno.build.arch;
 
@@ -21,7 +21,7 @@ function detectPlatform(): string {
   throw new Error(`Unsupported platform: ${os}/${arch}`);
 }
 
-function binaryName(platform: string): string {
+export function binaryName(platform: string): string {
   const ext = platform.includes("windows") ? ".exe" : "";
   return `quarto-term-${platform}${ext}`;
 }

@@ -243,3 +243,154 @@ fn pens_equal(a: &Pen, b: &Pen) -> bool {
         && a.is_strikethrough() == b.is_strikethrough()
         && a.is_inverse() == b.is_inverse()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::renderer::RenderedLine;
+
+    fn make_line(ansi_str: &str, cols: usize) -> Line {
+        let mut vt = avt::Vt::builder().size(cols, 1).build();
+        vt.feed_str(ansi_str);
+        let line = vt.view().next().unwrap().clone();
+        line
+    }
+
+    #[test]
+    fn latex_escape_backslash() {
+        assert_eq!(latex_escape("a\\b"), "a\\textbackslash{}b");
+    }
+
+    #[test]
+    fn latex_escape_braces() {
+        assert_eq!(latex_escape("{x}"), "\\{x\\}");
+    }
+
+    #[test]
+    fn latex_escape_combined() {
+        assert_eq!(latex_escape("\\{"), "\\textbackslash{}\\{");
+    }
+
+    #[test]
+    fn latex_escape_passthrough() {
+        assert_eq!(latex_escape("hello"), "hello");
+    }
+
+    #[test]
+    fn color_to_hex_rgb() {
+        let c = Color::rgb(255, 0, 128);
+        assert_eq!(color_to_hex(c), "FF0080");
+    }
+
+    #[test]
+    fn color_to_hex_indexed_0_black() {
+        let c = Color::Indexed(0);
+        assert_eq!(color_to_hex(c), "000000");
+    }
+
+    #[test]
+    fn color_to_hex_indexed_1_red() {
+        let c = Color::Indexed(1);
+        assert_eq!(color_to_hex(c), "CD3131");
+    }
+
+    #[test]
+    fn color_to_hex_indexed_6cube() {
+        let c = Color::Indexed(16);
+        assert_eq!(color_to_hex(c), "000000");
+    }
+
+    #[test]
+    fn color_to_hex_indexed_grayscale() {
+        let c = Color::Indexed(232);
+        assert_eq!(color_to_hex(c), "080808");
+    }
+
+    #[test]
+    fn css_fontsize_to_latex_none() {
+        assert_eq!(css_fontsize_to_latex(None), "");
+    }
+
+    #[test]
+    fn css_fontsize_to_latex_06em() {
+        assert_eq!(css_fontsize_to_latex(Some("0.6em")), "\\tiny\n");
+    }
+
+    #[test]
+    fn css_fontsize_to_latex_08em() {
+        assert_eq!(css_fontsize_to_latex(Some("0.8em")), "\\small\n");
+    }
+
+    #[test]
+    fn css_fontsize_to_latex_1em() {
+        assert_eq!(css_fontsize_to_latex(Some("1em")), "\\normalsize\n");
+    }
+
+    #[test]
+    fn css_fontsize_to_latex_fallback() {
+        assert_eq!(css_fontsize_to_latex(Some("13pt")), "\\small\n");
+    }
+
+    #[test]
+    fn render_lines_to_latex_empty() {
+        let theme = LatexTheme { bg: None, fg: None, fontsize: None };
+        assert_eq!(render_lines_to_latex(&[], &theme), "");
+    }
+
+    #[test]
+    fn render_lines_to_latex_wraps_tcolorbox() {
+        let lines = vec![
+            RenderedLine { html: "hello".to_string(), text: "hello".to_string() },
+        ];
+        let theme = LatexTheme { bg: None, fg: None, fontsize: None };
+        let result = render_lines_to_latex(&lines, &theme);
+        assert!(result.contains("\\begin{tcolorbox}"));
+        assert!(result.contains("\\begin{Verbatim}"));
+        assert!(result.contains("hello"));
+        assert!(result.contains("\\end{Verbatim}"));
+        assert!(result.contains("\\end{tcolorbox}"));
+    }
+
+    #[test]
+    fn render_lines_to_latex_with_theme() {
+        let lines = vec![
+            RenderedLine { html: "x".to_string(), text: "x".to_string() },
+        ];
+        let theme = LatexTheme { bg: Some("#1a1b26"), fg: Some("#c0caf5"), fontsize: Some("0.8em") };
+        let result = render_lines_to_latex(&lines, &theme);
+        assert!(result.contains("colback=termbg"));
+        assert!(result.contains("colupper=termfg"));
+        assert!(result.contains("\\small"));
+    }
+
+    #[test]
+    fn render_line_plain_no_ansi() {
+        let line = make_line("hello", 80);
+        let result = render_line(&line, false, false);
+        assert_eq!(result.html, "hello");
+        assert_eq!(result.text, "hello");
+    }
+
+    #[test]
+    fn render_line_escapes_latex() {
+        let line = make_line("a\\{b}", 80);
+        let result = render_line(&line, false, false);
+        assert!(result.html.contains("\\textbackslash{}"));
+        assert!(result.html.contains("\\{"));
+        assert!(result.html.contains("\\}"));
+    }
+
+    #[test]
+    fn render_line_bold_ansi() {
+        let line = make_line("\x1b[1mBOLD\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("\\textbf{BOLD}"));
+    }
+
+    #[test]
+    fn render_line_colored_ansi() {
+        let line = make_line("\x1b[31mred\x1b[0m", 80);
+        let result = render_line(&line, true, false);
+        assert!(result.html.contains("\\textcolor[HTML]{CD3131}{red}"));
+    }
+}

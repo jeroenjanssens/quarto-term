@@ -43,3 +43,57 @@ fn truncate_end(s: &str, max: usize) -> &str {
         &s[s.len() - max..]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate_end_shorter_than_max() {
+        assert_eq!(truncate_end("hello", 10), "hello");
+    }
+
+    #[test]
+    fn truncate_end_exact_max() {
+        assert_eq!(truncate_end("hello", 5), "hello");
+    }
+
+    #[test]
+    fn truncate_end_longer_than_max() {
+        assert_eq!(truncate_end("hello world", 5), "world");
+    }
+
+    #[test]
+    fn truncate_end_empty() {
+        assert_eq!(truncate_end("", 10), "");
+    }
+
+    #[test]
+    fn display_spawn_failed() {
+        let err = TermError::SpawnFailed("no such file".to_string());
+        assert_eq!(err.to_string(), "failed to spawn shell: no such file");
+    }
+
+    #[test]
+    fn display_prompt_timeout() {
+        let err = TermError::PromptTimeout {
+            elapsed_secs: 10.0,
+            last_output: "some output".to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("timeout waiting for prompt after 10.0s"));
+        assert!(msg.contains("some output"));
+    }
+
+    #[test]
+    fn display_shell_exited() {
+        let err = TermError::ShellExited;
+        assert_eq!(err.to_string(), "shell process exited unexpectedly");
+    }
+
+    #[test]
+    fn display_regex_compile() {
+        let err = TermError::RegexCompile("bad pattern".to_string());
+        assert_eq!(err.to_string(), "invalid prompt regex: bad pattern");
+    }
+}
