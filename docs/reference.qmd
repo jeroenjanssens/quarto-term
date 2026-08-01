@@ -15,6 +15,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `delay` | | | x | x | `0.1` | Seconds to wait before executing a line |
 | `echo` | | | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
 | `enter` | | | | x | (from `literal`) | Press Enter after the line |
+| `eval` | | | x | | `true` | Execute the cell; `false` renders it as a static code block |
 | `env` | x | x | | | `{}` | Additional environment variables |
 | `expect-prompt` | | | | x | (from `enter`) | Wait for prompt after the line |
 | `fontsize` | x | x | | | (none) | Font size, or per-format map `{html: ..., pdf: ...}` |
@@ -78,6 +79,7 @@ Set these with `#|` at the top of a cell:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `eval` | `true` | Execute the cell; `false` renders it as a static code block |
 | `include` | `true` | Execute the cell but hide it entirely from output |
 | `label` | (none) | Cell label (shown in verbose mode) |
 | `echo` | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
@@ -293,8 +295,13 @@ extensions:
 | `catppuccin-mocha` | Darkest Catppuccin variant |
 | `dracula` | Classic purple-accented dark theme |
 | `everforest-dark` | Nature-inspired earthy greens |
+| `github-dark` | GitHub's dark default palette |
 | `gruvbox-dark` | Retro groove with warm colors |
 | `kanagawa` | Japanese-inspired blues and purples |
+| `material-ocean` | Deep ocean blue with vibrant accents |
+| `material-palenight` | Muted purple-blue with soft accents |
+| `monokai` | Classic warm syntax-highlighting palette |
+| `night-owl` | Deep blue optimized for night coding |
 | `nightfox` | Deep navy with cool accents |
 | `nord` | Arctic blue-grey palette |
 | `one-dark` | Atom-inspired balanced dark theme |
@@ -310,6 +317,7 @@ extensions:
 | `catppuccin-latte` | Cream-colored with pastels |
 | `everforest-light` | Warm paper with nature greens |
 | `github-light` | Clean GitHub-standard palette |
+| `gruvbox-light` | Retro groove on warm cream background |
 | `rose-pine-dawn` | Warm rose-tinged light theme |
 | `solarized-light` | Precision-engineered light palette |
 
