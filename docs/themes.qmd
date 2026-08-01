@@ -1,0 +1,396 @@
+---
+title: "Themes"
+engine: markdown
+toc-depth: 3
+toc-expand: 3
+---
+
+## Dark
+
+### ayu-dark
+
+```{term}
+#| theme: ayu-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### catppuccin-frappe
+
+```{term}
+#| theme: catppuccin-frappe
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### catppuccin-macchiato
+
+```{term}
+#| theme: catppuccin-macchiato
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### catppuccin-mocha
+
+```{term}
+#| theme: catppuccin-mocha
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### dracula
+
+```{term}
+#| theme: dracula
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### everforest-dark
+
+```{term}
+#| theme: everforest-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### github-dark
+
+```{term}
+#| theme: github-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### gruvbox-dark
+
+```{term}
+#| theme: gruvbox-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### kanagawa
+
+```{term}
+#| theme: kanagawa
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### material-ocean
+
+```{term}
+#| theme: material-ocean
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### material-palenight
+
+```{term}
+#| theme: material-palenight
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### monokai
+
+```{term}
+#| theme: monokai
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### night-owl
+
+```{term}
+#| theme: night-owl
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### nightfox
+
+```{term}
+#| theme: nightfox
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### nord
+
+```{term}
+#| theme: nord
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### one-dark
+
+```{term}
+#| theme: one-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### rose-pine
+
+```{term}
+#| theme: rose-pine
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### solarized-dark
+
+```{term}
+#| theme: solarized-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### tokyo-night
+
+```{term}
+#| theme: tokyo-night
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+## Light
+
+### ayu-light
+
+```{term}
+#| theme: ayu-light
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### catppuccin-latte
+
+```{term}
+#| theme: catppuccin-latte
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### everforest-light
+
+```{term}
+#| theme: everforest-light
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### github-light
+
+```{term}
+#| theme: github-light
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### gruvbox-light
+
+```{term}
+#| theme: gruvbox-light
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### rose-pine-dawn
+
+```{term}
+#| theme: rose-pine-dawn
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### solarized-light
+
+```{term}
+#| theme: solarized-light
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+## Custom Themes
+
+You can create your own theme by defining a CSS file with the terminal color variables. Place it in a `themes/` directory alongside your document, or reference it by path.
+
+A theme file defines 18 CSS custom properties under `:root`:
+
+```css
+:root {
+  --term-fg: #d4d4d4;
+  --term-bg: #1e1e1e;
+  --term-0: #000000;   /* Black */
+  --term-1: #cd3131;   /* Red */
+  --term-2: #0dbc79;   /* Green */
+  --term-3: #e5e510;   /* Yellow */
+  --term-4: #2472c8;   /* Blue */
+  --term-5: #bc3fbc;   /* Magenta */
+  --term-6: #11a8cd;   /* Cyan */
+  --term-7: #e5e5e5;   /* White */
+  --term-8: #666666;   /* Bright Black */
+  --term-9: #f14c4c;   /* Bright Red */
+  --term-10: #23d18b;  /* Bright Green */
+  --term-11: #f5f543;  /* Bright Yellow */
+  --term-12: #3b8eea;  /* Bright Blue */
+  --term-13: #d670d6;  /* Bright Magenta */
+  --term-14: #29b8db;  /* Bright Cyan */
+  --term-15: #e5e5e5;  /* Bright White */
+}
+```
+
+To use a custom theme, place the file in the extension's `themes/` directory (e.g., `_extensions/term/themes/my-theme.css`) and reference it by name:
+
+```yaml
+extensions:
+  term:
+    theme: my-theme
+```
+
+Or use it on individual cells:
+
+````markdown
+```{term}
+#| theme: my-theme
+echo "Custom themed!"
+```
+````
+
+The `--term-bg` and `--term-fg` variables control the terminal background and foreground. Variables `--term-0` through `--term-15` map to the standard 16-color ANSI palette. Colors 0–7 are the normal variants; 8–15 are the bright variants.
