@@ -12,6 +12,14 @@ format:
     output-file: demo-formats.pdf
   docx:
     output-file: demo-formats.docx
+  epub:
+    output-file: demo-formats.epub
+  pptx:
+    output-file: demo-formats.pptx
+  odt:
+    output-file: demo-formats.odt
+  gfm:
+    output-file: demo-formats.md
 extensions:
   term:
     shell: zsh
@@ -35,13 +43,13 @@ extensions:
 This document demonstrates quarto-term rendering to multiple output formats from the same source.
 
 ::: {.content-visible when-format="html"}
-Download this document in other formats: [PDF](demo-formats.pdf){.btn .btn-outline-primary .btn-sm} [Word](demo-formats.docx){.btn .btn-outline-primary .btn-sm}
+Download this document in other formats: [PDF](demo-formats.pdf){.btn .btn-outline-primary .btn-sm} [Word](demo-formats.docx){.btn .btn-outline-primary .btn-sm} [EPUB](demo-formats.epub){.btn .btn-outline-primary .btn-sm} [PowerPoint](demo-formats.pptx){.btn .btn-outline-primary .btn-sm} [ODT](demo-formats.odt){.btn .btn-outline-primary .btn-sm} [Markdown](demo-formats.md){.btn .btn-outline-primary .btn-sm}
 :::
 
 ## Basic output
 
 ```{term}
-echo "Hello from quarto-term!"
+echo "Hello from quarto-term"
 ```
 
 ## State persistence
