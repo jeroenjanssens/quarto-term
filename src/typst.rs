@@ -228,6 +228,8 @@ fn typst_escape(s: &str) -> String {
             '<' => out.push_str("\\<"),
             '>' => out.push_str("\\>"),
             '`' => out.push_str("\\`"),
+            '[' => out.push_str("\\["),
+            ']' => out.push_str("\\]"),
             _ => out.push(ch),
         }
     }
@@ -269,6 +271,7 @@ mod tests {
     #[test]
     fn typst_escape_special_chars() {
         assert_eq!(typst_escape("#hello $world"), "\\#hello \\$world");
+        assert_eq!(typst_escape("[31m]"), "\\[31m\\]");
     }
 
     #[test]

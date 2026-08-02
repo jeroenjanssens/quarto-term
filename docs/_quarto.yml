@@ -3,6 +3,7 @@ project:
   output-dir: _site
   pre-render:
     - "cp -r ../_extensions ."
+    - "./use-dev-binary.sh"
   post-render:
     - "rm -rf _extensions"
 
@@ -34,6 +35,8 @@ website:
         text: Themes
       - href: examples.qmd
         text: Examples
+      - href: demo-formats.qmd
+        text: Formats
     right:
       - icon: github
         href: https://github.com/jeroenjanssens/quarto-term

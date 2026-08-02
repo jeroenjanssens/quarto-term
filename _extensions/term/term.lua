@@ -704,6 +704,12 @@ function Pandoc(doc)
       cell._colorscheme = nil
       cell._colorscheme_light = nil
       cell._colorscheme_dark = nil
+      -- For non-HTML formats, resolve cell colorscheme to bg/fg colors
+      if cell_colorscheme and config.format ~= "html" then
+        local bg, fg = read_theme_colors(cell_colorscheme)
+        if bg then cell.options.theme_bg = bg end
+        if fg then cell.options.theme_fg = fg end
+      end
       if cell_eval then
         local cell_id = #cells + 1
         cell.id = cell_id

@@ -592,11 +592,14 @@ impl PtySession {
             apply_remove(&mut lines, &cell.options.remove);
             apply_callouts(&mut lines, &cell.options.callouts);
 
+            let theme_bg = cell.options.theme_bg.as_deref().or(self.config.theme_bg.as_deref());
+            let theme_fg = cell.options.theme_fg.as_deref().or(self.config.theme_fg.as_deref());
+
             match format {
                 "latex" => {
                     let theme = latex::LatexTheme {
-                        bg: self.config.theme_bg.as_deref(),
-                        fg: self.config.theme_fg.as_deref(),
+                        bg: theme_bg,
+                        fg: theme_fg,
                         font_size,
                         font_family,
                         line_height,
@@ -609,8 +612,8 @@ impl PtySession {
                 }
                 "typst" => {
                     let theme = typst::TypstTheme {
-                        bg: self.config.theme_bg.as_deref(),
-                        fg: self.config.theme_fg.as_deref(),
+                        bg: theme_bg,
+                        fg: theme_fg,
                         font_size,
                         font_family,
                         line_height,
@@ -623,8 +626,8 @@ impl PtySession {
                 }
                 "docx" => {
                     let theme = docx::DocxTheme {
-                        bg: self.config.theme_bg.as_deref(),
-                        fg: self.config.theme_fg.as_deref(),
+                        bg: theme_bg,
+                        fg: theme_fg,
                         font_size,
                         font_family,
                         line_height,

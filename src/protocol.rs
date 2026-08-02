@@ -107,6 +107,10 @@ pub struct CellOptions {
     #[serde(default)]
     pub line_height: Option<String>,
     #[serde(default)]
+    pub theme_bg: Option<String>,
+    #[serde(default)]
+    pub theme_fg: Option<String>,
+    #[serde(default)]
     pub callouts: Vec<AnnotationSpec>,
     #[serde(default)]
     pub remove: Vec<AnnotationSpec>,

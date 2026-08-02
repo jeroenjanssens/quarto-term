@@ -1,0 +1,114 @@
+---
+title: "Output Formats"
+engine: markdown
+format:
+  html:
+    theme:
+      light: flatly
+      dark: darkly
+    toc: true
+    css: styles.css
+  typst:
+    output-file: demo-formats.pdf
+  docx:
+    output-file: demo-formats.docx
+extensions:
+  term:
+    shell: zsh
+    init:
+      - zsh-syntax-highlighting
+      - "setopt INTERACTIVE_COMMENTS"
+    spacing: true
+    style:
+      colorscheme: dracula
+      html:
+        colorscheme-light: github-light
+        colorscheme-dark: github-dark
+      typst:
+        font-family: "Courier New"
+        font-size: 9pt
+      docx:
+        font-family: "Courier New"
+        font-size: 9pt
+---
+
+This document demonstrates quarto-term rendering to multiple output formats from the same source.
+
+::: {.content-visible when-format="html"}
+Download this document in other formats: [PDF](demo-formats.pdf){.btn .btn-outline-primary .btn-sm} [Word](demo-formats.docx){.btn .btn-outline-primary .btn-sm}
+:::
+
+## Basic output
+
+```{term}
+echo "Hello from quarto-term!"
+```
+
+## State persistence
+
+Variables carry over between cells:
+
+```{term}
+export NAME="world"
+```
+
+```{term}
+echo "Hello, $NAME"
+```
+
+## Multi-line commands
+
+```{term}
+for i in 1 2 3 4 5; do
+  echo "Item $i"
+done
+```
+
+## ANSI colors
+
+Full color support across all formats:
+
+```{term}
+printf '\033[31mred\033[0m \033[32mgreen\033[0m \033[34mblue\033[0m \033[33myellow\033[0m\n'
+```
+
+```{term}
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+```
+
+## Working with files
+
+```{term}
+cat <<'EOF' > /tmp/demo.txt
+name,value
+alpha,1
+beta,2
+gamma,3
+EOF
+cat /tmp/demo.txt
+```
+
+## Piping
+
+```{term}
+seq 1 10 | paste -sd+ | bc
+```
+
+## Interactive commands
+
+```{term}
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
+echo "Back to the prompt!"
+```
+
+## Per-cell styling
+```{term}
+#| style.colorscheme: nord
+echo "This cell uses a different colorscheme"
+```
+
+```{term}
+#| include: false
+rm -f /tmp/demo.txt
+```
