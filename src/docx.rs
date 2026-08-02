@@ -84,13 +84,19 @@ pub fn render_lines_to_docx(lines: &[RenderedLine], theme: &DocxTheme) -> String
     let ppr = paragraph_properties(theme);
     let default_rpr = default_run_properties(theme);
 
+    let font_rpr = base_font_properties(theme);
+
     let mut paragraphs = String::new();
     for line in lines {
         if line.html.is_empty() {
             paragraphs.push_str(&format!("<w:p>{ppr}</w:p>"));
         } else {
-            // Inject default run properties into runs that lack <w:rPr>
-            let runs = line.html.replace("<w:r><w:t", &format!("<w:r>{default_rpr}<w:t"));
+            // Inject font into all runs:
+            // - Runs without <w:rPr>: add full default rPr
+            // - Runs with <w:rPr>: prepend font/size after the opening tag
+            let runs = line.html
+                .replace("<w:r><w:t", &format!("<w:r>{default_rpr}<w:t"))
+                .replace("<w:r><w:rPr>", &format!("<w:r><w:rPr>{font_rpr}"));
             paragraphs.push_str(&format!("<w:p>{ppr}{runs}</w:p>"));
         }
     }
@@ -124,6 +130,23 @@ pub fn render_lines_to_docx(lines: &[RenderedLine], theme: &DocxTheme) -> String
 
 pub fn render_fullscreen_to_docx(lines: &[RenderedLine], theme: &DocxTheme) -> String {
     render_lines_to_docx(lines, theme)
+}
+
+fn base_font_properties(theme: &DocxTheme) -> String {
+    let font_name = theme.font_family
+        .map(|f| f.split(',').next().unwrap_or(f).trim().trim_matches('"').trim_matches('\''))
+        .unwrap_or("Courier New");
+
+    let mut parts = Vec::new();
+    parts.push(format!(
+        "<w:rFonts w:ascii=\"{font_name}\" w:hAnsi=\"{font_name}\" w:cs=\"{font_name}\"/>"
+    ));
+    if let Some(fs) = theme.font_size {
+        if let Some(half_pts) = css_size_to_half_points(fs) {
+            parts.push(format!("<w:sz w:val=\"{half_pts}\"/><w:szCs w:val=\"{half_pts}\"/>"));
+        }
+    }
+    parts.join("")
 }
 
 fn default_run_properties(theme: &DocxTheme) -> String {
