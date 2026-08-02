@@ -627,7 +627,7 @@ function Pandoc(doc)
     elseif quarto.doc.is_format("pptx") then
       config.format = "docx"
     elseif quarto.doc.is_format("odt") then
-      config.format = "docx"
+      config.format = "odt"
     elseif quarto.doc.is_format("gfm") or quarto.doc.is_format("markdown") then
       config.format = "markdown"
     end
@@ -782,6 +782,8 @@ function Pandoc(doc)
     raw_format = "typst"
   elseif config.format == "docx" then
     raw_format = "openxml"
+  elseif config.format == "odt" then
+    raw_format = "opendocument"
   elseif config.format == "markdown" then
     raw_format = "markdown"
   end
@@ -831,8 +833,8 @@ function Pandoc(doc)
       end
       quarto.doc.include_text("in-header", preamble)
     end
-  elseif config.format == "typst" or config.format == "docx" then
-    -- No special header dependencies needed for typst/docx
+  elseif config.format == "typst" or config.format == "docx" or config.format == "odt" then
+    -- No special header dependencies needed for typst/docx/odt
   else
     if quarto and quarto.doc and quarto.doc.add_html_dependency then
       quarto.doc.add_html_dependency({

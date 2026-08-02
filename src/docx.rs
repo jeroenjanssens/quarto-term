@@ -91,7 +91,7 @@ pub fn render_lines_to_docx(lines: &[RenderedLine], theme: &DocxTheme) -> String
     format!(
         "<w:tbl>\
          <w:tblPr>\
-         <w:tblW w:w=\"0\" w:type=\"auto\"/>\
+         <w:tblW w:w=\"5000\" w:type=\"pct\"/>\
          <w:tblBorders>\
          <w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"D0D0D0\"/>\
          <w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"D0D0D0\"/>\
