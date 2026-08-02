@@ -640,6 +640,8 @@ function Pandoc(doc)
     fmt_key = "revealjs"
   elseif quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("pptx") then
     fmt_key = "pptx"
+  elseif quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("epub") then
+    fmt_key = "epub"
   end
   config._fmt_key = fmt_key
 
