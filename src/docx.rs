@@ -51,7 +51,18 @@ pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLi
     }
 
     if !trailing_spaces {
-        // Trimming trailing spaces in OpenXML runs is complex; the text field handles it
+        runs = runs.trim_end().to_string();
+        // Remove trailing spaces inside the last <w:t> element
+        if let Some(pos) = runs.rfind("</w:t></w:r>") {
+            let before_close = &runs[..pos];
+            if let Some(t_start) = before_close.rfind('>') {
+                let content = &before_close[t_start + 1..];
+                let trimmed = content.trim_end();
+                if trimmed.len() < content.len() {
+                    runs = format!("{}{}</w:t></w:r>", &before_close[..t_start + 1], trimmed);
+                }
+            }
+        }
     }
 
     RenderedLine { html: runs, text }
@@ -71,13 +82,16 @@ pub fn render_lines_to_docx(lines: &[RenderedLine], theme: &DocxTheme) -> String
     }
 
     let ppr = paragraph_properties(theme);
+    let default_rpr = default_run_properties(theme);
 
     let mut paragraphs = String::new();
     for line in lines {
         if line.html.is_empty() {
             paragraphs.push_str(&format!("<w:p>{ppr}</w:p>"));
         } else {
-            paragraphs.push_str(&format!("<w:p>{ppr}{}</w:p>", line.html));
+            // Inject default run properties into runs that lack <w:rPr>
+            let runs = line.html.replace("<w:r><w:t", &format!("<w:r>{default_rpr}<w:t"));
+            paragraphs.push_str(&format!("<w:p>{ppr}{runs}</w:p>"));
         }
     }
 
@@ -110,6 +124,27 @@ pub fn render_lines_to_docx(lines: &[RenderedLine], theme: &DocxTheme) -> String
 
 pub fn render_fullscreen_to_docx(lines: &[RenderedLine], theme: &DocxTheme) -> String {
     render_lines_to_docx(lines, theme)
+}
+
+fn default_run_properties(theme: &DocxTheme) -> String {
+    let font_name = theme.font_family
+        .map(|f| f.split(',').next().unwrap_or(f).trim().trim_matches('"').trim_matches('\''))
+        .unwrap_or("Courier New");
+
+    let mut parts = Vec::new();
+    parts.push(format!(
+        "<w:rFonts w:ascii=\"{font_name}\" w:hAnsi=\"{font_name}\" w:cs=\"{font_name}\"/>"
+    ));
+    if let Some(fs) = theme.font_size {
+        if let Some(half_pts) = css_size_to_half_points(fs) {
+            parts.push(format!("<w:sz w:val=\"{half_pts}\"/><w:szCs w:val=\"{half_pts}\"/>"));
+        }
+    }
+    if let Some(fg) = theme.fg {
+        let fg_clean = fg.trim_start_matches('#');
+        parts.push(format!("<w:color w:val=\"{fg_clean}\"/>"));
+    }
+    format!("<w:rPr>{}</w:rPr>", parts.join(""))
 }
 
 fn paragraph_properties(theme: &DocxTheme) -> String {
