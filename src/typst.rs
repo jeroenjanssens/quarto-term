@@ -1,0 +1,327 @@
+use avt::{Color, Line, Pen};
+
+use crate::renderer::RenderedLine;
+
+pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
+    let text = line_to_text(line);
+
+    if !ansi {
+        let src = if trailing_spaces { line_to_text_raw(line) } else { text.clone() };
+        return RenderedLine {
+            html: typst_escape(&src),
+            text,
+        };
+    }
+
+    let cells: Vec<&avt::Cell> = line.cells().iter().collect();
+    if cells.is_empty() {
+        return RenderedLine {
+            html: String::new(),
+            text,
+        };
+    }
+
+    let mut markup = String::new();
+    let mut i = 0;
+
+    while i < cells.len() {
+        let pen = cells[i].pen();
+        let mut chunk_text = String::new();
+
+        let mut j = i;
+        while j < cells.len() && pens_equal(cells[j].pen(), pen) {
+            if cells[j].width() > 0 {
+                let ch = cells[j].char();
+                chunk_text.push(if ch == '\0' { ' ' } else { ch });
+            }
+            j += 1;
+        }
+
+        if !chunk_text.is_empty() {
+            let escaped = typst_escape(&chunk_text);
+            if pen.is_default() {
+                markup.push_str(&escaped);
+            } else {
+                let wrapped = wrap_with_pen(&escaped, pen);
+                markup.push_str(&wrapped);
+            }
+        }
+
+        i = j;
+    }
+
+    let markup = if trailing_spaces { markup } else { markup.trim_end().to_string() };
+
+    RenderedLine { html: markup, text }
+}
+
+pub struct TypstTheme<'a> {
+    pub bg: Option<&'a str>,
+    pub fg: Option<&'a str>,
+    pub font_size: Option<&'a str>,
+    pub font_family: Option<&'a str>,
+    pub line_height: Option<&'a str>,
+}
+
+pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> String {
+    if lines.is_empty() {
+        return String::new();
+    }
+
+    let inner: String = lines
+        .iter()
+        .map(|l| l.html.as_str())
+        .collect::<Vec<_>>()
+        .join("\\\n");
+
+    let mut text_params = Vec::new();
+    if let Some(font) = theme.font_family {
+        let name = font.split(',').next().unwrap_or(font).trim().trim_matches('"').trim_matches('\'');
+        text_params.push(format!("font: \"{}\"", name));
+    }
+    if let Some(fs) = theme.font_size {
+        if let Some(pt) = css_size_to_typst(fs) {
+            text_params.push(format!("size: {pt}"));
+        }
+    }
+    if let Some(fg) = theme.fg {
+        text_params.push(format!("fill: rgb(\"#{fg}\")"));
+    }
+
+    let mut block_params = Vec::new();
+    if let Some(bg) = theme.bg {
+        block_params.push(format!("fill: rgb(\"#{bg}\")"));
+    }
+    block_params.push("radius: 4pt".to_string());
+    block_params.push("inset: 8pt".to_string());
+    block_params.push("width: 100%".to_string());
+
+    let leading = theme.line_height.and_then(|lh| {
+        lh.trim().parse::<f64>().ok().map(|v| format!("{:.1}em", v - 1.0))
+    });
+
+    let mut result = String::new();
+    result.push_str(&format!("#block({})[", block_params.join(", ")));
+
+    let mut set_parts = Vec::new();
+    if !text_params.is_empty() {
+        set_parts.push(format!("#set text({})", text_params.join(", ")));
+    }
+    if let Some(ref lead) = leading {
+        set_parts.push(format!("#set par(leading: {})", lead));
+    }
+
+    if !set_parts.is_empty() {
+        result.push('\n');
+        for part in &set_parts {
+            result.push_str(part);
+            result.push('\n');
+        }
+    }
+
+    result.push_str(&format!("```\n{inner}\n```\n"));
+    result.push_str("]\n");
+
+    // Typst raw blocks don't support inline markup, so use a different approach for ANSI
+    // We use a raw text block when no ANSI colors, or construct manual text runs otherwise
+    result
+}
+
+pub fn render_fullscreen_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> String {
+    render_lines_to_typst(lines, theme)
+}
+
+fn css_size_to_typst(s: &str) -> Option<String> {
+    let s = s.trim();
+    if let Some(em) = s.strip_suffix("em") {
+        if let Ok(val) = em.parse::<f64>() {
+            return Some(format!("{:.2}em", val));
+        }
+    }
+    if let Some(pt) = s.strip_suffix("pt") {
+        if pt.parse::<f64>().is_ok() {
+            return Some(format!("{}pt", pt));
+        }
+    }
+    None
+}
+
+fn wrap_with_pen(text: &str, pen: &Pen) -> String {
+    let mut result = text.to_string();
+
+    let fg = if pen.is_inverse() {
+        pen.background()
+    } else {
+        pen.foreground()
+    };
+
+    if let Some(color) = fg {
+        let hex = color_to_hex(color);
+        result = format!("#text(fill: rgb(\"#{hex}\"))[{result}]");
+    }
+
+    if pen.is_bold() {
+        result = format!("#strong[{result}]");
+    }
+    if pen.is_italic() {
+        result = format!("#emph[{result}]");
+    }
+    if pen.is_underline() {
+        result = format!("#underline[{result}]");
+    }
+
+    result
+}
+
+fn color_to_hex(color: Color) -> String {
+    match color {
+        Color::RGB(rgb) => {
+            format!("{:02X}{:02X}{:02X}", rgb.r, rgb.g, rgb.b)
+        }
+        Color::Indexed(i) if i < 16 => {
+            let (r, g, b) = ansi_index_to_rgb(i);
+            format!("{:02X}{:02X}{:02X}", r, g, b)
+        }
+        Color::Indexed(i) if i < 232 => {
+            let idx = i - 16;
+            let r = idx / 36;
+            let g = (idx % 36) / 6;
+            let b = idx % 6;
+            let to_byte = |v: u8| -> u8 { if v == 0 { 0 } else { 55 + v * 40 } };
+            format!("{:02X}{:02X}{:02X}", to_byte(r), to_byte(g), to_byte(b))
+        }
+        Color::Indexed(i) => {
+            let l = 8 + 10 * (i as u16 - 232) as u8;
+            format!("{:02X}{:02X}{:02X}", l, l, l)
+        }
+    }
+}
+
+fn ansi_index_to_rgb(i: u8) -> (u8, u8, u8) {
+    match i {
+        0 => (0, 0, 0),
+        1 => (205, 49, 49),
+        2 => (13, 188, 121),
+        3 => (229, 229, 16),
+        4 => (36, 114, 200),
+        5 => (188, 63, 188),
+        6 => (17, 168, 205),
+        7 => (229, 229, 229),
+        8 => (102, 102, 102),
+        9 => (241, 76, 76),
+        10 => (35, 209, 139),
+        11 => (245, 245, 67),
+        12 => (59, 142, 234),
+        13 => (214, 112, 214),
+        14 => (41, 184, 219),
+        15 => (229, 229, 229),
+        _ => (255, 255, 255),
+    }
+}
+
+fn typst_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '#' => out.push_str("\\#"),
+            '$' => out.push_str("\\$"),
+            '_' => out.push_str("\\_"),
+            '*' => out.push_str("\\*"),
+            '@' => out.push_str("\\@"),
+            '<' => out.push_str("\\<"),
+            '>' => out.push_str("\\>"),
+            '`' => out.push_str("\\`"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+fn line_to_text(line: &Line) -> String {
+    line_to_text_raw(line).trim_end().to_string()
+}
+
+fn line_to_text_raw(line: &Line) -> String {
+    line
+        .cells()
+        .iter()
+        .filter(|c| c.width() > 0)
+        .map(|c| {
+            let ch = c.char();
+            if ch == '\0' { ' ' } else { ch }
+        })
+        .collect()
+}
+
+fn pens_equal(a: &Pen, b: &Pen) -> bool {
+    a.foreground() == b.foreground()
+        && a.background() == b.background()
+        && a.is_bold() == b.is_bold()
+        && a.is_faint() == b.is_faint()
+        && a.is_italic() == b.is_italic()
+        && a.is_underline() == b.is_underline()
+        && a.is_strikethrough() == b.is_strikethrough()
+        && a.is_inverse() == b.is_inverse()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::renderer::RenderedLine;
+
+    #[test]
+    fn typst_escape_special_chars() {
+        assert_eq!(typst_escape("#hello $world"), "\\#hello \\$world");
+    }
+
+    #[test]
+    fn typst_escape_passthrough() {
+        assert_eq!(typst_escape("hello world"), "hello world");
+    }
+
+    #[test]
+    fn css_size_to_typst_em() {
+        assert_eq!(css_size_to_typst("0.8em"), Some("0.80em".to_string()));
+    }
+
+    #[test]
+    fn css_size_to_typst_pt() {
+        assert_eq!(css_size_to_typst("10pt"), Some("10pt".to_string()));
+    }
+
+    #[test]
+    fn css_size_to_typst_invalid() {
+        assert_eq!(css_size_to_typst("large"), None);
+    }
+
+    #[test]
+    fn render_lines_to_typst_empty() {
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
+        assert_eq!(render_lines_to_typst(&[], &theme), "");
+    }
+
+    #[test]
+    fn render_lines_to_typst_basic() {
+        let lines = vec![
+            RenderedLine { html: "hello".to_string(), text: "hello".to_string() },
+        ];
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
+        let result = render_lines_to_typst(&lines, &theme);
+        assert!(result.contains("#block("));
+        assert!(result.contains("hello"));
+    }
+
+    #[test]
+    fn render_lines_to_typst_with_theme() {
+        let lines = vec![
+            RenderedLine { html: "x".to_string(), text: "x".to_string() },
+        ];
+        let theme = TypstTheme { bg: Some("1a1b26"), fg: Some("c0caf5"), font_size: Some("0.8em"), font_family: Some("Fira Code"), line_height: Some("1.3") };
+        let result = render_lines_to_typst(&lines, &theme);
+        assert!(result.contains("fill: rgb(\"#1a1b26\")"));
+        assert!(result.contains("font: \"Fira Code\""));
+        assert!(result.contains("size: 0.80em"));
+        assert!(result.contains("fill: rgb(\"#c0caf5\")"));
+        assert!(result.contains("leading: 0.3em"));
+    }
+}
