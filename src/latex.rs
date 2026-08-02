@@ -58,7 +58,9 @@ pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLi
 pub struct LatexTheme<'a> {
     pub bg: Option<&'a str>,
     pub fg: Option<&'a str>,
-    pub fontsize: Option<&'a str>,
+    pub font_size: Option<&'a str>,
+    pub font_family: Option<&'a str>,
+    pub line_height: Option<&'a str>,
 }
 
 pub fn render_lines_to_latex(lines: &[RenderedLine], theme: &LatexTheme) -> String {
@@ -72,11 +74,11 @@ pub fn render_lines_to_latex(lines: &[RenderedLine], theme: &LatexTheme) -> Stri
         .collect::<Vec<_>>()
         .join("\n");
 
-    let font_cmd = css_fontsize_to_latex(theme.fontsize);
+    let preamble = latex_preamble(theme);
     let box_opts = tcolorbox_opts(theme.bg, theme.fg);
     format!(
         "\\begin{{tcolorbox}}[{box_opts}]\n\
-         {font_cmd}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
+         {preamble}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
          {inner}\n\
          \\end{{Verbatim}}\n\
          \\end{{tcolorbox}}\n"
@@ -94,15 +96,39 @@ pub fn render_fullscreen_to_latex(lines: &[RenderedLine], theme: &LatexTheme) ->
         .collect::<Vec<_>>()
         .join("\n");
 
-    let font_cmd = css_fontsize_to_latex(theme.fontsize);
+    let preamble = latex_preamble(theme);
     let box_opts = tcolorbox_opts(theme.bg, theme.fg);
     format!(
         "\\begin{{tcolorbox}}[{box_opts}]\n\
-         {font_cmd}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
+         {preamble}\\begin{{Verbatim}}[commandchars=\\\\\\{{\\}},breaklines=true]\n\
          {inner}\n\
          \\end{{Verbatim}}\n\
          \\end{{tcolorbox}}\n"
     )
+}
+
+fn latex_preamble(theme: &LatexTheme) -> String {
+    let mut parts = Vec::new();
+    if let Some(lh) = theme.line_height {
+        if let Some(val) = parse_line_height(lh) {
+            parts.push(format!("\\linespread{{{val}}}\\selectfont\n"));
+        }
+    }
+    if let Some(font) = theme.font_family {
+        let name = font.split(',').next().unwrap_or(font).trim().trim_matches('"').trim_matches('\'');
+        parts.push(format!("\\setmonofont{{{name}}}\n"));
+    }
+    parts.push(css_fontsize_to_latex(theme.font_size));
+    parts.concat()
+}
+
+fn parse_line_height(s: &str) -> Option<&str> {
+    let trimmed = s.trim();
+    if trimmed.parse::<f64>().is_ok() {
+        Some(trimmed)
+    } else {
+        None
+    }
 }
 
 fn tcolorbox_opts(bg: Option<&str>, fg: Option<&str>) -> String {
@@ -333,7 +359,7 @@ mod tests {
 
     #[test]
     fn render_lines_to_latex_empty() {
-        let theme = LatexTheme { bg: None, fg: None, fontsize: None };
+        let theme = LatexTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
         assert_eq!(render_lines_to_latex(&[], &theme), "");
     }
 
@@ -342,7 +368,7 @@ mod tests {
         let lines = vec![
             RenderedLine { html: "hello".to_string(), text: "hello".to_string() },
         ];
-        let theme = LatexTheme { bg: None, fg: None, fontsize: None };
+        let theme = LatexTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
         let result = render_lines_to_latex(&lines, &theme);
         assert!(result.contains("\\begin{tcolorbox}"));
         assert!(result.contains("\\begin{Verbatim}"));
@@ -356,11 +382,31 @@ mod tests {
         let lines = vec![
             RenderedLine { html: "x".to_string(), text: "x".to_string() },
         ];
-        let theme = LatexTheme { bg: Some("#1a1b26"), fg: Some("#c0caf5"), fontsize: Some("0.8em") };
+        let theme = LatexTheme { bg: Some("#1a1b26"), fg: Some("#c0caf5"), font_size: Some("0.8em"), font_family: None, line_height: None };
         let result = render_lines_to_latex(&lines, &theme);
         assert!(result.contains("colback=termbg"));
         assert!(result.contains("colupper=termfg"));
         assert!(result.contains("\\small"));
+    }
+
+    #[test]
+    fn render_lines_to_latex_with_font_family() {
+        let lines = vec![
+            RenderedLine { html: "x".to_string(), text: "x".to_string() },
+        ];
+        let theme = LatexTheme { bg: None, fg: None, font_size: None, font_family: Some("Fira Code, monospace"), line_height: None };
+        let result = render_lines_to_latex(&lines, &theme);
+        assert!(result.contains("\\setmonofont{Fira Code}"));
+    }
+
+    #[test]
+    fn render_lines_to_latex_with_line_height() {
+        let lines = vec![
+            RenderedLine { html: "x".to_string(), text: "x".to_string() },
+        ];
+        let theme = LatexTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: Some("1.4") };
+        let result = render_lines_to_latex(&lines, &theme);
+        assert!(result.contains("\\linespread{1.4}\\selectfont"));
     }
 
     #[test]

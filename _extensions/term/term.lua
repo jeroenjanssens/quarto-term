@@ -102,26 +102,70 @@ local function parse_cell_options(text, line_marker)
   local cell_opts = {}
   local code_lines = {}
   local in_options = true
+  local nested_key = nil
+
+  local nest_stack = {}
 
   for line in text:gmatch("([^\n]*)\n?") do
     if in_options and line:match("^#|%s*") then
-      local key, value = line:match("^#|%s*(%S+):%s*(.+)$")
-      if key then
-        local list_match = value:match("^%[(.*)%]$")
+      local content = line:match("^#| (.*)$") or line:match("^#|(.*)$")
+      local indent = #(content:match("^(%s*)") or "")
+      local trimmed = content:match("^%s*(.-)%s*$")
+
+      if #nest_stack > 0 and indent == 0 then
+        nest_stack = {}
+      end
+      while #nest_stack > 0 and indent <= nest_stack[#nest_stack].indent do
+        table.remove(nest_stack)
+      end
+
+      if trimmed == "" then goto continue end
+
+      local k, v = trimmed:match("^(%S+):%s*(.+)$")
+      if k then
+        local parsed_value
+        local list_match = v:match("^%[(.*)%]$")
         if list_match then
-          local items = {}
+          parsed_value = {}
           for item in list_match:gmatch("[^,]+") do
-            table.insert(items, coerce_value(item))
+            table.insert(parsed_value, coerce_value(item))
           end
-          cell_opts[key] = items
         else
-          cell_opts[key] = coerce_value(value)
+          parsed_value = coerce_value(v)
+        end
+        local tbl = cell_opts
+        for _, frame in ipairs(nest_stack) do
+          tbl = tbl[frame.key]
+        end
+        if k:find("%.") then
+          local segments = {}
+          for segment in k:gmatch("([^%.]+)") do
+            table.insert(segments, segment)
+          end
+          for i = 1, #segments - 1 do
+            tbl[segments[i]] = tbl[segments[i]] or {}
+            tbl = tbl[segments[i]]
+          end
+          tbl[segments[#segments]] = parsed_value
+        else
+          tbl[k] = parsed_value
+        end
+      else
+        local block_key = trimmed:match("^(%S+):%s*$")
+        if block_key then
+          local tbl = cell_opts
+          for _, frame in ipairs(nest_stack) do
+            tbl = tbl[frame.key]
+          end
+          tbl[block_key] = tbl[block_key] or {}
+          table.insert(nest_stack, { key = block_key, indent = indent })
         end
       end
     else
       in_options = false
       table.insert(code_lines, line)
     end
+    ::continue::
   end
 
   if #code_lines > 0 and code_lines[#code_lines] == "" then
@@ -289,9 +333,6 @@ local function extract_config(meta)
   if prompt_regex_val then
     config.prompt_regex = meta_str(prompt_regex_val)
   end
-  if term_meta["cols"] then config.cols = meta_num(term_meta["cols"]) or config.cols end
-  if term_meta["rows"] then config.rows = meta_num(term_meta["rows"]) or config.rows end
-  if term_meta["ansi"] ~= nil then config.ansi = meta_bool(term_meta["ansi"]) end
   if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
   if term_meta["init"] then
     local init_val = term_meta["init"]
@@ -322,46 +363,63 @@ local function extract_config(meta)
   end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
-  if term_meta["theme"] then
-    local theme_val = term_meta["theme"]
-    if type(theme_val) == "table" and theme_val.t == nil then
-      -- Map with light/dark keys
-      if theme_val["light"] then config.theme_light = meta_str(theme_val["light"]) end
-      if theme_val["dark"] then config.theme_dark = meta_str(theme_val["dark"]) end
-    else
-      config.theme = meta_str(theme_val)
-    end
-  end
-
-  -- Accept both kebab-case (preferred) and snake_case (compat) for theme-bg / theme-fg
-  local theme_bg_val = term_meta["theme-bg"] or term_meta["theme_bg"]
-  if theme_bg_val then config.theme_bg = meta_str(theme_bg_val) end
-  local theme_fg_val = term_meta["theme-fg"] or term_meta["theme_fg"]
-  if theme_fg_val then config.theme_fg = meta_str(theme_fg_val) end
-
-  -- Accept both kebab-case (preferred) and snake_case (compat) for trailing-spaces
-  local trailing_spaces_val = term_meta["trailing-spaces"] or term_meta["trailing_spaces"]
-  if trailing_spaces_val ~= nil then
-    config.trailing_spaces = meta_bool(trailing_spaces_val)
-  end
 
   -- marker option (used only in Lua, not sent to Rust)
   if term_meta["marker"] then
     config.marker = meta_str(term_meta["marker"])
   end
 
-  if term_meta["fontsize"] then
-    local fs = term_meta["fontsize"]
-    if type(fs) == "table" and fs.t == nil then
-      -- Per-format map: { html: "0.8em", pdf: "0.7em" }
-      config._fontsize_map = {}
-      for k, v in pairs(fs) do
-        if type(k) == "string" then
-          config._fontsize_map[k] = meta_str(v)
-        end
+  -- Style block
+  local FORMAT_KEYS = { html = true, pdf = true, revealjs = true, epub = true, markdown = true, latex = true, typst = true, docx = true, pptx = true, odt = true }
+
+  local function extract_style(style_meta)
+    if not style_meta or type(style_meta) ~= "table" then return {} end
+    local s = {}
+    if style_meta["colorscheme"] then s.colorscheme = meta_str(style_meta["colorscheme"]) end
+    local csl = style_meta["colorscheme-light"] or style_meta["colorscheme_light"]
+    if csl then s.colorscheme_light = meta_str(csl) end
+    local csd = style_meta["colorscheme-dark"] or style_meta["colorscheme_dark"]
+    if csd then s.colorscheme_dark = meta_str(csd) end
+    local ff = style_meta["font-family"] or style_meta["font_family"]
+    if ff then s.font_family = meta_str(ff) end
+    local fs = style_meta["font-size"] or style_meta["font_size"]
+    if fs then s.font_size = meta_str(fs) end
+    local lh = style_meta["line-height"] or style_meta["line_height"]
+    if lh then s.line_height = meta_str(lh) end
+    local ts = style_meta["trailing-spaces"] or style_meta["trailing_spaces"]
+    if ts ~= nil then s.trailing_spaces = meta_bool(ts) end
+    if style_meta["ansi"] ~= nil then s.ansi = meta_bool(style_meta["ansi"]) end
+    if style_meta["cols"] then s.cols = meta_num(style_meta["cols"]) end
+    if style_meta["rows"] then s.rows = meta_num(style_meta["rows"]) end
+    -- Collect format-specific overrides
+    s._format_overrides = {}
+    for k, v in pairs(style_meta) do
+      if type(k) == "string" and FORMAT_KEYS[k] and type(v) == "table" then
+        s._format_overrides[k] = v
       end
-    else
-      config.fontsize = meta_str(fs)
+    end
+    if next(s._format_overrides) == nil then s._format_overrides = nil end
+    return s
+  end
+
+  if term_meta["style"] then
+    local style = extract_style(term_meta["style"])
+    if style.colorscheme then config._colorscheme = style.colorscheme end
+    if style.colorscheme_light then config._colorscheme_light = style.colorscheme_light end
+    if style.colorscheme_dark then config._colorscheme_dark = style.colorscheme_dark end
+    if style.font_family then config.font_family = style.font_family end
+    if style.font_size then config.font_size = style.font_size end
+    if style.line_height then config.line_height = style.line_height end
+    if style.trailing_spaces ~= nil then config.trailing_spaces = style.trailing_spaces end
+    if style.ansi ~= nil then config.ansi = style.ansi end
+    if style.cols then config.cols = style.cols end
+    if style.rows then config.rows = style.rows end
+    if style._format_overrides then
+      -- Pre-extract each format override so we don't need the function later
+      config._style_overrides = {}
+      for fmt, raw in pairs(style._format_overrides) do
+        config._style_overrides[fmt] = extract_style(raw)
+      end
     end
   end
   if term_meta["typing"] then
@@ -480,7 +538,6 @@ local function build_cell(block, cell_id, config)
   if klp == nil then klp = cell_opts["keep_last_prompt"] end
   if klp ~= nil then options.keep_last_prompt = klp end
 
-  if cell_opts["ansi"] ~= nil then options.ansi = cell_opts["ansi"] end
   if cell_opts["spacing"] ~= nil then options.spacing = cell_opts["spacing"] end
   if cell_opts["typing"] ~= nil then
     if cell_opts["typing"] == false then
@@ -498,19 +555,47 @@ local function build_cell(block, cell_id, config)
   if cell_opts["literal"] ~= nil then options.literal = cell_opts["literal"] end
   if cell_opts["delay"] ~= nil then options.delay = cell_opts["delay"] end
 
-  -- Accept both kebab-case (preferred) and snake_case (compat) for trailing-spaces
-  local ts = cell_opts["trailing-spaces"]
-  if ts == nil then ts = cell_opts["trailing_spaces"] end
-  if ts ~= nil then options.trailing_spaces = ts end
-
   local label = cell_opts["label"]
 
-  -- Cell-level theme (not sent to Rust; handled in Lua for CSS scoping)
-  local cell_theme = nil
-  if cell_opts["theme"] ~= nil then
-    local tv = cell_opts["theme"]
-    if type(tv) == "string" then
-      cell_theme = tv
+  -- Cell-level style (supports format-specific overrides)
+  local cell_style = cell_opts["style"] or {}
+  local cell_colorscheme = nil
+  local cell_colorscheme_light = nil
+  local cell_colorscheme_dark = nil
+  if type(cell_style) == "table" then
+    -- Apply base style
+    if cell_style["colorscheme"] then cell_colorscheme = cell_style["colorscheme"] end
+    local csl = cell_style["colorscheme-light"] or cell_style["colorscheme_light"]
+    if csl then cell_colorscheme_light = csl end
+    local csd = cell_style["colorscheme-dark"] or cell_style["colorscheme_dark"]
+    if csd then cell_colorscheme_dark = csd end
+    local ff = cell_style["font-family"] or cell_style["font_family"]
+    if ff then options.font_family = ff end
+    local fs = cell_style["font-size"] or cell_style["font_size"]
+    if fs then options.font_size = fs end
+    local lh = cell_style["line-height"] or cell_style["line_height"]
+    if lh then options.line_height = lh end
+    if cell_style["ansi"] ~= nil then options.ansi = cell_style["ansi"] end
+    local ts = cell_style["trailing-spaces"] or cell_style["trailing_spaces"]
+    if ts ~= nil then options.trailing_spaces = ts end
+    -- Apply format-specific overrides
+    local fmt_key = config._fmt_key
+    if fmt_key and type(cell_style[fmt_key]) == "table" then
+      local ov = cell_style[fmt_key]
+      if ov["colorscheme"] then cell_colorscheme = ov["colorscheme"] end
+      local ov_csl = ov["colorscheme-light"] or ov["colorscheme_light"]
+      if ov_csl then cell_colorscheme_light = ov_csl end
+      local ov_csd = ov["colorscheme-dark"] or ov["colorscheme_dark"]
+      if ov_csd then cell_colorscheme_dark = ov_csd end
+      local ov_ff = ov["font-family"] or ov["font_family"]
+      if ov_ff then options.font_family = ov_ff end
+      local ov_fs = ov["font-size"] or ov["font_size"]
+      if ov_fs then options.font_size = ov_fs end
+      local ov_lh = ov["line-height"] or ov["line_height"]
+      if ov_lh then options.line_height = ov_lh end
+      if ov["ansi"] ~= nil then options.ansi = ov["ansi"] end
+      local ov_ts = ov["trailing-spaces"] or ov["trailing_spaces"]
+      if ov_ts ~= nil then options.trailing_spaces = ov_ts end
     end
   end
 
@@ -523,7 +608,9 @@ local function build_cell(block, cell_id, config)
     source_lines = source_lines,
     _eval = eval ~= false,
     _include = include ~= false,
-    _theme = cell_theme,
+    _colorscheme = cell_colorscheme,
+    _colorscheme_light = cell_colorscheme_light,
+    _colorscheme_dark = cell_colorscheme_dark,
   }
 end
 
@@ -533,38 +620,68 @@ function Pandoc(doc)
   if quarto and quarto.doc and quarto.doc.is_format then
     if quarto.doc.is_format("pdf") or quarto.doc.is_format("latex") then
       config.format = "latex"
+    elseif quarto.doc.is_format("typst") then
+      config.format = "typst"
+    elseif quarto.doc.is_format("docx") then
+      config.format = "docx"
+    elseif quarto.doc.is_format("pptx") then
+      config.format = "docx"
+    elseif quarto.doc.is_format("odt") then
+      config.format = "docx"
     elseif quarto.doc.is_format("gfm") or quarto.doc.is_format("markdown") then
       config.format = "markdown"
     end
   end
 
-  -- Resolve theme colors for Rust (used in non-ANSI rendering)
-  if config.theme then
-    local theme_bg, theme_fg = read_theme_colors(config.theme)
-    if theme_bg then config.theme_bg = theme_bg end
-    if theme_fg then config.theme_fg = theme_fg end
-  elseif config.theme_light then
-    local theme_bg, theme_fg = read_theme_colors(config.theme_light)
-    if theme_bg then config.theme_bg = theme_bg end
-    if theme_fg then config.theme_fg = theme_fg end
+  -- Determine format key for style overrides
+  local fmt_key = config.format
+  if fmt_key == "latex" then fmt_key = "pdf" end
+  if quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("revealjs") then
+    fmt_key = "revealjs"
+  elseif quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("pptx") then
+    fmt_key = "pptx"
+  end
+  config._fmt_key = fmt_key
+
+  -- Resolve format-specific style overrides
+  if config._style_overrides then
+    local ov = config._style_overrides[fmt_key]
+    if ov then
+      if ov.colorscheme then config._colorscheme = ov.colorscheme end
+      if ov.colorscheme_light then config._colorscheme_light = ov.colorscheme_light end
+      if ov.colorscheme_dark then config._colorscheme_dark = ov.colorscheme_dark end
+      if ov.font_family then config.font_family = ov.font_family end
+      if ov.font_size then config.font_size = ov.font_size end
+      if ov.line_height then config.line_height = ov.line_height end
+      if ov.trailing_spaces ~= nil then config.trailing_spaces = ov.trailing_spaces end
+      if ov.ansi ~= nil then config.ansi = ov.ansi end
+      if ov.cols then config.cols = ov.cols end
+      if ov.rows then config.rows = ov.rows end
+    end
+    config._style_overrides = nil
   end
 
-  -- Resolve per-format fontsize
-  if config._fontsize_map then
-    local fmt_key = config.format == "latex" and "pdf" or config.format
-    config.fontsize = config._fontsize_map[fmt_key]
-    config._fontsize_map = nil
+  -- Resolve colorscheme colors for Rust
+  local _colorscheme = config._colorscheme
+  local _colorscheme_light = config._colorscheme_light
+  local _colorscheme_dark = config._colorscheme_dark
+  config._colorscheme = nil
+  config._colorscheme_light = nil
+  config._colorscheme_dark = nil
+
+  if _colorscheme then
+    local theme_bg, theme_fg = read_theme_colors(_colorscheme)
+    if theme_bg then config.theme_bg = theme_bg end
+    if theme_fg then config.theme_fg = theme_fg end
+  elseif _colorscheme_light then
+    local theme_bg, theme_fg = read_theme_colors(_colorscheme_light)
+    if theme_bg then config.theme_bg = theme_bg end
+    if theme_fg then config.theme_fg = theme_fg end
   end
 
   -- These fields are only used in Lua; remove before sending to Rust
   local _marker = config.marker
-  local _theme = config.theme
-  local _theme_light = config.theme_light
-  local _theme_dark = config.theme_dark
   config.marker = nil
-  config.theme = nil
-  config.theme_light = nil
-  config.theme_dark = nil
 
   local term_positions = {}
   local cells = {}
@@ -577,15 +694,24 @@ function Pandoc(doc)
       config.marker = nil
       local cell_eval = cell._eval
       local cell_include = cell._include
-      local cell_theme = cell._theme
+      local cell_colorscheme = cell._colorscheme
+      local cell_colorscheme_light = cell._colorscheme_light
+      local cell_colorscheme_dark = cell._colorscheme_dark
       cell._eval = nil
       cell._include = nil
-      cell._theme = nil
+      cell._colorscheme = nil
+      cell._colorscheme_light = nil
+      cell._colorscheme_dark = nil
       if cell_eval then
         local cell_id = #cells + 1
         cell.id = cell_id
         table.insert(cells, cell)
-        table.insert(term_positions, { block_i = i, cell_i = cell_id, include = cell_include, theme = cell_theme })
+        table.insert(term_positions, {
+          block_i = i, cell_i = cell_id, include = cell_include,
+          colorscheme = cell_colorscheme,
+          colorscheme_light = cell_colorscheme_light,
+          colorscheme_dark = cell_colorscheme_dark,
+        })
       else
         -- Strip #| option lines from the code block
         block.text = cell.code
@@ -594,6 +720,8 @@ function Pandoc(doc)
       end
     end
   end
+
+  config._fmt_key = nil
 
   if #cells == 0 then
     return nil
@@ -642,6 +770,10 @@ function Pandoc(doc)
   local raw_format = "html"
   if config.format == "latex" then
     raw_format = "latex"
+  elseif config.format == "typst" then
+    raw_format = "typst"
+  elseif config.format == "docx" then
+    raw_format = "openxml"
   elseif config.format == "markdown" then
     raw_format = "markdown"
   end
@@ -659,13 +791,13 @@ function Pandoc(doc)
       else
         local content = result.html
         if type(content) == "string" and content ~= "" then
-          if pos.theme and raw_format == "html" then
-            local scope_class = "term-theme-" .. pos.theme
+          if pos.colorscheme and raw_format == "html" then
+            local scope_class = "term-theme-" .. pos.colorscheme
             content = "<div class=\"" .. scope_class .. "\">\n" .. content .. "</div>\n"
-            if not cell_theme_css[pos.theme] then
-              local css = read_theme_file(pos.theme)
+            if not cell_theme_css[pos.colorscheme] then
+              local css = read_theme_file(pos.colorscheme)
               if css then
-                cell_theme_css[pos.theme] = rescope_theme_css(css, "." .. scope_class)
+                cell_theme_css[pos.colorscheme] = rescope_theme_css(css, "." .. scope_class)
               end
             end
           end
@@ -680,6 +812,9 @@ function Pandoc(doc)
   if config.format == "latex" then
     if quarto and quarto.doc and quarto.doc.include_text then
       local preamble = "\\usepackage[HTML]{xcolor}\n\\usepackage{tcolorbox}\n\\usepackage{fvextra}\n"
+      if config.font_family then
+        preamble = preamble .. "\\usepackage{fontspec}\n"
+      end
       if config.theme_bg then
         preamble = preamble .. "\\definecolor{termbg}{HTML}{" .. config.theme_bg .. "}\n"
       end
@@ -688,6 +823,8 @@ function Pandoc(doc)
       end
       quarto.doc.include_text("in-header", preamble)
     end
+  elseif config.format == "typst" or config.format == "docx" then
+    -- No special header dependencies needed for typst/docx
   else
     if quarto and quarto.doc and quarto.doc.add_html_dependency then
       quarto.doc.add_html_dependency({
@@ -696,10 +833,9 @@ function Pandoc(doc)
         stylesheets = { "term.css" },
       })
 
-      if _theme_light and _theme_dark then
-        -- Dual theme: scope each theme's CSS vars under body.quarto-light / body.quarto-dark
-        local light_css = read_theme_file(_theme_light)
-        local dark_css = read_theme_file(_theme_dark)
+      if _colorscheme_light and _colorscheme_dark then
+        local light_css = read_theme_file(_colorscheme_light)
+        local dark_css = read_theme_file(_colorscheme_dark)
         local scoped = ""
         if light_css then
           scoped = scoped .. rescope_theme_css(light_css, "body.quarto-light")
@@ -710,12 +846,11 @@ function Pandoc(doc)
         if scoped ~= "" then
           quarto.doc.include_text("in-header", "<style>\n" .. scoped .. "</style>")
         end
-      elseif _theme then
-        -- Single theme: include the theme file directly
+      elseif _colorscheme then
         quarto.doc.add_html_dependency({
           name = "quarto-term-theme",
           version = "0.2.0",
-          stylesheets = { "themes/" .. _theme .. ".css" },
+          stylesheets = { "themes/" .. _colorscheme .. ".css" },
         })
       end
 

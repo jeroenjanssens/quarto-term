@@ -166,11 +166,11 @@ do
   assert_eq(config.env["MY_VAR"], "hello", "env.MY_VAR = hello")
 end
 
--- Test: trailing-spaces (kebab-case)
+-- Test: trailing-spaces under style (kebab-case)
 do
-  local meta = { extensions = { term = { ["trailing-spaces"] = true } } }
+  local meta = { extensions = { term = { style = { ["trailing-spaces"] = true } } } }
   local config = extract_config(meta)
-  assert_eq(config.trailing_spaces, true, "trailing-spaces: true")
+  assert_eq(config.trailing_spaces, true, "style.trailing-spaces: true")
 end
 
 -- Test: spacing
@@ -187,12 +187,12 @@ do
   assert_eq(config.verbose, true, "verbose: true")
 end
 
--- Test: cols and rows
+-- Test: cols and rows under style
 do
-  local meta = { extensions = { term = { cols = 120, rows = 40 } } }
+  local meta = { extensions = { term = { style = { cols = 120, rows = 40 } } } }
   local config = extract_config(meta)
-  assert_eq(config.cols, 120, "cols = 120")
-  assert_eq(config.rows, 40, "rows = 40")
+  assert_eq(config.cols, 120, "style.cols = 120")
+  assert_eq(config.rows, 40, "style.rows = 40")
 end
 
 -- Test: timeout
@@ -202,11 +202,11 @@ do
   assert_eq(config.timeout, 30.0, "timeout = 30")
 end
 
--- Test: ansi: false
+-- Test: ansi: false under style
 do
-  local meta = { extensions = { term = { ansi = false } } }
+  local meta = { extensions = { term = { style = { ansi = false } } } }
   local config = extract_config(meta)
-  assert_eq(config.ansi, false, "ansi: false")
+  assert_eq(config.ansi, false, "style.ansi: false")
 end
 
 -- Test: custom shell-args (kebab-case)
@@ -223,43 +223,50 @@ do
   assert_eq(config.prompt_regex, "\\$\\s*$", "prompt-regex")
 end
 
--- Test: fontsize as string
+-- Test: font-size under style
 do
-  local meta = { extensions = { term = { fontsize = "0.8em" } } }
+  local meta = { extensions = { term = { style = { ["font-size"] = "0.8em" } } } }
   local config = extract_config(meta)
-  assert_eq(config.fontsize, "0.8em", "fontsize = 0.8em")
+  assert_eq(config.font_size, "0.8em", "style.font-size = 0.8em")
 end
 
--- Test: fontsize as per-format map
+-- Test: font-size with format overrides
 do
-  local meta = { extensions = { term = { fontsize = { html = "0.8em", pdf = "0.7em" } } } }
+  local meta = { extensions = { term = { style = { ["font-size"] = "0.9em", html = { ["font-size"] = "0.8em" }, pdf = { ["font-size"] = "0.7em" } } } } }
   local config = extract_config(meta)
-  assert_not_nil(config._fontsize_map, "fontsize map exists")
-  assert_eq(config._fontsize_map["html"], "0.8em", "fontsize_map.html")
-  assert_eq(config._fontsize_map["pdf"], "0.7em", "fontsize_map.pdf")
+  assert_eq(config.font_size, "0.9em", "style.font-size base = 0.9em")
+  assert_not_nil(config._style_overrides, "style overrides exist")
+  assert_eq(config._style_overrides["html"].font_size, "0.8em", "style.html.font-size")
+  assert_eq(config._style_overrides["pdf"].font_size, "0.7em", "style.pdf.font-size")
 end
 
--- Test: theme as single string
+-- Test: colorscheme under style
 do
-  local meta = { extensions = { term = { theme = "nord" } } }
+  local meta = { extensions = { term = { style = { colorscheme = "nord" } } } }
   local config = extract_config(meta)
-  assert_eq(config.theme, "nord", "theme = nord")
+  assert_eq(config._colorscheme, "nord", "style.colorscheme = nord")
 end
 
--- Test: theme as light/dark map
+-- Test: colorscheme-light and colorscheme-dark under style
 do
-  local meta = { extensions = { term = { theme = { light = "solarized-light", dark = "solarized-dark" } } } }
+  local meta = { extensions = { term = { style = { ["colorscheme-light"] = "solarized-light", ["colorscheme-dark"] = "solarized-dark" } } } }
   local config = extract_config(meta)
-  assert_eq(config.theme_light, "solarized-light", "theme.light")
-  assert_eq(config.theme_dark, "solarized-dark", "theme.dark")
+  assert_eq(config._colorscheme_light, "solarized-light", "style.colorscheme-light")
+  assert_eq(config._colorscheme_dark, "solarized-dark", "style.colorscheme-dark")
 end
 
--- Test: theme-bg and theme-fg
+-- Test: font-family under style
 do
-  local meta = { extensions = { term = { ["theme-bg"] = "#1a1b26", ["theme-fg"] = "#c0caf5" } } }
+  local meta = { extensions = { term = { style = { ["font-family"] = "Fira Code" } } } }
   local config = extract_config(meta)
-  assert_eq(config.theme_bg, "#1a1b26", "theme-bg")
-  assert_eq(config.theme_fg, "#c0caf5", "theme-fg")
+  assert_eq(config.font_family, "Fira Code", "style.font-family")
+end
+
+-- Test: line-height under style
+do
+  local meta = { extensions = { term = { style = { ["line-height"] = "1.3" } } } }
+  local config = extract_config(meta)
+  assert_eq(config.line_height, "1.3", "style.line-height")
 end
 
 -- Test: marker option
@@ -300,11 +307,11 @@ do
   assert_eq(config.init[1], "source /dev/null", "init existing file gets source prefix")
 end
 
--- Test: trailing_spaces (snake_case compat)
+-- Test: trailing_spaces (snake_case compat) under style
 do
-  local meta = { extensions = { term = { ["trailing_spaces"] = true } } }
+  local meta = { extensions = { term = { style = { ["trailing_spaces"] = true } } } }
   local config = extract_config(meta)
-  assert_eq(config.trailing_spaces, true, "trailing_spaces snake_case")
+  assert_eq(config.trailing_spaces, true, "style.trailing_spaces snake_case")
 end
 
 -- Report

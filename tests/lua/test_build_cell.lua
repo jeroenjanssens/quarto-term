@@ -127,10 +127,10 @@ do
   assert_eq(cell.options.keep_last_prompt, true, "keep_last_prompt snake")
 end
 
--- Test: ansi: false
+-- Test: style.ansi: false (dotted syntax)
 do
-  local cell = build_cell(mock_block("#| ansi: false\necho hi\n"), 1, {})
-  assert_eq(cell.options.ansi, false, "ansi: false")
+  local cell = build_cell(mock_block("#| style.ansi: false\necho hi\n"), 1, {})
+  assert_eq(cell.options.ansi, false, "style.ansi: false")
 end
 
 -- Test: spacing: true
@@ -195,16 +195,16 @@ do
   assert_eq(cell.options.delay, 0.5, "delay: 0.5")
 end
 
--- Test: trailing-spaces (kebab-case)
+-- Test: style.trailing-spaces (dotted kebab-case)
 do
-  local cell = build_cell(mock_block("#| trailing-spaces: true\necho hi\n"), 1, {})
-  assert_eq(cell.options.trailing_spaces, true, "trailing-spaces: true")
+  local cell = build_cell(mock_block("#| style.trailing-spaces: true\necho hi\n"), 1, {})
+  assert_eq(cell.options.trailing_spaces, true, "style.trailing-spaces: true")
 end
 
--- Test: trailing_spaces (snake_case)
+-- Test: style.trailing_spaces (dotted snake_case)
 do
-  local cell = build_cell(mock_block("#| trailing_spaces: true\necho hi\n"), 1, {})
-  assert_eq(cell.options.trailing_spaces, true, "trailing_spaces snake_case")
+  local cell = build_cell(mock_block("#| style.trailing_spaces: true\necho hi\n"), 1, {})
+  assert_eq(cell.options.trailing_spaces, true, "style.trailing_spaces snake_case")
 end
 
 -- Test: label
@@ -236,16 +236,35 @@ do
   assert_eq(#cell.source_lines, 2, "two source lines")
 end
 
--- Test: theme (cell-level)
+-- Test: style.colorscheme (cell-level, dotted syntax)
 do
-  local cell = build_cell(mock_block("#| theme: nord\necho hi\n"), 1, {})
-  assert_eq(cell._theme, "nord", "theme: nord")
+  local cell = build_cell(mock_block("#| style.colorscheme: nord\necho hi\n"), 1, {})
+  assert_eq(cell._colorscheme, "nord", "style.colorscheme: nord")
 end
 
--- Test: theme not set -> nil
+-- Test: colorscheme not set -> nil
 do
   local cell = build_cell(mock_block("echo hi\n"), 1, {})
-  assert_nil(cell._theme, "no theme -> nil")
+  assert_nil(cell._colorscheme, "no colorscheme -> nil")
+end
+
+-- Test: style.html.font-size with format override
+do
+  local cell = build_cell(mock_block("#| style.font-size: 0.9em\n#| style.html.font-size: 0.7em\necho hi\n"), 1, { _fmt_key = "html" })
+  assert_eq(cell.options.font_size, "0.7em", "style.html.font-size overrides base")
+end
+
+-- Test: style format override without matching format uses base
+do
+  local cell = build_cell(mock_block("#| style.font-size: 0.9em\n#| style.html.font-size: 0.7em\necho hi\n"), 1, { _fmt_key = "pdf" })
+  assert_eq(cell.options.font_size, "0.9em", "non-matching format uses base style")
+end
+
+-- Test: cell-level colorscheme-light/dark
+do
+  local cell = build_cell(mock_block("#| style.colorscheme-light: github-light\n#| style.colorscheme-dark: github-dark\necho hi\n"), 1, {})
+  assert_eq(cell._colorscheme_light, "github-light", "style.colorscheme-light")
+  assert_eq(cell._colorscheme_dark, "github-dark", "style.colorscheme-dark")
 end
 
 -- Test: eval: false

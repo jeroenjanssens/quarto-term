@@ -125,6 +125,56 @@ do
   assert_eq(line_options[1].line_index, 2, "third line (index 2) has options")
 end
 
+-- Test: dotted key style.colorscheme
+do
+  local opts = parse_cell_options("#| style.colorscheme: nord\necho hi\n", "#!")
+  assert_eq(type(opts["style"]), "table", "style is a table from dotted key")
+  assert_eq(opts["style"]["colorscheme"], "nord", "style.colorscheme = nord")
+end
+
+-- Test: dotted key style.font-size
+do
+  local opts = parse_cell_options("#| style.font-size: 0.8em\necho hi\n", "#!")
+  assert_eq(opts["style"]["font-size"], "0.8em", "style.font-size = 0.8em")
+end
+
+-- Test: multiple dotted style keys
+do
+  local opts = parse_cell_options("#| style.colorscheme: dracula\n#| style.font-size: 0.7em\necho hi\n", "#!")
+  assert_eq(opts["style"]["colorscheme"], "dracula", "multi dotted: colorscheme")
+  assert_eq(opts["style"]["font-size"], "0.7em", "multi dotted: font-size")
+end
+
+-- Test: nested block syntax for style
+do
+  local opts = parse_cell_options("#| style:\n#|   colorscheme: monokai\n#|   font-size: 0.9em\necho hi\n", "#!")
+  assert_eq(type(opts["style"]), "table", "nested style is a table")
+  assert_eq(opts["style"]["colorscheme"], "monokai", "nested style.colorscheme")
+  assert_eq(opts["style"]["font-size"], "0.9em", "nested style.font-size")
+end
+
+-- Test: dotted key with boolean value
+do
+  local opts = parse_cell_options("#| style.ansi: false\necho hi\n", "#!")
+  assert_eq(opts["style"]["ansi"], false, "style.ansi = false (boolean)")
+end
+
+-- Test: multi-level dotted key (style.html.font-size)
+do
+  local opts = parse_cell_options("#| style.html.font-size: 0.7em\necho hi\n", "#!")
+  assert_eq(type(opts["style"]), "table", "multi-level: style is table")
+  assert_eq(type(opts["style"]["html"]), "table", "multi-level: style.html is table")
+  assert_eq(opts["style"]["html"]["font-size"], "0.7em", "style.html.font-size = 0.7em")
+end
+
+-- Test: nested block with sub-block (style.html via indentation)
+do
+  local opts = parse_cell_options("#| style:\n#|   colorscheme: nord\n#|   html:\n#|     font-size: 0.8em\necho hi\n", "#!")
+  assert_eq(opts["style"]["colorscheme"], "nord", "nested sub-block: colorscheme")
+  assert_eq(type(opts["style"]["html"]), "table", "nested sub-block: html is table")
+  assert_eq(opts["style"]["html"]["font-size"], "0.8em", "nested sub-block: html.font-size")
+end
+
 -- Report
 io.stderr:write(string.format("\nparse_cell_options: %d passed, %d failed\n", pass_count, fail_count))
 if fail_count > 0 then

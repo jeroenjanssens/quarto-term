@@ -1,0 +1,45 @@
+---
+title: "quarto-term"
+subtitle: "Persistent terminal sessions in Quarto"
+format: revealjs
+engine: markdown
+extensions:
+  term:
+    shell: zsh
+    init:
+      - zsh-syntax-highlighting
+      - "setopt INTERACTIVE_COMMENTS"
+    style:
+      colorscheme: nord
+      cols: 64
+---
+
+## Hello, terminal!
+
+```{term}
+echo 'Hello from a RevealJS slide!'
+```
+
+## State persists across slides
+
+```{term}
+export GREETING="quarto-term is amazing"
+```
+
+```{term}
+echo $GREETING | cowsay
+```
+
+## Colors and formatting
+
+```{term}
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+```
+
+## Interactive commands
+
+```{term}
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5
+echo 'Back to the prompt!'
+```

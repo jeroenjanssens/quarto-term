@@ -12,10 +12,11 @@ extensions:
     init:
       - zsh-syntax-highlighting
       - "setopt INTERACTIVE_COMMENTS"
-    theme:
-      light: solarized-dark
-      dark: solarized-light
     spacing: true
+    style:
+      html:
+        colorscheme-light: solarized-dark
+        colorscheme-dark: solarized-light
 
 website:
   title: "quarto-term"

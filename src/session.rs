@@ -9,11 +9,13 @@ use regex::Regex;
 
 use crate::error::TermError;
 use crate::keymap;
+use crate::docx;
 use crate::latex;
 use crate::markdown;
 use crate::protocol::{AnnotationSpec, CellResult, Config, EchoMode, InputCell};
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
+use crate::typst;
 
 struct ResolvedLineOpts {
     literal: bool,
@@ -521,7 +523,10 @@ impl PtySession {
         let trailing_spaces = cell.options.trailing_spaces.unwrap_or(self.config.trailing_spaces);
         let mut out = String::new();
         let format = self.config.format.as_str();
-        let fontsize = self.config.fontsize.as_deref();
+        let font_size = cell.options.font_size.as_deref().or(self.config.font_size.as_deref());
+        let font_family = cell.options.font_family.as_deref().or(self.config.font_family.as_deref());
+        let line_height = cell.options.line_height.as_deref().or(self.config.line_height.as_deref());
+        let html_style = renderer::HtmlStyle { font_size, font_family, line_height };
 
         let echo_mode = &cell.options.echo;
 
@@ -545,8 +550,9 @@ impl PtySession {
                             HighlightSpec::Bool(false) => "text",
                             HighlightSpec::Bool(true) => "bash",
                         };
+                        let style_attr = html_style.to_attr();
                         out.push_str(&format!(
-                            "<pre class=\"term-source\"><code class=\"language-{lang}\">{}</code></pre>\n",
+                            "<pre class=\"term-source\"{style_attr}><code class=\"language-{lang}\">{}</code></pre>\n",
                             html_escape_basic(&cell.code)
                         ));
                     }
@@ -562,11 +568,10 @@ impl PtySession {
             || matches!(echo_mode, EchoMode::Bool(true));
 
         if show_output {
-            let is_latex = format == "latex";
             let mut lines = if cell.options.fullscreen {
-                self.capture_fullscreen(ansi, is_latex, trailing_spaces)
+                self.capture_fullscreen(ansi, format, trailing_spaces)
             } else {
-                self.capture_new_lines(before_cursor_row, before_scrollback, ansi, is_latex, trailing_spaces)
+                self.capture_new_lines(before_cursor_row, before_scrollback, ansi, format, trailing_spaces)
             };
 
             if !cell.options.keep_last_prompt {
@@ -592,12 +597,42 @@ impl PtySession {
                     let theme = latex::LatexTheme {
                         bg: self.config.theme_bg.as_deref(),
                         fg: self.config.theme_fg.as_deref(),
-                        fontsize,
+                        font_size,
+                        font_family,
+                        line_height,
                     };
                     if cell.options.fullscreen {
                         out.push_str(&latex::render_fullscreen_to_latex(&lines, &theme));
                     } else {
                         out.push_str(&latex::render_lines_to_latex(&lines, &theme));
+                    }
+                }
+                "typst" => {
+                    let theme = typst::TypstTheme {
+                        bg: self.config.theme_bg.as_deref(),
+                        fg: self.config.theme_fg.as_deref(),
+                        font_size,
+                        font_family,
+                        line_height,
+                    };
+                    if cell.options.fullscreen {
+                        out.push_str(&typst::render_fullscreen_to_typst(&lines, &theme));
+                    } else {
+                        out.push_str(&typst::render_lines_to_typst(&lines, &theme));
+                    }
+                }
+                "docx" => {
+                    let theme = docx::DocxTheme {
+                        bg: self.config.theme_bg.as_deref(),
+                        fg: self.config.theme_fg.as_deref(),
+                        font_size,
+                        font_family,
+                        line_height,
+                    };
+                    if cell.options.fullscreen {
+                        out.push_str(&docx::render_fullscreen_to_docx(&lines, &theme));
+                    } else {
+                        out.push_str(&docx::render_lines_to_docx(&lines, &theme));
                     }
                 }
                 "markdown" => {
@@ -609,9 +644,9 @@ impl PtySession {
                 }
                 _ => {
                     if cell.options.fullscreen {
-                        out.push_str(&renderer::render_fullscreen_to_html(&lines, fontsize));
+                        out.push_str(&renderer::render_fullscreen_to_html(&lines, &html_style));
                     } else {
-                        out.push_str(&renderer::render_lines_to_html(&lines, "term-output", fontsize));
+                        out.push_str(&renderer::render_lines_to_html(&lines, "term-output", &html_style));
                     }
                 }
             }
@@ -625,7 +660,7 @@ impl PtySession {
         before_cursor_row: usize,
         before_scrollback: usize,
         ansi: bool,
-        is_latex: bool,
+        format: &str,
         trailing_spaces: bool,
     ) -> Vec<RenderedLine> {
         let current_scrollback = self.scrollback_count();
@@ -650,19 +685,26 @@ impl PtySession {
 
         let end = end_line.min(all_lines.len());
 
-        let render_fn = if is_latex { latex::render_line } else { renderer::render_line };
         all_lines[start_line..end]
             .iter()
-            .map(|line| render_fn(line, ansi, trailing_spaces))
+            .map(|line| render_line_for_format(line, ansi, trailing_spaces, format))
             .collect()
     }
 
-    fn capture_fullscreen(&self, ansi: bool, is_latex: bool, trailing_spaces: bool) -> Vec<RenderedLine> {
-        let render_fn = if is_latex { latex::render_line } else { renderer::render_line };
+    fn capture_fullscreen(&self, ansi: bool, format: &str, trailing_spaces: bool) -> Vec<RenderedLine> {
         self.vt
             .view()
-            .map(|line| render_fn(line, ansi, trailing_spaces))
+            .map(|line| render_line_for_format(line, ansi, trailing_spaces, format))
             .collect()
+    }
+}
+
+fn render_line_for_format(line: &avt::Line, ansi: bool, trailing_spaces: bool, format: &str) -> RenderedLine {
+    match format {
+        "latex" => latex::render_line(line, ansi, trailing_spaces),
+        "typst" => typst::render_line(line, ansi, trailing_spaces),
+        "docx" => docx::render_line(line, ansi, trailing_spaces),
+        _ => renderer::render_line(line, ansi, trailing_spaces),
     }
 }
 

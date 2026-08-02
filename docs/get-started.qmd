@@ -89,9 +89,10 @@ All configuration goes under `extensions: term:` in your YAML front matter:
 extensions:
   term:
     shell: zsh
-    theme: solarized-dark
     spacing: true
     timeout: 15.0
+    style:
+      colorscheme: solarized-dark
 ```
 
 See the [Reference](reference.qmd) for the full list of options.
@@ -110,10 +111,35 @@ filters:
 extensions:
   term:
     shell: zsh
-    theme: solarized-dark
+    style:
+      colorscheme: solarized-dark
 ```
 
 Individual pages still need `engine: markdown` in their front matter (or use the knitr/Jupyter setup described below).
+
+## Using in a presentation
+
+quarto-term works in RevealJS presentations. Terminal cells render on each slide with full ANSI color support and persistent state across slides.
+
+```yaml
+---
+title: "My Presentation"
+format: revealjs
+engine: markdown
+extensions:
+  term:
+    shell: zsh
+    style:
+      colorscheme: catppuccin-mocha
+      cols: 64
+---
+```
+
+Use smaller `cols` (e.g., 64) and optionally a smaller `font-size` to fit terminal output on slides. Here's a live demo:
+
+```{=html}
+<iframe class="slide-deck" src="demo-presentation.html" style="width: 100%; aspect-ratio: 16/9; border: 1px solid var(--bs-border-color); border-radius: 6px;"></iframe>
+```
 
 ## Using with knitr or Jupyter
 

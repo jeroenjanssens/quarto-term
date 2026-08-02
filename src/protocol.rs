@@ -34,8 +34,12 @@ pub struct Config {
     pub init: Vec<String>,
     #[serde(default)]
     pub spacing: bool,
+    #[serde(default, alias = "font")]
+    pub font_family: Option<String>,
+    #[serde(default, alias = "fontsize")]
+    pub font_size: Option<String>,
     #[serde(default)]
-    pub fontsize: Option<String>,
+    pub line_height: Option<String>,
     #[serde(default)]
     pub theme_bg: Option<String>,
     #[serde(default)]
@@ -96,6 +100,12 @@ pub struct CellOptions {
     pub literal: Option<bool>,
     #[serde(default)]
     pub delay: Option<f64>,
+    #[serde(default, alias = "font")]
+    pub font_family: Option<String>,
+    #[serde(default)]
+    pub font_size: Option<String>,
+    #[serde(default)]
+    pub line_height: Option<String>,
     #[serde(default)]
     pub callouts: Vec<AnnotationSpec>,
     #[serde(default)]

@@ -7,18 +7,17 @@ engine: markdown
 
 All project and document options are set under `extensions: term:` — in `_quarto.yml` for project-wide defaults, or in a document's front matter to override per file. Cell options use `#|` at the top of a cell. Line options use the marker (default `#!`) at the end of a line.
 
+### General Options
+
 | Option | Project | Document | Cell | Line | Default | Description |
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
-| `ansi` | x | x | x | | `true` | Render ANSI colors in output |
 | `callouts` | | | x | | `[]` | Line indices or patterns to annotate with callout markers |
-| `cols` | x | x | | | `80` | Terminal width in columns |
 | `delay` | | | x | x | `0.1` | Seconds to wait before executing a line |
 | `echo` | | | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
 | `enter` | | | | x | (from `literal`) | Press Enter after the line |
-| `eval` | | | x | | `true` | Execute the cell; `false` renders it as a static code block |
 | `env` | x | x | | | `{}` | Additional environment variables |
+| `eval` | | | x | | `true` | Execute the cell; `false` renders it as a static code block |
 | `expect-prompt` | | | | x | (from `enter`) | Wait for prompt after the line |
-| `fontsize` | x | x | | | (none) | Font size, or per-format map `{html: ..., pdf: ...}` |
 | `fullscreen` | | | x | | `false` | Capture the entire terminal screen |
 | `highlight` | | | x | | `bash` | Syntax highlighting language (for `echo: source`) |
 | `hold` | | | x | x | `0.1` (line) | Seconds to wait after execution (captures ongoing output) |
@@ -33,18 +32,107 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection |
 | `record` | x | x | | | (none) | File path(s) to record session (`.cast` or `.termshow`) |
 | `remove` | | | x | | `[]` | Line indices or patterns to remove from output |
-| `rows` | x | x | | | `24` | Terminal height in rows |
 | `scroll` | | | x | | `!fullscreen` | Include scrollback in capture |
 | `shell` | x | x | | | `zsh` | Shell to use |
 | `shell-args` | x | x | | | (auto) | Shell arguments |
 | `spacing` | x | x | x | | `false` | Add blank lines between commands in output |
-| `theme` | x | x | x | | (none) | Color theme name, or `{light: ..., dark: ...}` |
-| `theme-bg` | x | x | | | (from theme) | Background color override (hex) |
-| `theme-fg` | x | x | | | (from theme) | Foreground color override (hex) |
 | `timeout` | x | x | x | | `10.0` | Seconds to wait for prompt before error |
-| `trailing-spaces` | x | x | x | | `false` | Preserve trailing whitespace in output |
 | `typing` | x | x | x | | `false` | Human typing simulation |
 | `verbose` | x | x | | | `false` | Print execution details to stderr |
+
+### Style Options
+
+Style options live under `style:` and control the visual appearance of terminal output. They support format-specific overrides (see below).
+
+| Option | Project | Document | Cell | Default | Description |
+|--------|:-------:|:--------:|:----:|---------|-------------|
+| `colorscheme` | x | x | x | (none) | Color theme name |
+| `colorscheme-light` | x | x | x | (none) | Theme for light mode |
+| `colorscheme-dark` | x | x | x | (none) | Theme for dark mode |
+| `font-family` | x | x | x | (none) | Font family for terminal output |
+| `font-size` | x | x | x | (none) | Font size (e.g., `0.85em`) |
+| `line-height` | x | x | x | (none) | Line height (e.g., `1.2`) |
+| `ansi` | x | x | x | `true` | Render ANSI colors in output |
+| `trailing-spaces` | x | x | x | `false` | Preserve trailing whitespace in output |
+| `cols` | x | x | | `80` | Terminal width in columns |
+| `rows` | x | x | | `24` | Terminal height in rows |
+
+### Format-Specific Overrides
+
+Style options can be overridden per output format by nesting them under a format key within `style:`:
+
+```yaml
+extensions:
+  term:
+    style:
+      colorscheme: dracula
+      font-size: 0.9em
+      cols: 80
+      html:
+        colorscheme-light: github-light
+        colorscheme-dark: github-dark
+      pdf:
+        cols: 60
+        font-size: 0.75em
+      revealjs:
+        cols: 64
+        font-size: 0.65em
+```
+
+Recognized format keys: `html`, `pdf`, `revealjs`, `epub`, `markdown`, `latex`.
+
+### Per-Cell Style
+
+Override style for individual cells using dotted keys or a nested block. The full style functionality is available at the cell level, including format-specific overrides.
+
+Dotted keys:
+
+````markdown
+```{term}
+#| style.colorscheme: nord
+#| style.font-size: 0.8em
+echo "Styled cell"
+```
+````
+
+Nested block:
+
+````markdown
+```{term}
+#| style:
+#|   colorscheme: nord
+#|   font-size: 0.8em
+echo "Styled cell"
+```
+````
+
+Format-specific overrides at the cell level:
+
+````markdown
+```{term}
+#| style.font-size: 0.9em
+#| style.html.font-size: 0.8em
+#| style.revealjs.font-size: 0.65em
+echo "Different sizes per format"
+```
+````
+
+Or with a nested block:
+
+````markdown
+```{term}
+#| style:
+#|   colorscheme: dracula
+#|   html:
+#|     colorscheme-light: github-light
+#|     colorscheme-dark: github-dark
+#|   revealjs:
+#|     font-size: 0.65em
+echo "Format-aware cell"
+```
+````
+
+Per-cell style options: `colorscheme`, `colorscheme-light`, `colorscheme-dark`, `font-family`, `font-size`, `line-height`, `ansi`, `trailing-spaces`. Note that `cols` and `rows` cannot be set per-cell because the PTY is shared across all cells in a session.
 
 ## Document-Level Options
 
@@ -56,22 +144,15 @@ Set these under `extensions: term:` in your YAML front matter:
 | `shell-args` | auto | Shell arguments (defaults: `--no-rcs` for zsh, `--norc --noprofile` for bash) |
 | `prompt` | `$` | Literal prompt string. Auto-sets `PS1` and builds the matching regex. |
 | `prompt-regex` | (derived) | Raw regex override for prompt detection |
-| `cols` | `80` | Terminal width |
-| `rows` | `24` | Terminal height |
-| `ansi` | `true` | Render ANSI colors in output |
 | `timeout` | `10.0` | Seconds to wait for prompt before error |
 | `spacing` | `false` | Add blank lines between commands in output |
-| `trailing-spaces` | `false` | Preserve trailing whitespace in output |
 | `marker` | `#!` | Prefix for line option annotations |
 | `typing` | `false` | Human typing simulation (see below) |
 | `record` | (none) | File path to record session (`.cast` or `.termshow`) |
-| `theme` | (none) | Color theme name, or `{light: ..., dark: ...}` for auto-switching |
-| `theme-bg` | (from theme) | Background color override (hex) |
-| `theme-fg` | (from theme) | Foreground color override (hex) |
-| `fontsize` | (none) | Font size (or per-format map: `{html: "0.85em", pdf: "0.75em"}`) |
 | `verbose` | `false` | Print execution details to stderr |
 | `init` | (none) | Script(s) or command(s) to run at session start (string or list) |
 | `env` | `{}` | Additional environment variables |
+| `style` | (none) | Style options (see above) |
 
 ## Cell Options
 
@@ -87,9 +168,7 @@ Set these with `#|` at the top of a cell:
 | `fullscreen` | `false` | Capture the entire terminal screen |
 | `scroll` | `!fullscreen` | Include scrollback in capture |
 | `keep-last-prompt` | `false` | Keep the trailing prompt in output |
-| `ansi` | (from config) | Override ANSI rendering for this cell |
 | `spacing` | (from config) | Override spacing for this cell |
-| `trailing-spaces` | (from config) | Override trailing space handling |
 | `typing` | (from config) | Override typing simulation |
 | `timeout` | (from config) | Override timeout for this cell |
 | `hold` | (none) | Seconds to wait after cell completes (captures ongoing output) |
@@ -97,7 +176,7 @@ Set these with `#|` at the top of a cell:
 | `delay` | `0.1` | Default `delay` for all lines in this cell |
 | `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
 | `marker` | (from config) | Override line marker for this cell |
-| `theme` | (from config) | Override color theme for this cell |
+| `style` | (from config) | Override style options for this cell, including format-specific overrides (see [Per-Cell Style](#per-cell-style)) |
 
 ## Line Options
 
@@ -321,12 +400,13 @@ extensions:
 | `rose-pine-dawn` | Warm rose-tinged light theme |
 | `solarized-light` | Precision-engineered light palette |
 
-Single theme:
+Single colorscheme:
 
 ```yaml
 extensions:
   term:
-    theme: solarized-dark
+    style:
+      colorscheme: solarized-dark
 ```
 
 ### Light/Dark Mode
@@ -341,9 +421,9 @@ format:
       dark: darkly
 extensions:
   term:
-    theme:
-      light: solarized-light
-      dark: solarized-dark
+    style:
+      colorscheme-light: solarized-light
+      colorscheme-dark: solarized-dark
 ```
 
 The terminal blocks automatically switch themes when the user toggles the page between light and dark mode.
