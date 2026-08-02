@@ -141,6 +141,31 @@ Use smaller `cols` (e.g., 64) and optionally a smaller `font-size` to fit termin
 <iframe class="slide-deck" src="demo-presentation.html" style="width: 100%; aspect-ratio: 16/9; border: 1px solid var(--bs-border-color); border-radius: 6px;"></iframe>
 ```
 
+## Using with other output formats
+
+quarto-term supports all major Quarto output formats. Use format-specific style overrides to tailor the terminal appearance:
+
+```yaml
+extensions:
+  term:
+    style:
+      colorscheme: dracula
+      typst:
+        font-family: "Fira Code"
+        font-size: 9pt
+      docx:
+        font-family: "Consolas"
+        font-size: 10pt
+```
+
+For **PDF via Typst**, use `format: typst` in your document — terminal output renders as styled monospace blocks with full ANSI color support.
+
+For **Word** (`format: docx`), terminal output renders as a monospace table with background color, font styling, and ANSI colors.
+
+For **EPUB**, the HTML renderer is used automatically — all styling works as in HTML.
+
+See the [Reference](reference.qmd#output-formats) for the complete format support matrix.
+
 ## Using with knitr or Jupyter
 
 For documents that only contain terminal cells, `engine: markdown` is recommended. If you need to mix `{term}` cells with `{r}` or `{python}` cells:

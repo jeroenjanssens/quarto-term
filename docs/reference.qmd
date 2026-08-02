@@ -79,7 +79,7 @@ extensions:
         font-size: 0.65em
 ```
 
-Recognized format keys: `html`, `pdf`, `revealjs`, `epub`, `markdown`, `latex`.
+Recognized format keys: `html`, `pdf`, `revealjs`, `typst`, `docx`, `pptx`, `epub`, `markdown`, `latex`, `odt`.
 
 ### Per-Cell Style
 
@@ -427,3 +427,41 @@ extensions:
 ```
 
 The terminal blocks automatically switch themes when the user toggles the page between light and dark mode.
+
+## Output Formats
+
+quarto-term produces styled terminal output for all major Quarto output formats.
+
+| Format | Style support | Notes |
+|--------|--------------|-------|
+| HTML | Full | All style options, ANSI colors as styled spans |
+| RevealJS | Full | Same as HTML with CSS specificity overrides |
+| PDF (LaTeX) | Full | tcolorbox with colored text, fontspec for fonts |
+| PDF (Typst) | Full | Styled block with colored text runs |
+| Word (docx) | Full | OpenXML table with styled monospace runs |
+| PowerPoint (pptx) | Full | Same renderer as docx |
+| EPUB | Full | Same as HTML (EPUB uses XHTML) |
+| Markdown/GFM | Text only | Plain text in fenced code blocks (no styling) |
+| ODT | Full | Same renderer as docx |
+
+Use format-specific style overrides to optimize the terminal appearance for each output:
+
+```yaml
+extensions:
+  term:
+    style:
+      colorscheme: dracula
+      font-size: 0.9em
+      pdf:
+        font-size: 0.75em
+        cols: 60
+      typst:
+        font-family: "Fira Code"
+        font-size: 9pt
+      docx:
+        font-family: "Consolas"
+        font-size: 10pt
+      revealjs:
+        cols: 64
+        font-size: 0.65em
+```

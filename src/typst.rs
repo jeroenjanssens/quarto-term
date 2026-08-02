@@ -68,25 +68,7 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
         return String::new();
     }
 
-    let inner: String = lines
-        .iter()
-        .map(|l| l.html.as_str())
-        .collect::<Vec<_>>()
-        .join("\\\n");
-
-    let mut text_params = Vec::new();
-    if let Some(font) = theme.font_family {
-        let name = font.split(',').next().unwrap_or(font).trim().trim_matches('"').trim_matches('\'');
-        text_params.push(format!("font: \"{}\"", name));
-    }
-    if let Some(fs) = theme.font_size {
-        if let Some(pt) = css_size_to_typst(fs) {
-            text_params.push(format!("size: {pt}"));
-        }
-    }
-    if let Some(fg) = theme.fg {
-        text_params.push(format!("fill: rgb(\"#{fg}\")"));
-    }
+    let has_markup = lines.iter().any(|l| l.html.contains("#text(") || l.html.contains("#strong[") || l.html.contains("#emph[") || l.html.contains("#underline["));
 
     let mut block_params = Vec::new();
     if let Some(bg) = theme.bg {
@@ -96,34 +78,49 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
     block_params.push("inset: 8pt".to_string());
     block_params.push("width: 100%".to_string());
 
-    let leading = theme.line_height.and_then(|lh| {
-        lh.trim().parse::<f64>().ok().map(|v| format!("{:.1}em", v - 1.0))
-    });
-
     let mut result = String::new();
     result.push_str(&format!("#block({})[", block_params.join(", ")));
+    result.push('\n');
 
-    let mut set_parts = Vec::new();
-    if !text_params.is_empty() {
-        set_parts.push(format!("#set text({})", text_params.join(", ")));
+    let mut text_params = Vec::new();
+    let font_name = theme.font_family
+        .map(|f| f.split(',').next().unwrap_or(f).trim().trim_matches('"').trim_matches('\'').to_string())
+        .unwrap_or_else(|| "Courier New".to_string());
+    text_params.push(format!("font: \"{}\"", font_name));
+    if let Some(fs) = theme.font_size {
+        if let Some(pt) = css_size_to_typst(fs) {
+            text_params.push(format!("size: {pt}"));
+        }
     }
-    if let Some(ref lead) = leading {
-        set_parts.push(format!("#set par(leading: {})", lead));
+    if let Some(fg) = theme.fg {
+        text_params.push(format!("fill: rgb(\"#{fg}\")"));
     }
+    result.push_str(&format!("#set text({})\n", text_params.join(", ")));
 
-    if !set_parts.is_empty() {
-        result.push('\n');
-        for part in &set_parts {
-            result.push_str(part);
-            result.push('\n');
+    if let Some(lh) = theme.line_height {
+        if let Ok(val) = lh.trim().parse::<f64>() {
+            result.push_str(&format!("#set par(leading: {:.1}em)\n", val - 1.0));
         }
     }
 
-    result.push_str(&format!("```\n{inner}\n```\n"));
-    result.push_str("]\n");
+    if has_markup {
+        let inner: String = lines
+            .iter()
+            .map(|l| l.html.as_str())
+            .collect::<Vec<_>>()
+            .join("\\\n");
+        result.push_str(&inner);
+        result.push('\n');
+    } else {
+        let inner: String = lines
+            .iter()
+            .map(|l| l.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        result.push_str(&format!("```\n{inner}\n```\n"));
+    }
 
-    // Typst raw blocks don't support inline markup, so use a different approach for ANSI
-    // We use a raw text block when no ANSI colors, or construct manual text runs otherwise
+    result.push_str("]\n");
     result
 }
 
@@ -323,5 +320,26 @@ mod tests {
         assert!(result.contains("size: 0.80em"));
         assert!(result.contains("fill: rgb(\"#c0caf5\")"));
         assert!(result.contains("leading: 0.3em"));
+    }
+
+    #[test]
+    fn render_lines_to_typst_with_ansi_markup() {
+        let lines = vec![
+            RenderedLine { html: "#text(fill: rgb(\"#CD3131\"))[red]".to_string(), text: "red".to_string() },
+        ];
+        let theme = TypstTheme { bg: Some("1a1b26"), fg: None, font_size: None, font_family: None, line_height: None };
+        let result = render_lines_to_typst(&lines, &theme);
+        assert!(result.contains("#text(fill: rgb(\"#CD3131\"))[red]"));
+        assert!(!result.contains("```"));
+    }
+
+    #[test]
+    fn render_lines_to_typst_plain_uses_raw() {
+        let lines = vec![
+            RenderedLine { html: "hello".to_string(), text: "hello".to_string() },
+        ];
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
+        let result = render_lines_to_typst(&lines, &theme);
+        assert!(result.contains("```"));
     }
 }
