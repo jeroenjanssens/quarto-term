@@ -59,11 +59,11 @@ end
 -- Test: default options
 do
   local cell = build_cell(mock_block("echo hi\n"), 1, {})
-  assert_eq(cell.options.echo, "terminal", "default echo = terminal")
+  assert_eq(cell.options.echo, nil, "default echo = nil (Rust defaults to terminal)")
   assert_eq(cell.options.output, true, "default output = true")
   assert_eq(cell.options.fullscreen, false, "default fullscreen = false")
-  assert_eq(cell.options.keep_last_prompt, false, "default keep_last_prompt = false")
-  assert_eq(cell.options.highlight, "bash", "default highlight = bash")
+  assert_eq(cell.options.keep_last_prompt, nil, "default keep_last_prompt = nil (Rust defaults to false)")
+  assert_eq(cell.options.highlight, nil, "default highlight = nil (Rust defaults to bash)")
   assert_eq(cell.id, 1, "cell id = 1")
   assert_eq(cell.code, "echo hi", "code parsed")
 end
