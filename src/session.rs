@@ -288,9 +288,6 @@ impl PtySession {
             self.type_human(text, speed, error_rate)?;
             if opts.enter {
                 let cr = [b'\r'];
-                for rec in &mut self.recorders {
-                    rec.record_input(&cr);
-                }
                 self.writer.write_all(&cr).map_err(|_| TermError::ShellExited)?;
                 self.writer.flush().map_err(|_| TermError::ShellExited)?;
             }
@@ -308,10 +305,6 @@ impl PtySession {
                 }
                 b
             };
-
-            for rec in &mut self.recorders {
-                rec.record_input(&bytes);
-            }
 
             self.writer
                 .write_all(&bytes)
@@ -416,9 +409,6 @@ impl PtySession {
     fn emit_char(&mut self, ch: char) -> Result<(), TermError> {
         let mut buf = [0u8; 4];
         let bytes = ch.encode_utf8(&mut buf).as_bytes();
-        for rec in &mut self.recorders {
-            rec.record_input(bytes);
-        }
         self.writer.write_all(bytes).map_err(|_| TermError::ShellExited)?;
         self.writer.flush().map_err(|_| TermError::ShellExited)?;
         Ok(())
@@ -426,9 +416,6 @@ impl PtySession {
 
     fn emit_byte(&mut self, b: u8) -> Result<(), TermError> {
         let bytes = [b];
-        for rec in &mut self.recorders {
-            rec.record_input(&bytes);
-        }
         self.writer.write_all(&bytes).map_err(|_| TermError::ShellExited)?;
         self.writer.flush().map_err(|_| TermError::ShellExited)?;
         Ok(())

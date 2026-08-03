@@ -45,9 +45,6 @@ local coerce_value_src = source:match("(local function coerce_value.-\nend)")
 local parse_cell_options_src = source:match("(local function parse_cell_options.-\nend)")
 local build_cell_src = source:match("(local function build_cell.-\nend)")
 
--- Stub pandoc.List
-local pandoc = { List = function(t) return t or {} end }
-
 local chunk = [[
 local pandoc = { List = function(t) return t or {} end }
 ]] .. escape_pattern_src .. "\n" .. coerce_value_src .. "\n" .. parse_cell_options_src .. "\n" .. build_cell_src ..

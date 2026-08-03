@@ -68,12 +68,6 @@ impl Recorder {
         self.record_event("o", bytes);
     }
 
-    pub fn record_input(&mut self, _bytes: &[u8]) {
-        // Input events not written for asciicast (asciinema 3.x hangs).
-        // For termshow, input events could be useful but we skip them
-        // for now since our typing is synthetic.
-    }
-
     pub fn finish(&mut self) {
         let _ = self.writer.flush();
     }

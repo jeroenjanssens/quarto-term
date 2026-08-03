@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { binaryName } from "../../_extensions/term/install-binary.ts";
 
 Deno.test("binaryName - darwin aarch64 has no exe suffix", () => {

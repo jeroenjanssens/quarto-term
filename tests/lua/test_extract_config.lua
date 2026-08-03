@@ -77,9 +77,6 @@ end
 
 local extract_config = load(chunk)()
 
--- Helper to make simple meta values
-local function str_val(s) return s end
-
 -- Test: nil meta returns defaults
 do
   local config = extract_config(nil)

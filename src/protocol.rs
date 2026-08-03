@@ -54,9 +54,6 @@ pub struct Config {
     pub verbose: bool,
     #[serde(default)]
     pub trailing_spaces: bool,
-    #[serde(default)]
-    #[allow(dead_code)]
-    pub marker: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -135,7 +132,7 @@ impl fmt::Display for CellOptions {
         if let Some(ref t) = self.typing {
             match t {
                 TypingConfig::Disabled(false) => parts.push("typing: false".to_string()),
-                TypingConfig::Enabled { speed, error_rate, .. } => {
+                TypingConfig::Enabled { speed, error_rate } => {
                     parts.push(format!("typing: human, speed: {}, error-rate: {}", speed, error_rate));
                 }
                 _ => {}
@@ -177,13 +174,9 @@ pub enum HighlightSpec {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
-#[allow(dead_code)]
 pub enum TypingConfig {
     Disabled(bool),
     Enabled {
-        #[serde(default = "default_typing_mode")]
-        #[allow(dead_code)]
-        mode: String,
         #[serde(default = "default_speed")]
         speed: f64,
         #[serde(default)]
@@ -274,10 +267,6 @@ fn default_echo() -> EchoMode {
 
 fn default_highlight() -> HighlightSpec {
     HighlightSpec::Language("bash".to_string())
-}
-
-fn default_typing_mode() -> String {
-    "human".to_string()
 }
 
 fn default_speed() -> f64 {
