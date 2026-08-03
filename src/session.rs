@@ -300,8 +300,9 @@ impl PtySession {
                 }
                 b
             } else {
-                let mut b = keymap::translate_keycode(text);
-                if opts.enter && !is_keycode_name(text) {
+                let key = keymap::translate(text);
+                let mut b = key.bytes;
+                if opts.enter && !key.is_named {
                     b.push(b'\r');
                 }
                 b
@@ -784,19 +785,6 @@ fn line_text(line: &avt::Line) -> String {
     terminal_line::line_to_text(line)
 }
 
-fn is_keycode_name(s: &str) -> bool {
-    let lower = s.to_lowercase();
-    matches!(
-        lower.as_str(),
-        "enter" | "return" | "cr" | "tab" | "escape" | "esc" | "backspace" | "bs"
-            | "delete" | "del" | "space" | "up" | "down" | "left" | "right"
-            | "home" | "end" | "pageup" | "page_up" | "pagedown" | "page_down"
-            | "insert" | "f1" | "f2" | "f3" | "f4" | "f5" | "f6"
-            | "f7" | "f8" | "f9" | "f10" | "f11" | "f12"
-    ) || lower.starts_with("ctrl-")
-        || lower.starts_with("c-")
-}
-
 fn html_escape_basic(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -1049,38 +1037,6 @@ mod tests {
         apply_callouts(&mut lines, &[AnnotationSpec::Index(1), AnnotationSpec::Index(3)]);
         assert!(lines[0].html.contains("&lt;1&gt;"));
         assert!(lines[2].html.contains("&lt;2&gt;"));
-    }
-
-    // --- is_keycode_name ---
-
-    #[test]
-    fn is_keycode_name_known_keys() {
-        assert!(is_keycode_name("enter"));
-        assert!(is_keycode_name("tab"));
-        assert!(is_keycode_name("escape"));
-        assert!(is_keycode_name("up"));
-        assert!(is_keycode_name("f1"));
-        assert!(is_keycode_name("backspace"));
-    }
-
-    #[test]
-    fn is_keycode_name_ctrl_prefix() {
-        assert!(is_keycode_name("ctrl-c"));
-        assert!(is_keycode_name("c-x"));
-    }
-
-    #[test]
-    fn is_keycode_name_plain_text() {
-        assert!(!is_keycode_name("hello"));
-        assert!(!is_keycode_name("a"));
-        assert!(!is_keycode_name("echo"));
-    }
-
-    #[test]
-    fn is_keycode_name_case_insensitive() {
-        assert!(is_keycode_name("Enter"));
-        assert!(is_keycode_name("TAB"));
-        assert!(is_keycode_name("Ctrl-C"));
     }
 
     // --- html_escape_basic ---

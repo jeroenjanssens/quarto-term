@@ -1,44 +1,53 @@
-pub fn translate_keycode(name: &str) -> Vec<u8> {
+pub struct KeyTranslation {
+    pub bytes: Vec<u8>,
+    pub is_named: bool,
+}
+
+pub fn translate(name: &str) -> KeyTranslation {
     let lower = name.to_lowercase();
     let lower = lower.trim();
 
     if let Some(bytes) = parse_modified_key(lower) {
-        return bytes;
+        return KeyTranslation { bytes, is_named: true };
     }
 
     match lower {
-        "enter" | "return" | "cr" => vec![b'\r'],
-        "tab" => vec![b'\t'],
-        "escape" | "esc" => vec![0x1b],
-        "backspace" | "bs" => vec![0x7f],
-        "delete" | "del" => b"\x1b[3~".to_vec(),
-        "space" => vec![b' '],
+        "enter" | "return" | "cr" => KeyTranslation { bytes: vec![b'\r'], is_named: true },
+        "tab" => KeyTranslation { bytes: vec![b'\t'], is_named: true },
+        "escape" | "esc" => KeyTranslation { bytes: vec![0x1b], is_named: true },
+        "backspace" | "bs" => KeyTranslation { bytes: vec![0x7f], is_named: true },
+        "delete" | "del" => KeyTranslation { bytes: b"\x1b[3~".to_vec(), is_named: true },
+        "space" => KeyTranslation { bytes: vec![b' '], is_named: true },
 
-        "up" => b"\x1b[A".to_vec(),
-        "down" => b"\x1b[B".to_vec(),
-        "right" => b"\x1b[C".to_vec(),
-        "left" => b"\x1b[D".to_vec(),
-        "home" => b"\x1b[H".to_vec(),
-        "end" => b"\x1b[F".to_vec(),
-        "pageup" | "page-up" | "page_up" => b"\x1b[5~".to_vec(),
-        "pagedown" | "page-down" | "page_down" => b"\x1b[6~".to_vec(),
-        "insert" => b"\x1b[2~".to_vec(),
+        "up" => KeyTranslation { bytes: b"\x1b[A".to_vec(), is_named: true },
+        "down" => KeyTranslation { bytes: b"\x1b[B".to_vec(), is_named: true },
+        "right" => KeyTranslation { bytes: b"\x1b[C".to_vec(), is_named: true },
+        "left" => KeyTranslation { bytes: b"\x1b[D".to_vec(), is_named: true },
+        "home" => KeyTranslation { bytes: b"\x1b[H".to_vec(), is_named: true },
+        "end" => KeyTranslation { bytes: b"\x1b[F".to_vec(), is_named: true },
+        "pageup" | "page-up" | "page_up" => KeyTranslation { bytes: b"\x1b[5~".to_vec(), is_named: true },
+        "pagedown" | "page-down" | "page_down" => KeyTranslation { bytes: b"\x1b[6~".to_vec(), is_named: true },
+        "insert" => KeyTranslation { bytes: b"\x1b[2~".to_vec(), is_named: true },
 
-        "f1" => b"\x1bOP".to_vec(),
-        "f2" => b"\x1bOQ".to_vec(),
-        "f3" => b"\x1bOR".to_vec(),
-        "f4" => b"\x1bOS".to_vec(),
-        "f5" => b"\x1b[15~".to_vec(),
-        "f6" => b"\x1b[17~".to_vec(),
-        "f7" => b"\x1b[18~".to_vec(),
-        "f8" => b"\x1b[19~".to_vec(),
-        "f9" => b"\x1b[20~".to_vec(),
-        "f10" => b"\x1b[21~".to_vec(),
-        "f11" => b"\x1b[23~".to_vec(),
-        "f12" => b"\x1b[24~".to_vec(),
+        "f1" => KeyTranslation { bytes: b"\x1bOP".to_vec(), is_named: true },
+        "f2" => KeyTranslation { bytes: b"\x1bOQ".to_vec(), is_named: true },
+        "f3" => KeyTranslation { bytes: b"\x1bOR".to_vec(), is_named: true },
+        "f4" => KeyTranslation { bytes: b"\x1bOS".to_vec(), is_named: true },
+        "f5" => KeyTranslation { bytes: b"\x1b[15~".to_vec(), is_named: true },
+        "f6" => KeyTranslation { bytes: b"\x1b[17~".to_vec(), is_named: true },
+        "f7" => KeyTranslation { bytes: b"\x1b[18~".to_vec(), is_named: true },
+        "f8" => KeyTranslation { bytes: b"\x1b[19~".to_vec(), is_named: true },
+        "f9" => KeyTranslation { bytes: b"\x1b[20~".to_vec(), is_named: true },
+        "f10" => KeyTranslation { bytes: b"\x1b[21~".to_vec(), is_named: true },
+        "f11" => KeyTranslation { bytes: b"\x1b[23~".to_vec(), is_named: true },
+        "f12" => KeyTranslation { bytes: b"\x1b[24~".to_vec(), is_named: true },
 
-        _ => name.as_bytes().to_vec(),
+        _ => KeyTranslation { bytes: name.as_bytes().to_vec(), is_named: false },
     }
+}
+
+pub fn translate_keycode(name: &str) -> Vec<u8> {
+    translate(name).bytes
 }
 
 fn parse_modified_key(s: &str) -> Option<Vec<u8>> {
@@ -296,5 +305,39 @@ mod tests {
     fn test_ctrl_alt_shift() {
         // ctrl-alt-shift-a → CSI 97;8u (all modifiers: 1|2|4 + 1 = 8)
         assert_eq!(translate_keycode("ctrl-alt-shift-a"), b"\x1b[97;8u".to_vec());
+    }
+
+    #[test]
+    fn is_named_known_keys() {
+        assert!(translate("enter").is_named);
+        assert!(translate("tab").is_named);
+        assert!(translate("escape").is_named);
+        assert!(translate("up").is_named);
+        assert!(translate("f1").is_named);
+        assert!(translate("backspace").is_named);
+        assert!(translate("page-up").is_named);
+        assert!(translate("page_down").is_named);
+    }
+
+    #[test]
+    fn is_named_ctrl_prefix() {
+        assert!(translate("ctrl-c").is_named);
+        assert!(translate("c-x").is_named);
+        assert!(translate("shift-up").is_named);
+        assert!(translate("alt-f1").is_named);
+    }
+
+    #[test]
+    fn is_named_plain_text_not_named() {
+        assert!(!translate("hello").is_named);
+        assert!(!translate("a").is_named);
+        assert!(!translate("echo").is_named);
+    }
+
+    #[test]
+    fn is_named_case_insensitive() {
+        assert!(translate("Enter").is_named);
+        assert!(translate("TAB").is_named);
+        assert!(translate("Ctrl-C").is_named);
     }
 }
