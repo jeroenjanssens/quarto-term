@@ -14,7 +14,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install pandoc
-        run: sudo apt-get install -y pandoc
+        run: |
+          curl -sL https://github.com/jgm/pandoc/releases/download/3.6.4/pandoc-3.6.4-1-amd64.deb -o /tmp/pandoc.deb
+          sudo dpkg -i /tmp/pandoc.deb
 
       - name: Install Deno
         uses: denoland/setup-deno@v2
