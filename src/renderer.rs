@@ -95,6 +95,16 @@ pub fn is_safe_language_name(s: &str) -> bool {
         && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'+' || b == b'-' || b == b'.')
 }
 
+pub fn is_safe_font_name(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 128
+        && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b' ' || b == b'-' || b == b'_' || b == b'.')
+}
+
+pub fn is_safe_hex_color(s: &str) -> bool {
+    (s.len() == 6 || s.len() == 7)
+        && s.strip_prefix('#').unwrap_or(s).bytes().all(|b| b.is_ascii_hexdigit())
+}
+
 pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str, style: &HtmlStyle) -> String {
     if lines.is_empty() {
         return String::new();
@@ -464,5 +474,37 @@ mod tests {
             line_height: None,
         };
         assert_eq!(style.to_attr(), "");
+    }
+
+    #[test]
+    fn is_safe_font_name_accepts_valid() {
+        assert!(is_safe_font_name("Fira Code"));
+        assert!(is_safe_font_name("Courier New"));
+        assert!(is_safe_font_name("JetBrains Mono"));
+        assert!(is_safe_font_name("SF-Mono"));
+    }
+
+    #[test]
+    fn is_safe_font_name_rejects_injection() {
+        assert!(!is_safe_font_name(""));
+        assert!(!is_safe_font_name("font}\\input{/etc/passwd"));
+        assert!(!is_safe_font_name("x\"][#read(\"/etc/passwd\")"));
+    }
+
+    #[test]
+    fn is_safe_hex_color_accepts_valid() {
+        assert!(is_safe_hex_color("1a1b26"));
+        assert!(is_safe_hex_color("c0caf5"));
+        assert!(is_safe_hex_color("#ff0080"));
+        assert!(is_safe_hex_color("AABBCC"));
+    }
+
+    #[test]
+    fn is_safe_hex_color_rejects_invalid() {
+        assert!(!is_safe_hex_color(""));
+        assert!(!is_safe_hex_color("red"));
+        assert!(!is_safe_hex_color("1a1b2"));
+        assert!(!is_safe_hex_color("1a1b26ff"));
+        assert!(!is_safe_hex_color("\")[#read("));
     }
 }

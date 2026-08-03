@@ -1,7 +1,7 @@
 use avt::{Color, Line, Pen};
 
 use crate::color;
-use crate::renderer::RenderedLine;
+use crate::renderer::{self, RenderedLine};
 use crate::terminal_line;
 
 pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
@@ -57,7 +57,9 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
 
     let mut block_params = Vec::new();
     if let Some(bg) = theme.bg {
-        block_params.push(format!("fill: rgb(\"#{bg}\")"));
+        if renderer::is_safe_hex_color(bg) {
+            block_params.push(format!("fill: rgb(\"#{bg}\")"));
+        }
     }
     block_params.push("radius: 4pt".to_string());
     block_params.push("inset: 8pt".to_string());
@@ -70,6 +72,7 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
     let mut text_params = Vec::new();
     let font_name = theme.font_family
         .map(|f| f.split(',').next().unwrap_or(f).trim().trim_matches('"').trim_matches('\'').to_string())
+        .filter(|name| renderer::is_safe_font_name(name))
         .unwrap_or_else(|| "Courier New".to_string());
     text_params.push(format!("font: \"{}\"", font_name));
     if let Some(fs) = theme.font_size {
@@ -78,7 +81,9 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
         }
     }
     if let Some(fg) = theme.fg {
-        text_params.push(format!("fill: rgb(\"#{fg}\")"));
+        if renderer::is_safe_hex_color(fg) {
+            text_params.push(format!("fill: rgb(\"#{fg}\")"));
+        }
     }
     result.push_str(&format!("#set text({})\n", text_params.join(", ")));
 

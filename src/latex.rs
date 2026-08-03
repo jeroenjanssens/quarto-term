@@ -1,7 +1,7 @@
 use avt::{Color, Line, Pen};
 
 use crate::color;
-use crate::renderer::RenderedLine;
+use crate::renderer::{self, RenderedLine};
 use crate::terminal_line;
 
 pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
@@ -101,7 +101,9 @@ fn latex_preamble(theme: &LatexTheme) -> String {
     }
     if let Some(font) = theme.font_family {
         let name = font.split(',').next().unwrap_or(font).trim().trim_matches('"').trim_matches('\'');
-        parts.push(format!("\\setmonofont{{{name}}}\n"));
+        if renderer::is_safe_font_name(name) {
+            parts.push(format!("\\setmonofont{{{name}}}\n"));
+        }
     }
     parts.push(css_fontsize_to_latex(theme.font_size));
     parts.concat()
