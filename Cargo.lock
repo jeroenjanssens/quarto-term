@@ -207,7 +207,7 @@ dependencies = [
 
 [[package]]
 name = "quarto-term"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "avt",
  "portable-pty",
