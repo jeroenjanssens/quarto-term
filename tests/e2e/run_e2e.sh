@@ -105,13 +105,13 @@ echo hello
 ```' \
   "term-source"
 
-run_test "echo: false produces no output" \
+run_test_absent "echo: false produces no output" \
   '``` {.term}
 #| echo: false
 #| output: false
 echo hidden
 ```' \
-  ""
+  "hidden"
 
 # --- Annotations ---
 echo ""
