@@ -11,7 +11,7 @@ use crate::error::TermError;
 use crate::keymap;
 use crate::latex;
 use crate::markdown;
-use crate::protocol::{AnnotationSpec, CellResult, Config, EchoMode, InputCell};
+use crate::protocol::{AnnotationSpec, CellResult, Config, EchoMode, HighlightSpec, InputCell};
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
 use crate::terminal_line;
@@ -169,9 +169,8 @@ impl PtySession {
         let before_scrollback = self.scrollback_after_last_cell;
 
         let orig_timeout = self.config.timeout;
-        if let Some(t) = cell.options.timeout {
-            self.config.timeout = t;
-        }
+        let cell_timeout = cell.options.timeout.unwrap_or(orig_timeout);
+        self.config.timeout = cell_timeout;
 
         let typing = cell.options.typing.as_ref().unwrap_or(&self.config.typing);
         let is_human = typing.is_enabled();
@@ -182,7 +181,7 @@ impl PtySession {
         let mut error: Option<String> = None;
 
         let cell_literal = cell.options.literal.unwrap_or(true);
-        let cell_delay = cell.options.delay.unwrap_or(0.1);
+        let cell_delay = cell.options.delay.unwrap_or(self.config.delay);
 
         for (idx, line_text) in lines.iter().enumerate() {
             let line_opts = cell
@@ -199,12 +198,24 @@ impl PtySession {
             let hold = line_opts
                 .and_then(|lo| lo.hold)
                 .unwrap_or(0.1);
+            let cell_enter = cell.options.enter.unwrap_or(literal);
             let enter = line_opts
                 .and_then(|lo| lo.enter)
-                .unwrap_or(literal);
+                .unwrap_or(cell_enter);
+            let cell_expect = cell.options.expect_prompt.unwrap_or(enter);
             let expect_prompt = line_opts
                 .and_then(|lo| lo.expect_prompt)
-                .unwrap_or(enter);
+                .unwrap_or(cell_expect);
+
+            self.config.timeout = line_opts
+                .and_then(|lo| lo.timeout)
+                .unwrap_or(cell_timeout);
+
+            let line_is_human = match line_opts.and_then(|lo| lo.typing) {
+                Some(true) => true,
+                Some(false) => false,
+                None => is_human,
+            };
 
             if self.config.verbose {
                 let source = cell.source_lines.get(idx).map(|s| s.as_str()).unwrap_or(line_text);
@@ -246,17 +257,16 @@ impl PtySession {
                     hold,
                     expect_prompt,
                 };
-                if let Err(e) = self.send_line_resolved(line_text, &resolved, is_human, speed, error_rate) {
+                if let Err(e) = self.send_line_resolved(line_text, &resolved, line_is_human, speed, error_rate) {
                     error = Some(e.to_string());
                     break;
                 }
             }
         }
 
-        if let Some(hold) = cell.options.hold {
-            if hold > 0.0 {
-                self.drain_during(Duration::from_secs_f64(hold));
-            }
+        let cell_hold = cell.options.hold.unwrap_or(self.config.hold);
+        if cell_hold > 0.0 {
+            self.drain_during(Duration::from_secs_f64(cell_hold));
         }
 
 
@@ -516,7 +526,7 @@ impl PtySession {
         let line_height = cell.options.line_height.as_deref().or(self.config.line_height.as_deref());
         let html_style = renderer::HtmlStyle { font_size, font_family, line_height };
 
-        let echo_mode = &cell.options.echo;
+        let echo_mode = cell.options.echo.as_ref().unwrap_or(&self.config.echo);
 
         match echo_mode {
             EchoMode::Bool(false) => {}
@@ -533,7 +543,8 @@ impl PtySession {
                         out.push_str(&format!("```bash\n{}\n```\n", &cell.code));
                     }
                     _ => {
-                        let lang = match &cell.options.highlight {
+                        let highlight = cell.options.highlight.as_ref().unwrap_or(&self.config.highlight);
+                        let lang = match highlight {
                             HighlightSpec::Language(l) if renderer::is_safe_language_name(l) => l.as_str(),
                             HighlightSpec::Language(_) => "text",
                             HighlightSpec::Bool(false) => "text",
@@ -563,7 +574,8 @@ impl PtySession {
                 self.capture_new_lines(before_cursor_row, before_scrollback, ansi, format, trailing_spaces)
             };
 
-            if !cell.options.keep_last_prompt {
+            let keep_last_prompt = cell.options.keep_last_prompt.unwrap_or(self.config.keep_last_prompt);
+            if !keep_last_prompt {
                 while let Some(last) = lines.last() {
                     if last.text.is_empty() || self.is_only_prompt(&last.text) {
                         lines.pop();
@@ -578,7 +590,9 @@ impl PtySession {
                 apply_spacing(&mut lines, &self.config.prompt);
             }
 
-            apply_remove(&mut lines, &cell.options.remove);
+            let mut combined_remove = self.config.remove.clone();
+            combined_remove.extend(cell.options.remove.iter().cloned());
+            apply_remove(&mut lines, &combined_remove);
             apply_callouts(&mut lines, &cell.options.callouts);
 
             let theme_bg = cell.options.theme_bg.as_deref().or(self.config.theme_bg.as_deref());
@@ -873,8 +887,6 @@ fn adjacent_key(ch: char, rng: &mut impl Rng) -> char {
     }
     ch
 }
-
-use crate::protocol::HighlightSpec;
 
 #[cfg(test)]
 mod tests {

@@ -93,9 +93,13 @@ paste -sd+ |
 bc
 ```
 
-## Interrupting a Command
+## Line Options
 
-Send a long-running command, then interrupt it:
+Line options let you control how each line is delivered to the shell. Append them using the marker (default `#!`). See the [Reference](reference.qmd#line-options) for the full list of line options.
+
+### Interrupting a Command
+
+Send a long-running command, then interrupt it with Ctrl-C:
 
 ````markdown
 ```{term}
@@ -109,9 +113,11 @@ sleep 100 #! expect-prompt: false
 ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
 ```
 
-## Arrow Key Navigation
+The first line sets `expect-prompt: false` because `sleep` won't produce a prompt. The second sends Ctrl-C (`literal: false` interprets it as a key name), waits 0.5s, and then expects the prompt to return.
 
-Recall and re-execute the previous command using multiple keys on one line:
+### Arrow Key Navigation
+
+Recall and re-execute the previous command using multiple space-separated keys on one line:
 
 ````markdown
 ```{term}
@@ -125,9 +131,11 @@ echo "first command"
 up enter #! literal: false, delay: 0.3
 ```
 
-## Cell-Level Key Defaults
+When `literal: false`, space-separated words are sent as individual keys. Only the last key triggers `hold` and `expect-prompt`. See [Special Keys](reference.qmd#special-keys) for all recognized key names.
 
-Set `literal: false` and `delay` as cell defaults to avoid repeating line options:
+### Cell-Level Defaults
+
+Set `literal: false` and `delay` as cell defaults to avoid repeating line options. Individual lines can still override with explicit `#!` options:
 
 ````markdown
 ```{term}
@@ -145,6 +153,24 @@ enter
 echo "first command" #! literal: true
 up
 enter
+```
+
+### Per-Line Timeout
+
+Use a longer timeout for a specific slow command without changing the document default:
+
+````markdown
+```{term}
+echo "fast"
+sleep 2 && echo "slow" #! timeout: 5.0
+echo "back to normal"
+```
+````
+
+```{term}
+echo "fast"
+sleep 2 && echo "slow" #! timeout: 5.0
+echo "back to normal"
 ```
 
 ```{term}

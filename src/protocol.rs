@@ -34,6 +34,18 @@ pub struct Config {
     pub init: Vec<String>,
     #[serde(default)]
     pub spacing: bool,
+    #[serde(default = "default_delay")]
+    pub delay: f64,
+    #[serde(default)]
+    pub hold: f64,
+    #[serde(default = "default_echo")]
+    pub echo: EchoMode,
+    #[serde(default)]
+    pub keep_last_prompt: bool,
+    #[serde(default = "default_highlight")]
+    pub highlight: HighlightSpec,
+    #[serde(default)]
+    pub remove: Vec<AnnotationSpec>,
     #[serde(default, alias = "font")]
     pub font_family: Option<String>,
     #[serde(default, alias = "fontsize")]
@@ -71,8 +83,8 @@ pub struct InputCell {
 
 #[derive(Debug, Deserialize)]
 pub struct CellOptions {
-    #[serde(default = "default_echo")]
-    pub echo: EchoMode,
+    #[serde(default)]
+    pub echo: Option<EchoMode>,
     #[serde(default = "default_true")]
     pub output: bool,
     #[serde(default)]
@@ -80,7 +92,7 @@ pub struct CellOptions {
     #[serde(default)]
     pub scroll: Option<bool>,
     #[serde(default)]
-    pub keep_last_prompt: bool,
+    pub keep_last_prompt: Option<bool>,
     #[serde(default)]
     pub ansi: Option<bool>,
     #[serde(default)]
@@ -111,22 +123,28 @@ pub struct CellOptions {
     pub callouts: Vec<AnnotationSpec>,
     #[serde(default)]
     pub remove: Vec<AnnotationSpec>,
-    #[serde(default = "default_highlight")]
-    pub highlight: HighlightSpec,
+    #[serde(default)]
+    pub highlight: Option<HighlightSpec>,
+    #[serde(default)]
+    pub enter: Option<bool>,
+    #[serde(default)]
+    pub expect_prompt: Option<bool>,
 }
 
 impl fmt::Display for CellOptions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut parts = Vec::new();
-        match &self.echo {
-            EchoMode::Mode(m) if m != "terminal" => parts.push(format!("echo: {}", m)),
-            EchoMode::Bool(b) => parts.push(format!("echo: {}", b)),
-            _ => {}
+        if let Some(echo) = &self.echo {
+            match echo {
+                EchoMode::Mode(m) if m != "terminal" => parts.push(format!("echo: {}", m)),
+                EchoMode::Bool(b) => parts.push(format!("echo: {}", b)),
+                _ => {}
+            }
         }
         if !self.output { parts.push("output: false".to_string()); }
         if self.fullscreen { parts.push("fullscreen: true".to_string()); }
         if let Some(s) = self.scroll { parts.push(format!("scroll: {}", s)); }
-        if self.keep_last_prompt { parts.push("keep-last-prompt: true".to_string()); }
+        if self.keep_last_prompt == Some(true) { parts.push("keep-last-prompt: true".to_string()); }
         if let Some(a) = self.ansi { parts.push(format!("ansi: {}", a)); }
         if let Some(s) = self.spacing { parts.push(format!("spacing: {}", s)); }
         if let Some(ref t) = self.typing {
@@ -223,6 +241,10 @@ pub struct LineOptions {
     pub hold: Option<f64>,
     #[serde(default)]
     pub expect_prompt: Option<bool>,
+    #[serde(default)]
+    pub timeout: Option<f64>,
+    #[serde(default)]
+    pub typing: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -260,6 +282,10 @@ fn default_format() -> String {
     "html".to_string()
 }
 
+
+fn default_delay() -> f64 {
+    0.1
+}
 
 fn default_echo() -> EchoMode {
     EchoMode::Mode("terminal".to_string())

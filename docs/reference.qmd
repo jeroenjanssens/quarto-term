@@ -7,23 +7,21 @@ engine: markdown
 
 All project and document options are set under `extensions: term:` — in `_quarto.yml` for project-wide defaults, or in a document's front matter to override per file. Cell options use `#|` at the top of a cell. Line options use the marker (default `#!`) at the end of a line.
 
-### General Options
-
 | Option | Project | Document | Cell | Line | Default | Description |
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
 | `callouts` | | | x | | `[]` | Line indices or patterns to annotate with callout markers |
-| `delay` | | | x | x | `0.1` | Seconds to wait before executing a line |
-| `echo` | | | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
-| `enter` | | | | x | (from `literal`) | Press Enter after the line |
+| `delay` | x | x | x | x | `0.1` | Seconds to wait before executing a line |
+| `echo` | x | x | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
+| `enter` | | | x | x | (from `literal`) | Press Enter after the line |
 | `env` | x | x | | | `{}` | Additional environment variables |
 | `eval` | | | x | | `true` | Execute the cell; `false` renders it as a static code block |
-| `expect-prompt` | | | | x | (from `enter`) | Wait for prompt after the line |
+| `expect-prompt` | | | x | x | (from `enter`) | Wait for prompt after the line |
 | `fullscreen` | | | x | | `false` | Capture the entire terminal screen |
-| `highlight` | | | x | | `bash` | Syntax highlighting language (for `echo: source`) |
-| `hold` | | | x | x | `0.1` (line) | Seconds to wait after execution (captures ongoing output) |
+| `highlight` | x | x | x | | `bash` | Syntax highlighting language (for `echo: source`) |
+| `hold` | x | x | x | x | `0.0` (doc/cell), `0.1` (line) | Seconds to wait after execution (captures ongoing output) |
 | `include` | | | x | | `true` | Execute the cell but hide it entirely from output |
 | `init` | x | x | | | (none) | Script(s) or command(s) to run at session start |
-| `keep-last-prompt` | | | x | | `false` | Keep the trailing prompt in output |
+| `keep-last-prompt` | x | x | x | | `false` | Keep the trailing prompt in output |
 | `label` | | | x | | (none) | Cell label (shown in verbose mode) |
 | `literal` | | | x | x | `true` | Send text as typed characters; `false` for key names |
 | `marker` | x | x | x | | `#!` | Prefix for line option annotations |
@@ -31,18 +29,18 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `prompt` | x | x | | | `$` | Literal prompt string (auto-sets `PS1`) |
 | `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection |
 | `record` | x | x | | | (none) | File path(s) to record session (`.cast` or `.termshow`) |
-| `remove` | | | x | | `[]` | Line indices or patterns to remove from output |
+| `remove` | x | x | x | | `[]` | Line indices or patterns to remove from output |
 | `scroll` | | | x | | `!fullscreen` | Include scrollback in capture |
 | `shell` | x | x | | | `zsh` | Shell to use |
 | `shell-args` | x | x | | | (auto) | Shell arguments |
 | `spacing` | x | x | x | | `false` | Add blank lines between commands in output |
-| `timeout` | x | x | x | | `10.0` | Seconds to wait for prompt before error |
-| `typing` | x | x | x | | `false` | Human typing simulation |
+| `timeout` | x | x | x | x | `10.0` | Seconds to wait for prompt before error |
+| `typing` | x | x | x | x | `false` | Human typing simulation |
 | `verbose` | x | x | | | `false` | Print execution details to stderr |
 
 ### Style Options
 
-Style options live under `style:` and control the visual appearance of terminal output. They support format-specific overrides (see below).
+Style options live under `style:` and control visual appearance. They support format-specific overrides and per-cell overrides. See the [Styling](styling.qmd) page for full details, colorscheme gallery, and examples.
 
 | Option | Project | Document | Cell | Default | Description |
 |--------|:-------:|:--------:|:----:|---------|-------------|
@@ -53,86 +51,10 @@ Style options live under `style:` and control the visual appearance of terminal 
 | `font-size` | x | x | x | (none) | Font size (e.g., `0.85em`) |
 | `line-height` | x | x | x | (none) | Line height (e.g., `1.2`) |
 | `ansi` | x | x | x | `true` | Render ANSI colors in output |
+| `spacing` | x | x | x | `false` | Add blank lines between commands in output |
 | `trailing-spaces` | x | x | x | `false` | Preserve trailing whitespace in output |
 | `cols` | x | x | | `80` | Terminal width in columns |
 | `rows` | x | x | | `24` | Terminal height in rows |
-
-### Format-Specific Overrides
-
-Style options can be overridden per output format by nesting them under a format key within `style:`:
-
-```yaml
-extensions:
-  term:
-    style:
-      colorscheme: dracula
-      font-size: 0.9em
-      cols: 80
-      html:
-        colorscheme-light: github-light
-        colorscheme-dark: github-dark
-      pdf:
-        cols: 60
-        font-size: 0.75em
-      revealjs:
-        cols: 64
-        font-size: 0.65em
-```
-
-Recognized format keys: `html`, `pdf`, `revealjs`, `typst`, `epub`, `markdown`, `latex`.
-
-### Per-Cell Style
-
-Override style for individual cells using dotted keys or a nested block. The full style functionality is available at the cell level, including format-specific overrides.
-
-Dotted keys:
-
-````markdown
-```{term}
-#| style.colorscheme: nord
-#| style.font-size: 0.8em
-echo "Styled cell"
-```
-````
-
-Nested block:
-
-````markdown
-```{term}
-#| style:
-#|   colorscheme: nord
-#|   font-size: 0.8em
-echo "Styled cell"
-```
-````
-
-Format-specific overrides at the cell level:
-
-````markdown
-```{term}
-#| style.font-size: 0.9em
-#| style.html.font-size: 0.8em
-#| style.revealjs.font-size: 0.65em
-echo "Different sizes per format"
-```
-````
-
-Or with a nested block:
-
-````markdown
-```{term}
-#| style:
-#|   colorscheme: dracula
-#|   html:
-#|     colorscheme-light: github-light
-#|     colorscheme-dark: github-dark
-#|   revealjs:
-#|     font-size: 0.65em
-echo "Format-aware cell"
-```
-````
-
-Per-cell style options: `colorscheme`, `colorscheme-light`, `colorscheme-dark`, `font-family`, `font-size`, `line-height`, `ansi`, `trailing-spaces`. Note that `cols` and `rows` cannot be set per-cell because the PTY is shared across all cells in a session.
 
 ## Document-Level Options
 
@@ -145,14 +67,19 @@ Set these under `extensions: term:` in your YAML front matter:
 | `prompt` | `$` | Literal prompt string. Auto-sets `PS1` and builds the matching regex. |
 | `prompt-regex` | (derived) | Raw regex override for prompt detection |
 | `timeout` | `10.0` | Seconds to wait for prompt before error |
-| `spacing` | `false` | Add blank lines between commands in output |
+| `delay` | `0.1` | Default seconds to wait before executing each line |
+| `hold` | `0.0` | Default seconds to wait after each cell completes |
+| `echo` | `terminal` | Default output mode for cells |
+| `keep-last-prompt` | `false` | Default: keep trailing prompt in cell output |
+| `highlight` | `bash` | Default syntax highlighting language for `echo: source` cells |
+| `remove` | `[]` | Patterns to remove from all cells' output (merged with cell-level remove) |
 | `marker` | `#!` | Prefix for line option annotations |
 | `typing` | `false` | Human typing simulation (see below) |
 | `record` | (none) | File path to record session (`.cast` or `.termshow`) |
 | `verbose` | `false` | Print execution details to stderr |
 | `init` | (none) | Script(s) or command(s) to run at session start (string or list) |
 | `env` | `{}` | Additional environment variables |
-| `style` | (none) | Style options (see above) |
+| `style` | (none) | Style options (see [Styling](styling.qmd)) |
 
 ## Cell Options
 
@@ -163,87 +90,68 @@ Set these with `#|` at the top of a cell:
 | `eval` | `true` | Execute the cell; `false` renders it as a static code block |
 | `include` | `true` | Execute the cell but hide it entirely from output |
 | `label` | (none) | Cell label (shown in verbose mode) |
-| `echo` | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
+| `echo` | (from config) | Output mode: `terminal`, `source`, `true`, or `false` |
 | `output` | `true` | Show terminal output |
 | `fullscreen` | `false` | Capture the entire terminal screen |
 | `scroll` | `!fullscreen` | Include scrollback in capture |
-| `keep-last-prompt` | `false` | Keep the trailing prompt in output |
+| `keep-last-prompt` | (from config) | Keep the trailing prompt in output |
 | `spacing` | (from config) | Override spacing for this cell |
 | `typing` | (from config) | Override typing simulation |
 | `timeout` | (from config) | Override timeout for this cell |
-| `hold` | (none) | Seconds to wait after cell completes (captures ongoing output) |
+| `hold` | (from config) | Seconds to wait after cell completes (captures ongoing output) |
 | `literal` | `true` | Default `literal` for all lines in this cell |
-| `delay` | `0.1` | Default `delay` for all lines in this cell |
-| `highlight` | `bash` | Syntax highlighting language (for `echo: source`) |
+| `delay` | (from config) | Default `delay` for all lines in this cell |
+| `enter` | (from `literal`) | Default `enter` for all lines in this cell |
+| `expect-prompt` | (from `enter`) | Default `expect-prompt` for all lines in this cell |
+| `highlight` | (from config) | Syntax highlighting language (for `echo: source`) |
 | `marker` | (from config) | Override line marker for this cell |
-| `style` | (from config) | Override style options for this cell, including format-specific overrides (see [Per-Cell Style](#per-cell-style)) |
+| `style` | (from config) | Override style options for this cell (see [Styling](styling.qmd#per-cell-style)) |
 
 ## Line Options
 
-Traditional code engines just *execute* code; they send an entire block to an interpreter and capture whatever comes back. quarto-term is different: it *simulates a human typing at a terminal*. Each line is sent to the shell individually, keystroke by keystroke, just as you would type it yourself.
-
-This distinction matters because a real terminal session has *timing*. You might type a command, wait for output to settle, then send a keystroke to interact with what's on screen. You can't express that in a flat code block, but you can with line options.
-
-Line options give you control over *how* each line is delivered to the shell: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, how long to pause before or after, and whether to wait for the prompt to return. This is what makes it possible to drive interactive applications, interrupt long-running commands, and produce recordings with natural pacing.
+Each line in a `{term}` cell is sent to the shell individually. Line options control *how* each line is delivered: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, and timing. See [Examples](examples.qmd#line-options) for worked examples.
 
 Append options to any line using the marker (default `#!`):
 
-````markdown
-```{term}
-sleep 100 #! expect-prompt: false
-ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
 ```
-````
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5
+```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `literal` | `true` | Send text as typed characters. Set to `false` for key names. |
-| `enter` | (from literal) | Press Enter after the line |
-| `expect-prompt` | (from enter) | Wait for prompt after the line |
-| `delay` | `0.1` | Seconds to wait *before* executing this line |
+| `enter` | (from cell/literal) | Press Enter after the line |
+| `expect-prompt` | (from cell/enter) | Wait for prompt after the line |
+| `delay` | (from cell) | Seconds to wait *before* executing this line |
 | `hold` | `0.1` | Seconds to wait after executing (captures output) |
-
-### Multiple Keys Per Line
-
-When `literal: false`, you can put multiple space-separated key names on a single line. Each key is sent individually, with the line's `delay` value as a pause between them:
-
-````markdown
-```{term}
-echo "hello"
-up enter #! literal: false, delay: 0.2
-```
-````
-
-This sends the `up` key, waits 0.2 seconds, then sends `enter`. Only the last key on the line triggers `hold` and `expect-prompt`.
-
-To avoid repeating `#! literal: false` on every line, set it as a cell default:
-
-````markdown
-```{term}
-#| literal: false
-#| delay: 0.2
-up
-enter
-```
-````
-
-Individual lines can still override the cell default with explicit line options.
+| `timeout` | (from cell/config) | Seconds to wait for prompt after this line |
+| `typing` | (from cell/config) | Enable/disable typing simulation for this line (`true`/`false`) |
 
 ## Special Keys
 
 When `literal: false`, these key names are recognized:
 
-- `enter` (also `return`, `cr`), `tab`, `space`
-- `escape` (also `esc`), `backspace` (also `bs`), `delete` (also `del`)
-- `up`, `down`, `left`, `right`, `home`, `end`
-- `page-up` (also `pageup`), `page-down` (also `pagedown`), `insert`
-- `f1` through `f12`
+| Key | Aliases |
+|-----|---------|
+| `enter` | `return`, `cr` |
+| `tab` | |
+| `space` | |
+| `escape` | `esc` |
+| `backspace` | `bs` |
+| `delete` | `del` |
+| `up`, `down`, `left`, `right` | |
+| `home`, `end` | |
+| `page-up` | `pageup`, `page_up` |
+| `page-down` | `pagedown`, `page_down` |
+| `insert` | |
+| `f1` through `f12` | |
 
 Any other text is sent as raw bytes (e.g., `q` sends the letter q without pressing Enter).
 
 ### Modifier Combinations
 
-All modifier prefixes can be combined freely in any order:
+All modifier prefixes can be combined in any order:
 
 | Prefix | Shorthand | Example |
 |--------|-----------|---------|
@@ -251,15 +159,7 @@ All modifier prefixes can be combined freely in any order:
 | `shift-` | `s-` | `shift-a`, `s-a` |
 | `alt-` | `m-`, `meta-` | `alt-a`, `m-a` |
 
-Combinations are supported: `ctrl-shift-a`, `ctrl-alt-a`, `alt-shift-up`, `ctrl-alt-shift-a`.
-
-Modifiers work with single characters and with special keys:
-
-- `shift-a` sends uppercase `A`
-- `ctrl-c` sends the control character (0x03)
-- `alt-f` sends the CSI u sequence for Alt+f
-- `ctrl-shift-up` sends the modified arrow sequence
-- `shift-f5` sends the modified function key sequence
+Combinations: `ctrl-shift-a`, `ctrl-alt-a`, `alt-shift-up`, `ctrl-alt-shift-a`.
 
 ## Human Typing Simulation
 
@@ -269,14 +169,13 @@ Simulate realistic human typing for recordings:
 extensions:
   term:
     typing:
-      mode: human
       speed: 100        # characters per minute
       error-rate: 0.02  # probability of a typo per character
 ```
 
 When a "typo" occurs, the simulated typist hits a QWERTY-adjacent key and then corrects with backspace. Timing follows a log-normal distribution with bigram-aware adjustments.
 
-Disable typing for individual cells with `#| typing: false`.
+Disable typing for individual cells with `#| typing: false` or individual lines with `#! typing: false`.
 
 ## Prompt Detection
 
@@ -308,34 +207,9 @@ extensions:
       - "setopt INTERACTIVE_COMMENTS"
 ```
 
-For plugin names, quarto-term checks the current working directory, then searches common installation paths:
+For plugin names, quarto-term checks the current working directory, then searches common installation paths (`/opt/homebrew/share`, `/usr/local/share`, `/usr/share`, `/home/linuxbrew/.linuxbrew/share`).
 
-- `./<name>` (current working directory)
-- `/opt/homebrew/share/<name>/<name>.zsh` (macOS Homebrew)
-- `/usr/local/share/<name>/<name>.zsh` (manual installs)
-- `/usr/share/<name>/<name>.zsh` (Linux packages)
-- `/home/linuxbrew/.linuxbrew/share/<name>/<name>.zsh` (Linuxbrew)
-
-Entries that resolve to a file are sourced; everything else is executed as an inline command. Multi-line blocks are split and run line by line:
-
-```yaml
-extensions:
-  term:
-    init:
-      - zsh-syntax-highlighting
-      - |
-        setopt INTERACTIVE_COMMENTS
-        alias ll="ls -la"
-        export EDITOR=vim
-```
-
-You can also pass an absolute path directly:
-
-```yaml
-extensions:
-  term:
-    init: "/path/to/my-plugin.zsh"
-```
+Entries that resolve to a file are sourced; everything else is executed as an inline command. Multi-line blocks are split and run line by line.
 
 ## Terminal Recordings
 
@@ -349,10 +223,10 @@ extensions:
 
 Supported formats (detected by file extension):
 
-- `.cast` - asciicast v2 format, playable with [asciinema](https://asciinema.org/)
-- `.termshow` - termshow format (auto-generates a companion `.termshow.yml`), works with the [termshow](https://github.com/posit-dev/great-docs/) player
+- `.cast` — asciicast v2 format, playable with [asciinema](https://asciinema.org/)
+- `.termshow` — termshow format, works with the [termshow](https://github.com/posit-dev/great-docs/) player
 
-You can record to multiple files simultaneously. This is useful for producing both formats in a single render:
+You can record to multiple files simultaneously:
 
 ```yaml
 extensions:
@@ -362,75 +236,7 @@ extensions:
       - "session.termshow"
 ```
 
-## Themes
-
-### Dark Themes
-
-| Theme | Description |
-|-------|-------------|
-| `ayu-dark` | Near-black with warm orange accents |
-| `catppuccin-frappe` | Medium dark with pastel accents |
-| `catppuccin-macchiato` | Deeper variant of Catppuccin |
-| `catppuccin-mocha` | Darkest Catppuccin variant |
-| `dracula` | Classic purple-accented dark theme |
-| `everforest-dark` | Nature-inspired earthy greens |
-| `github-dark` | GitHub's dark default palette |
-| `gruvbox-dark` | Retro groove with warm colors |
-| `kanagawa` | Japanese-inspired blues and purples |
-| `material-ocean` | Deep ocean blue with vibrant accents |
-| `material-palenight` | Muted purple-blue with soft accents |
-| `monokai` | Classic warm syntax-highlighting palette |
-| `night-owl` | Deep blue optimized for night coding |
-| `nightfox` | Deep navy with cool accents |
-| `nord` | Arctic blue-grey palette |
-| `one-dark` | Atom-inspired balanced dark theme |
-| `rose-pine` | Muted pinks and dusty purples |
-| `solarized-dark` | Precision-engineered dark palette |
-| `tokyo-night` | City-lights inspired blues |
-
-### Light Themes
-
-| Theme | Description |
-|-------|-------------|
-| `ayu-light` | Crisp white with warm accents |
-| `catppuccin-latte` | Cream-colored with pastels |
-| `everforest-light` | Warm paper with nature greens |
-| `github-light` | Clean GitHub-standard palette |
-| `gruvbox-light` | Retro groove on warm cream background |
-| `rose-pine-dawn` | Warm rose-tinged light theme |
-| `solarized-light` | Precision-engineered light palette |
-
-Single colorscheme:
-
-```yaml
-extensions:
-  term:
-    style:
-      colorscheme: solarized-dark
-```
-
-### Light/Dark Mode
-
-For documents that support Quarto's light/dark toggle, provide both:
-
-```yaml
-format:
-  html:
-    theme:
-      light: flatly
-      dark: darkly
-extensions:
-  term:
-    style:
-      colorscheme-light: solarized-light
-      colorscheme-dark: solarized-dark
-```
-
-The terminal blocks automatically switch themes when the user toggles the page between light and dark mode.
-
 ## Output Formats
-
-quarto-term produces styled terminal output for all major Quarto output formats.
 
 | Format | Style support | Notes |
 |--------|--------------|-------|
@@ -438,30 +244,7 @@ quarto-term produces styled terminal output for all major Quarto output formats.
 | RevealJS | Full | Same as HTML with CSS specificity overrides |
 | PDF (LaTeX) | Full | tcolorbox with colored text, fontspec for fonts |
 | PDF (Typst) | Full | Styled block with colored text runs |
-| Word (docx) | Full | OpenXML table with styled monospace runs |
-| PowerPoint (pptx) | Full | Same renderer as docx |
 | EPUB | Full | Same as HTML (EPUB uses XHTML) |
 | Markdown/GFM | Text only | Plain text in fenced code blocks (no styling) |
-| ODT | Full | Same renderer as docx |
 
-Use format-specific style overrides to optimize the terminal appearance for each output:
-
-```yaml
-extensions:
-  term:
-    style:
-      colorscheme: dracula
-      font-size: 0.9em
-      pdf:
-        font-size: 0.75em
-        cols: 60
-      typst:
-        font-family: "Fira Code"
-        font-size: 9pt
-      docx:
-        font-family: "Consolas"
-        font-size: 10pt
-      revealjs:
-        cols: 64
-        font-size: 0.65em
-```
+Use [format-specific style overrides](styling.qmd#format-specific-overrides) to optimize appearance for each output.

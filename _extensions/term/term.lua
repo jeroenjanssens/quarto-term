@@ -363,6 +363,30 @@ local function extract_config(meta)
   end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
+  if term_meta["delay"] ~= nil then config.delay = meta_num(term_meta["delay"]) end
+  if term_meta["hold"] ~= nil then config.hold = meta_num(term_meta["hold"]) end
+  if term_meta["echo"] ~= nil then
+    local b = meta_bool(term_meta["echo"])
+    if b ~= nil then config.echo = b
+    else config.echo = meta_str(term_meta["echo"]) end
+  end
+  local klp_val = term_meta["keep-last-prompt"] or term_meta["keep_last_prompt"]
+  if klp_val ~= nil then config.keep_last_prompt = meta_bool(klp_val) end
+  if term_meta["highlight"] ~= nil then
+    local b = meta_bool(term_meta["highlight"])
+    if b ~= nil then config.highlight = b
+    else config.highlight = meta_str(term_meta["highlight"]) end
+  end
+  if term_meta["remove"] ~= nil then
+    local rv = term_meta["remove"]
+    if type(rv) == "table" and rv.t == nil and #rv > 0 then
+      config.remove = {}
+      for i = 1, #rv do table.insert(config.remove, meta_str(rv[i])) end
+    else
+      local s = meta_str(rv)
+      if s then config.remove = {s} end
+    end
+  end
 
   -- marker option (used only in Lua, not sent to Rust)
   if term_meta["marker"] then
@@ -389,6 +413,7 @@ local function extract_config(meta)
     local ts = style_meta["trailing-spaces"] or style_meta["trailing_spaces"]
     if ts ~= nil then s.trailing_spaces = meta_bool(ts) end
     if style_meta["ansi"] ~= nil then s.ansi = meta_bool(style_meta["ansi"]) end
+    if style_meta["spacing"] ~= nil then s.spacing = meta_bool(style_meta["spacing"]) end
     if style_meta["cols"] then s.cols = meta_num(style_meta["cols"]) end
     if style_meta["rows"] then s.rows = meta_num(style_meta["rows"]) end
     -- Collect format-specific overrides
@@ -412,6 +437,7 @@ local function extract_config(meta)
     if style.line_height then config.line_height = style.line_height end
     if style.trailing_spaces ~= nil then config.trailing_spaces = style.trailing_spaces end
     if style.ansi ~= nil then config.ansi = style.ansi end
+    if style.spacing ~= nil then config.spacing = style.spacing end
     if style.cols then config.cols = style.cols end
     if style.rows then config.rows = style.rows end
     if style._format_overrides then
@@ -513,13 +539,10 @@ local function build_cell(block, cell_id, config)
   end
 
   local options = {
-    echo = "terminal",
     output = true,
     fullscreen = false,
-    keep_last_prompt = false,
     callouts = pandoc.List({}),
     remove = pandoc.List({}),
-    highlight = "bash",
   }
 
   local eval = cell_opts["eval"]
@@ -554,6 +577,10 @@ local function build_cell(block, cell_id, config)
 
   if cell_opts["literal"] ~= nil then options.literal = cell_opts["literal"] end
   if cell_opts["delay"] ~= nil then options.delay = cell_opts["delay"] end
+  local enter_val = cell_opts["enter"]
+  if enter_val ~= nil then options.enter = enter_val end
+  local ep_val = cell_opts["expect-prompt"] or cell_opts["expect_prompt"]
+  if ep_val ~= nil then options.expect_prompt = ep_val end
 
   local label = cell_opts["label"]
 
@@ -576,6 +603,7 @@ local function build_cell(block, cell_id, config)
     local lh = cell_style["line-height"] or cell_style["line_height"]
     if lh then options.line_height = lh end
     if cell_style["ansi"] ~= nil then options.ansi = cell_style["ansi"] end
+    if cell_style["spacing"] ~= nil then options.spacing = cell_style["spacing"] end
     local ts = cell_style["trailing-spaces"] or cell_style["trailing_spaces"]
     if ts ~= nil then options.trailing_spaces = ts end
     -- Apply format-specific overrides
@@ -594,6 +622,7 @@ local function build_cell(block, cell_id, config)
       local ov_lh = ov["line-height"] or ov["line_height"]
       if ov_lh then options.line_height = ov_lh end
       if ov["ansi"] ~= nil then options.ansi = ov["ansi"] end
+      if ov["spacing"] ~= nil then options.spacing = ov["spacing"] end
       local ov_ts = ov["trailing-spaces"] or ov["trailing_spaces"]
       if ov_ts ~= nil then options.trailing_spaces = ov_ts end
     end
@@ -649,6 +678,7 @@ function Pandoc(doc)
       if ov.line_height then config.line_height = ov.line_height end
       if ov.trailing_spaces ~= nil then config.trailing_spaces = ov.trailing_spaces end
       if ov.ansi ~= nil then config.ansi = ov.ansi end
+      if ov.spacing ~= nil then config.spacing = ov.spacing end
       if ov.cols then config.cols = ov.cols end
       if ov.rows then config.rows = ov.rows end
     end
