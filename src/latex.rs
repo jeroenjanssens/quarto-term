@@ -1,5 +1,6 @@
 use avt::{Color, Line, Pen};
 
+use crate::color;
 use crate::renderer::RenderedLine;
 
 pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
@@ -185,49 +186,7 @@ fn wrap_with_pen(text: &str, pen: &Pen) -> String {
 }
 
 fn color_to_hex(color: Color) -> String {
-    match color {
-        Color::RGB(rgb) => {
-            format!("{:02X}{:02X}{:02X}", rgb.r, rgb.g, rgb.b)
-        }
-        Color::Indexed(i) if i < 16 => {
-            let (r, g, b) = ansi_index_to_rgb(i);
-            format!("{:02X}{:02X}{:02X}", r, g, b)
-        }
-        Color::Indexed(i) if i < 232 => {
-            let idx = i - 16;
-            let r = idx / 36;
-            let g = (idx % 36) / 6;
-            let b = idx % 6;
-            let to_byte = |v: u8| -> u8 { if v == 0 { 0 } else { 55 + v * 40 } };
-            format!("{:02X}{:02X}{:02X}", to_byte(r), to_byte(g), to_byte(b))
-        }
-        Color::Indexed(i) => {
-            let l = 8 + 10 * (i as u16 - 232) as u8;
-            format!("{:02X}{:02X}{:02X}", l, l, l)
-        }
-    }
-}
-
-fn ansi_index_to_rgb(i: u8) -> (u8, u8, u8) {
-    match i {
-        0 => (0, 0, 0),
-        1 => (205, 49, 49),
-        2 => (13, 188, 121),
-        3 => (229, 229, 16),
-        4 => (36, 114, 200),
-        5 => (188, 63, 188),
-        6 => (17, 168, 205),
-        7 => (229, 229, 229),
-        8 => (102, 102, 102),
-        9 => (241, 76, 76),
-        10 => (35, 209, 139),
-        11 => (245, 245, 67),
-        12 => (59, 142, 234),
-        13 => (214, 112, 214),
-        14 => (41, 184, 219),
-        15 => (229, 229, 229),
-        _ => (255, 255, 255),
-    }
+    color::color_to_hex(color)
 }
 
 fn latex_escape(s: &str) -> String {

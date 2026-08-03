@@ -1,5 +1,7 @@
 use avt::{Cell, Color, Line, Pen};
 
+use crate::color;
+
 pub struct RenderedLine {
     pub html: String,
     pub text: String,
@@ -211,19 +213,9 @@ fn color_to_css(color: Color) -> String {
     match color {
         Color::RGB(rgb) => format!("#{:02x}{:02x}{:02x}", rgb.r, rgb.g, rgb.b),
         Color::Indexed(i) if i < 16 => format!("var(--term-{i})", i = i),
-        Color::Indexed(i) if i < 232 => {
-            let idx = i - 16;
-            let r = idx / 36;
-            let g = (idx % 36) / 6;
-            let b = idx % 6;
-            let to_byte = |v: u8| -> u8 {
-                if v == 0 { 0 } else { 55 + v * 40 }
-            };
-            format!("#{:02x}{:02x}{:02x}", to_byte(r), to_byte(g), to_byte(b))
-        }
         Color::Indexed(i) => {
-            let l = 8 + 10 * (i as u16 - 232) as u8;
-            format!("#{:02x}{:02x}{:02x}", l, l, l)
+            let (r, g, b) = color::indexed_color_rgb(i);
+            format!("#{:02x}{:02x}{:02x}", r, g, b)
         }
     }
 }
