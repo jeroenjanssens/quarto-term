@@ -1,11 +1,151 @@
 ---
-title: "Themes"
+title: "Styling"
 engine: markdown
 toc-depth: 3
-toc-expand: 3
+toc-expand: 2
 ---
 
-## Dark
+All styling options live under the `style` key in your quarto-term configuration. They can be set at the project level (in `_quarto.yml`), the document level (in the YAML front matter), or per cell (using `#|` comments).
+
+```yaml
+extensions:
+  term:
+    style:
+      colorscheme: dracula
+      font-size: 0.85em
+      font-family: "Fira Code"
+      line-height: 1.3
+      cols: 80
+      rows: 24
+```
+
+## Options
+
+| Option | Project | Document | Cell | Default | Description |
+|--------|:-------:|:--------:|:----:|---------|-------------|
+| `colorscheme` | x | x | x | (none) | Colorscheme name (see below) |
+| `colorscheme-light` | x | x | x | (none) | Colorscheme for light mode (HTML only) |
+| `colorscheme-dark` | x | x | x | (none) | Colorscheme for dark mode (HTML only) |
+| `font-family` | x | x | x | (none) | Font family for terminal output |
+| `font-size` | x | x | x | (none) | Font size (e.g., `0.85em`, `9pt`) |
+| `line-height` | x | x | x | (none) | Line height multiplier (e.g., `1.2`) |
+| `ansi` | x | x | x | `true` | Render ANSI colors in output |
+| `trailing-spaces` | x | x | x | `false` | Preserve trailing whitespace |
+| `cols` | x | x | | `80` | Terminal width in columns |
+| `rows` | x | x | | `24` | Terminal height in rows |
+
+### `colorscheme`
+
+Sets the terminal colorscheme. This determines background color, foreground color, and the 16 ANSI palette colors. See [Dark Colorschemes](#dark-colorschemes) and [Light Colorschemes](#light-colorschemes) below for all built-in options.
+
+### `colorscheme-light` / `colorscheme-dark`
+
+For HTML output with a light/dark theme toggle, you can specify separate colorschemes:
+
+```yaml
+style:
+  colorscheme-light: github-light
+  colorscheme-dark: github-dark
+```
+
+### `font-family`
+
+Sets the monospace font for terminal output. Accepts any CSS font-family value:
+
+```yaml
+style:
+  font-family: "Berkeley Mono, Fira Code, monospace"
+```
+
+### `font-size`
+
+Controls the font size. Accepts `em` or `pt` units:
+
+```yaml
+style:
+  font-size: 0.85em
+```
+
+### `line-height`
+
+Controls line spacing as a multiplier of the font size:
+
+```yaml
+style:
+  line-height: 1.3
+```
+
+### `cols` / `rows`
+
+Sets the virtual terminal dimensions. `cols` controls how wide the terminal is (affecting line wrapping), while `rows` controls the visible height (relevant for fullscreen applications).
+
+These cannot be set per cell because the PTY is shared across all cells in a document.
+
+### `ansi`
+
+When `true` (the default), ANSI escape sequences produce colored output. Set to `false` to strip all color and render plain monochrome text.
+
+### `trailing-spaces`
+
+When `true`, trailing spaces on each line are preserved. By default they are trimmed.
+
+## Format-Specific Overrides
+
+Style options can be overridden per output format by nesting them under a format key:
+
+```yaml
+extensions:
+  term:
+    style:
+      colorscheme: dracula
+      font-size: 0.9em
+      html:
+        colorscheme-light: github-light
+        colorscheme-dark: github-dark
+      pdf:
+        cols: 60
+        font-size: 0.75em
+      revealjs:
+        cols: 64
+        font-size: 0.65em
+```
+
+Recognized format keys: `html`, `pdf`, `revealjs`, `typst`, `epub`, `markdown`, `latex`.
+
+## Per-Cell Style
+
+Override style for individual cells using dotted keys:
+
+````markdown
+```{term}
+#| style.colorscheme: nord
+#| style.font-size: 0.8em
+echo "Styled cell"
+```
+````
+
+Or a nested block:
+
+````markdown
+```{term}
+#| style:
+#|   colorscheme: nord
+#|   font-size: 0.8em
+echo "Styled cell"
+```
+````
+
+Format-specific overrides work at the cell level too:
+
+````markdown
+```{term}
+#| style.font-size: 0.9em
+#| style.revealjs.font-size: 0.65em
+echo "Different sizes per format"
+```
+````
+
+## Dark Colorschemes
 
 ### ayu-dark
 
@@ -254,7 +394,7 @@ echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
 cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
 ```
 
-## Light
+## Light Colorschemes
 
 ### ayu-light
 
@@ -347,11 +487,11 @@ echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
 cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
 ```
 
-## Custom Themes
+## Custom Colorschemes
 
-You can create your own theme by defining a CSS file with the terminal color variables. Place it in a `themes/` directory alongside your document, or reference it by path.
+You can create your own colorscheme by defining a CSS file with the terminal color variables. Place it in the extension's `themes/` directory (e.g., `_extensions/term/themes/my-theme.css`) and reference it by name.
 
-A theme file defines 18 CSS custom properties under `:root`:
+A colorscheme file defines 18 CSS custom properties:
 
 ```css
 :root {
@@ -376,7 +516,9 @@ A theme file defines 18 CSS custom properties under `:root`:
 }
 ```
 
-To use a custom theme, place the file in the extension's `themes/` directory (e.g., `_extensions/term/themes/my-theme.css`) and reference it by name:
+`--term-bg` and `--term-fg` control the terminal background and foreground colors. `--term-0` through `--term-15` map to the standard 16-color ANSI palette (0-7 normal, 8-15 bright).
+
+To use a custom colorscheme:
 
 ```yaml
 extensions:
@@ -385,7 +527,7 @@ extensions:
       colorscheme: my-theme
 ```
 
-Or use it on individual cells:
+Or per cell:
 
 ````markdown
 ```{term}
@@ -393,5 +535,3 @@ Or use it on individual cells:
 echo "Custom themed!"
 ```
 ````
-
-The `--term-bg` and `--term-fg` variables control the terminal background and foreground. Variables `--term-0` through `--term-15` map to the standard 16-color ANSI palette. Colors 0–7 are the normal variants; 8–15 are the bright variants.

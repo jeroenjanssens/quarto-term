@@ -79,7 +79,7 @@ extensions:
         font-size: 0.65em
 ```
 
-Recognized format keys: `html`, `pdf`, `revealjs`, `typst`, `docx`, `pptx`, `epub`, `markdown`, `latex`, `odt`.
+Recognized format keys: `html`, `pdf`, `revealjs`, `typst`, `epub`, `markdown`, `latex`.
 
 ### Per-Cell Style
 

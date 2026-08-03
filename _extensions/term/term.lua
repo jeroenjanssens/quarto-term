@@ -370,7 +370,7 @@ local function extract_config(meta)
   end
 
   -- Style block
-  local FORMAT_KEYS = { html = true, pdf = true, revealjs = true, epub = true, markdown = true, latex = true, typst = true, docx = true, pptx = true, odt = true }
+  local FORMAT_KEYS = { html = true, pdf = true, revealjs = true, epub = true, markdown = true, latex = true, typst = true }
 
   local function extract_style(style_meta)
     if not style_meta or type(style_meta) ~= "table" then return {} end
@@ -622,12 +622,6 @@ function Pandoc(doc)
       config.format = "latex"
     elseif quarto.doc.is_format("typst") then
       config.format = "typst"
-    elseif quarto.doc.is_format("docx") then
-      config.format = "docx"
-    elseif quarto.doc.is_format("pptx") then
-      config.format = "docx"
-    elseif quarto.doc.is_format("odt") then
-      config.format = "odt"
     elseif quarto.doc.is_format("gfm") or quarto.doc.is_format("markdown") then
       config.format = "markdown"
     end
@@ -638,8 +632,6 @@ function Pandoc(doc)
   if fmt_key == "latex" then fmt_key = "pdf" end
   if quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("revealjs") then
     fmt_key = "revealjs"
-  elseif quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("pptx") then
-    fmt_key = "pptx"
   elseif quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("epub") then
     fmt_key = "epub"
   end
@@ -780,10 +772,6 @@ function Pandoc(doc)
     raw_format = "latex"
   elseif config.format == "typst" then
     raw_format = "typst"
-  elseif config.format == "docx" then
-    raw_format = "openxml"
-  elseif config.format == "odt" then
-    raw_format = "opendocument"
   elseif config.format == "markdown" then
     raw_format = "markdown"
   end
@@ -833,10 +821,36 @@ function Pandoc(doc)
       end
       quarto.doc.include_text("in-header", preamble)
     end
-  elseif config.format == "typst" or config.format == "docx" or config.format == "odt" then
-    -- No special header dependencies needed for typst/docx/odt
+  elseif config.format == "typst" then
+    -- No special header dependencies needed for typst
   else
-    if quarto and quarto.doc and quarto.doc.add_html_dependency then
+    local is_epub = quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("epub")
+
+    if is_epub then
+      -- EPUB: inject CSS inline as a RawBlock since add_html_dependency doesn't work
+      local css_parts = {}
+      local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+      local f = io.open(filter_dir .. "term.css", "r")
+      if f then
+        table.insert(css_parts, f:read("*a"))
+        f:close()
+      end
+      if _colorscheme then
+        local theme_css = read_theme_file(_colorscheme)
+        if theme_css then table.insert(css_parts, theme_css) end
+      elseif _colorscheme_light then
+        local light_css = read_theme_file(_colorscheme_light)
+        if light_css then table.insert(css_parts, light_css) end
+      end
+      for _, css in pairs(cell_theme_css) do
+        table.insert(css_parts, css)
+      end
+      if #css_parts > 0 then
+        -- Insert style block before the first term block
+        local style_block = pandoc.RawBlock("html", "<style>\n" .. table.concat(css_parts, "\n") .. "</style>")
+        table.insert(doc.blocks, 1, style_block)
+      end
+    elseif quarto and quarto.doc and quarto.doc.add_html_dependency then
       quarto.doc.add_html_dependency({
         name = "quarto-term",
         version = "0.2.0",

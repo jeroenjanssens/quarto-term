@@ -50,7 +50,7 @@ quarto-term solves all of these by running a single persistent shell session tha
 - **Terminal recordings.** Produce `.cast` (asciicast v2) or `.termshow` files alongside your document.
 - **Line options.** Control timing, key behavior, and prompt expectations per line.
 - **Multi-line commands.** Automatic PS2 continuation prompt detection.
-- **Themes.** Built-in color themes with light/dark mode support.
+- **Styling.** Built-in colorschemes with light/dark mode support, fonts, and sizing.
 - **Multiple output formats.** HTML, LaTeX/PDF, and Markdown.
 
 ## Quick install

@@ -31,8 +31,8 @@ website:
         text: Get Started
       - href: reference.qmd
         text: Reference
-      - href: themes.qmd
-        text: Themes
+      - href: styling.qmd
+        text: Styling
       - href: examples.qmd
         text: Examples
       - href: demo-formats.qmd

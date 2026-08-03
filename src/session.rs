@@ -9,10 +9,8 @@ use regex::Regex;
 
 use crate::error::TermError;
 use crate::keymap;
-use crate::docx;
 use crate::latex;
 use crate::markdown;
-use crate::odt;
 use crate::protocol::{AnnotationSpec, CellResult, Config, EchoMode, InputCell};
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
@@ -625,27 +623,6 @@ impl PtySession {
                         out.push_str(&typst::render_lines_to_typst(&lines, &theme));
                     }
                 }
-                "docx" => {
-                    let theme = docx::DocxTheme {
-                        bg: theme_bg,
-                        fg: theme_fg,
-                        font_size,
-                        font_family,
-                        line_height,
-                    };
-                    if cell.options.fullscreen {
-                        out.push_str(&docx::render_fullscreen_to_docx(&lines, &theme));
-                    } else {
-                        out.push_str(&docx::render_lines_to_docx(&lines, &theme));
-                    }
-                }
-                "odt" => {
-                    if cell.options.fullscreen {
-                        out.push_str(&odt::render_fullscreen_to_odt(&lines));
-                    } else {
-                        out.push_str(&odt::render_lines_to_odt(&lines));
-                    }
-                }
                 "markdown" => {
                     if cell.options.fullscreen {
                         out.push_str(&markdown::render_fullscreen_to_markdown(&lines));
@@ -714,8 +691,6 @@ fn render_line_for_format(line: &avt::Line, ansi: bool, trailing_spaces: bool, f
     match format {
         "latex" => latex::render_line(line, ansi, trailing_spaces),
         "typst" => typst::render_line(line, ansi, trailing_spaces),
-        "docx" => docx::render_line(line, ansi, trailing_spaces),
-        "odt" => odt::render_line(line, ansi, trailing_spaces),
         _ => renderer::render_line(line, ansi, trailing_spaces),
     }
 }
