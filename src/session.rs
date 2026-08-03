@@ -545,7 +545,8 @@ impl PtySession {
                     }
                     _ => {
                         let lang = match &cell.options.highlight {
-                            HighlightSpec::Language(l) => l.as_str(),
+                            HighlightSpec::Language(l) if renderer::is_safe_language_name(l) => l.as_str(),
+                            HighlightSpec::Language(_) => "text",
                             HighlightSpec::Bool(false) => "text",
                             HighlightSpec::Bool(true) => "bash",
                         };

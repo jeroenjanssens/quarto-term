@@ -76,13 +76,19 @@ impl<'a> HtmlStyle<'a> {
     pub fn to_attr(&self) -> String {
         let mut parts = Vec::new();
         if let Some(fs) = self.font_size {
-            parts.push(format!("font-size:{fs}"));
+            if is_safe_css_value(fs) {
+                parts.push(format!("font-size:{fs}"));
+            }
         }
         if let Some(f) = self.font_family {
-            parts.push(format!("font-family:{f}"));
+            if is_safe_css_value(f) {
+                parts.push(format!("font-family:{f}"));
+            }
         }
         if let Some(lh) = self.line_height {
-            parts.push(format!("line-height:{lh}"));
+            if is_safe_css_value(lh) {
+                parts.push(format!("line-height:{lh}"));
+            }
         }
         if parts.is_empty() {
             String::new()
@@ -90,6 +96,17 @@ impl<'a> HtmlStyle<'a> {
             format!(" style=\"{}\"", parts.join(";"))
         }
     }
+}
+
+pub fn is_safe_css_value(s: &str) -> bool {
+    !s.contains('"') && !s.contains('\'') && !s.contains(';')
+        && !s.contains('<') && !s.contains('>') && !s.contains('}')
+        && !s.contains('{') && !s.contains('\\')
+}
+
+pub fn is_safe_language_name(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 64
+        && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'+' || b == b'-' || b == b'.')
 }
 
 pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str, style: &HtmlStyle) -> String {
@@ -453,5 +470,50 @@ mod tests {
         let style = HtmlStyle { font_size: None, font_family: None, line_height: None };
         let result = render_fullscreen_to_html(&lines, &style);
         assert!(result.contains("<pre class=\"term-screen\">"));
+    }
+
+    #[test]
+    fn is_safe_css_value_accepts_normal_values() {
+        assert!(is_safe_css_value("0.8em"));
+        assert!(is_safe_css_value("Fira Code, monospace"));
+        assert!(is_safe_css_value("1.5"));
+        assert!(is_safe_css_value("12px"));
+    }
+
+    #[test]
+    fn is_safe_css_value_rejects_injection() {
+        assert!(!is_safe_css_value("\" onmouseover=\"alert(1)"));
+        assert!(!is_safe_css_value("'; background: url(evil)"));
+        assert!(!is_safe_css_value("12px; color: red"));
+        assert!(!is_safe_css_value("x<script>"));
+        assert!(!is_safe_css_value("x}body{color:red"));
+        assert!(!is_safe_css_value("a\\b"));
+    }
+
+    #[test]
+    fn is_safe_language_name_accepts_valid() {
+        assert!(is_safe_language_name("bash"));
+        assert!(is_safe_language_name("c++"));
+        assert!(is_safe_language_name("objective-c"));
+        assert!(is_safe_language_name("html5"));
+        assert!(is_safe_language_name("f.sharp"));
+    }
+
+    #[test]
+    fn is_safe_language_name_rejects_injection() {
+        assert!(!is_safe_language_name("x\" onmouseover=\"alert(1)"));
+        assert!(!is_safe_language_name(""));
+        assert!(!is_safe_language_name("a b"));
+        assert!(!is_safe_language_name("<script>"));
+    }
+
+    #[test]
+    fn html_style_rejects_unsafe_values() {
+        let style = HtmlStyle {
+            font_size: Some("\" onmouseover=\"alert(1)"),
+            font_family: None,
+            line_height: None,
+        };
+        assert_eq!(style.to_attr(), "");
     }
 }
