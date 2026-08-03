@@ -46,6 +46,7 @@ pub fn translate(name: &str) -> KeyTranslation {
     }
 }
 
+#[cfg(test)]
 pub fn translate_keycode(name: &str) -> Vec<u8> {
     translate(name).bytes
 }
