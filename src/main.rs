@@ -7,6 +7,7 @@ mod protocol;
 mod recorder;
 mod renderer;
 mod session;
+mod terminal_line;
 mod typst;
 
 use std::io::{self, Read};

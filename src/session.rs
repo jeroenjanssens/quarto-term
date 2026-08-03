@@ -14,6 +14,7 @@ use crate::markdown;
 use crate::protocol::{AnnotationSpec, CellResult, Config, EchoMode, InputCell};
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
+use crate::terminal_line;
 use crate::typst;
 
 struct ResolvedLineOpts {
@@ -780,16 +781,7 @@ fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[AnnotationSpec]) {
 }
 
 fn line_text(line: &avt::Line) -> String {
-    let s: String = line
-        .cells()
-        .iter()
-        .filter(|c| c.width() > 0)
-        .map(|c| {
-            let ch = c.char();
-            if ch == '\0' { ' ' } else { ch }
-        })
-        .collect();
-    s.trim_end().to_string()
+    terminal_line::line_to_text(line)
 }
 
 fn is_keycode_name(s: &str) -> bool {

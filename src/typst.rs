@@ -2,20 +2,21 @@ use avt::{Color, Line, Pen};
 
 use crate::color;
 use crate::renderer::RenderedLine;
+use crate::terminal_line;
 
 pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
-    let text = line_to_text(line);
+    let text = terminal_line::line_to_text(line);
 
     if !ansi {
-        let src = if trailing_spaces { line_to_text_raw(line) } else { text.clone() };
+        let src = if trailing_spaces { terminal_line::line_to_text_raw(line) } else { text.clone() };
         return RenderedLine {
             html: typst_escape(&src),
             text,
         };
     }
 
-    let cells: Vec<&avt::Cell> = line.cells().iter().collect();
-    if cells.is_empty() {
+    let (runs, pens) = terminal_line::styled_runs(line);
+    if runs.is_empty() {
         return RenderedLine {
             html: String::new(),
             text,
@@ -23,32 +24,15 @@ pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLi
     }
 
     let mut markup = String::new();
-    let mut i = 0;
 
-    while i < cells.len() {
-        let pen = cells[i].pen();
-        let mut chunk_text = String::new();
-
-        let mut j = i;
-        while j < cells.len() && pens_equal(cells[j].pen(), pen) {
-            if cells[j].width() > 0 {
-                let ch = cells[j].char();
-                chunk_text.push(if ch == '\0' { ' ' } else { ch });
-            }
-            j += 1;
+    for run in &runs {
+        let escaped = typst_escape(&run.text);
+        if run.is_default {
+            markup.push_str(&escaped);
+        } else {
+            let wrapped = wrap_with_pen(&escaped, &pens[run.pen_idx]);
+            markup.push_str(&wrapped);
         }
-
-        if !chunk_text.is_empty() {
-            let escaped = typst_escape(&chunk_text);
-            if pen.is_default() {
-                markup.push_str(&escaped);
-            } else {
-                let wrapped = wrap_with_pen(&escaped, pen);
-                markup.push_str(&wrapped);
-            }
-        }
-
-        i = j;
     }
 
     let markup = if trailing_spaces { markup } else { markup.trim_end().to_string() };
@@ -195,32 +179,6 @@ fn typst_escape(s: &str) -> String {
     out
 }
 
-fn line_to_text(line: &Line) -> String {
-    line_to_text_raw(line).trim_end().to_string()
-}
-
-fn line_to_text_raw(line: &Line) -> String {
-    line
-        .cells()
-        .iter()
-        .filter(|c| c.width() > 0)
-        .map(|c| {
-            let ch = c.char();
-            if ch == '\0' { ' ' } else { ch }
-        })
-        .collect()
-}
-
-fn pens_equal(a: &Pen, b: &Pen) -> bool {
-    a.foreground() == b.foreground()
-        && a.background() == b.background()
-        && a.is_bold() == b.is_bold()
-        && a.is_faint() == b.is_faint()
-        && a.is_italic() == b.is_italic()
-        && a.is_underline() == b.is_underline()
-        && a.is_strikethrough() == b.is_strikethrough()
-        && a.is_inverse() == b.is_inverse()
-}
 
 #[cfg(test)]
 mod tests {

@@ -1,6 +1,7 @@
-use avt::{Cell, Color, Line, Pen};
+use avt::{Color, Line, Pen};
 
 use crate::color;
+use crate::terminal_line;
 
 pub struct RenderedLine {
     pub html: String,
@@ -8,19 +9,19 @@ pub struct RenderedLine {
 }
 
 pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
-    let text = line_to_text(line);
+    let text = terminal_line::line_to_text(line);
 
     if !ansi {
         let html = if trailing_spaces {
-            html_escape(&line_to_text_raw(line))
+            html_escape(&terminal_line::line_to_text_raw(line))
         } else {
             html_escape(&text)
         };
         return RenderedLine { html, text };
     }
 
-    let cells: Vec<&Cell> = line.cells().iter().collect();
-    if cells.is_empty() {
+    let (runs, pens) = terminal_line::styled_runs(line);
+    if runs.is_empty() {
         return RenderedLine {
             html: String::new(),
             text,
@@ -28,39 +29,22 @@ pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLi
     }
 
     let mut html = String::new();
-    let mut i = 0;
 
-    while i < cells.len() {
-        let pen = cells[i].pen();
-        let mut chunk_text = String::new();
-
-        let mut j = i;
-        while j < cells.len() && pens_equal(cells[j].pen(), pen) {
-            if cells[j].width() > 0 {
-                let ch = cells[j].char();
-                chunk_text.push(if ch == '\0' { ' ' } else { ch });
-            }
-            j += 1;
-        }
-
-        if !chunk_text.is_empty() {
-            if pen.is_default() {
-                html.push_str(&html_escape(&chunk_text));
+    for run in &runs {
+        if run.is_default {
+            html.push_str(&html_escape(&run.text));
+        } else {
+            let style = pen_to_style(&pens[run.pen_idx]);
+            if style.is_empty() {
+                html.push_str(&html_escape(&run.text));
             } else {
-                let style = pen_to_style(pen);
-                if style.is_empty() {
-                    html.push_str(&html_escape(&chunk_text));
-                } else {
-                    html.push_str("<span style=\"");
-                    html.push_str(&style);
-                    html.push_str("\">");
-                    html.push_str(&html_escape(&chunk_text));
-                    html.push_str("</span>");
-                }
+                html.push_str("<span style=\"");
+                html.push_str(&style);
+                html.push_str("\">");
+                html.push_str(&html_escape(&run.text));
+                html.push_str("</span>");
             }
         }
-
-        i = j;
     }
 
     let html = if trailing_spaces { html } else { trim_trailing_spaces_html(&html) };
@@ -139,33 +123,6 @@ pub fn render_fullscreen_to_html(lines: &[RenderedLine], style: &HtmlStyle) -> S
 
     let style_attr = style.to_attr();
     format!("<pre class=\"term-screen\"{style_attr}><code>{inner}</code></pre>\n")
-}
-
-fn line_to_text(line: &Line) -> String {
-    line_to_text_raw(line).trim_end().to_string()
-}
-
-fn line_to_text_raw(line: &Line) -> String {
-    line
-        .cells()
-        .iter()
-        .filter(|c| c.width() > 0)
-        .map(|c| {
-            let ch = c.char();
-            if ch == '\0' { ' ' } else { ch }
-        })
-        .collect()
-}
-
-fn pens_equal(a: &Pen, b: &Pen) -> bool {
-    a.foreground() == b.foreground()
-        && a.background() == b.background()
-        && a.is_bold() == b.is_bold()
-        && a.is_faint() == b.is_faint()
-        && a.is_italic() == b.is_italic()
-        && a.is_underline() == b.is_underline()
-        && a.is_strikethrough() == b.is_strikethrough()
-        && a.is_inverse() == b.is_inverse()
 }
 
 fn pen_to_style(pen: &Pen) -> String {
