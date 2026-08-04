@@ -1,0 +1,50 @@
+---
+title: "POSIX sh"
+engine: markdown
+extensions:
+  term:
+    shell: sh
+    init: []
+    spacing: false
+---
+
+The POSIX shell is available on every Unix system. quarto-term works with it using standard `PS1` prompt detection.
+
+```yaml
+extensions:
+  term:
+    shell: sh
+```
+
+## Basic Usage
+
+```{term}
+echo "Hello from sh ($(readlink -f $(which sh) 2>/dev/null || which sh))"
+```
+
+## Loops
+
+```{term}
+i=1
+while [ $i -le 5 ]; do
+  echo "Count: $i"
+  i=$((i + 1))
+done
+```
+
+## Functions
+
+```{term}
+factorial() {
+  if [ $1 -le 1 ]; then echo 1
+  else echo $(( $1 * $(factorial $(( $1 - 1 ))) ))
+  fi
+}
+factorial 6
+```
+
+## Text Processing
+
+```{term}
+printf "banana\napple\ncherry\ndate\n" | sort | nl
+```

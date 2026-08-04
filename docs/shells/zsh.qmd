@@ -1,0 +1,52 @@
+---
+title: "Zsh"
+engine: markdown
+extensions:
+  term:
+    init: []
+    spacing: false
+---
+
+Zsh is the default shell for quarto-term. No special configuration is needed.
+
+```yaml
+extensions:
+  term:
+    shell: zsh
+```
+
+## Basic Usage
+
+```{term}
+echo "Hello from $ZSH_NAME $ZSH_VERSION"
+```
+
+## Associative Arrays
+
+```{term}
+typeset -A fruits
+fruits=(apple red banana yellow cherry pink)
+for k v in ${(kv)fruits}; do print "$k is $v"; done
+```
+
+## Glob Qualifiers
+
+```{term}
+mkdir -p /tmp/zsh-demo && cd /tmp/zsh-demo
+touch file1.txt file2.txt script.sh
+chmod +x script.sh
+print -l *(.)
+```
+
+## Parameter Expansion
+
+```{term}
+words="hello world foo bar"
+print ${(U)words}
+print ${(ws: :)words}
+```
+
+```{term}
+#| include: false
+rm -rf /tmp/zsh-demo
+```

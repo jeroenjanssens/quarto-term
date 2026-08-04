@@ -35,6 +35,22 @@ website:
         text: Styling
       - href: examples.qmd
         text: Examples
+      - text: Shells
+        menu:
+          - href: shells/index.qmd
+            text: Overview
+          - href: shells/zsh.qmd
+            text: Zsh
+          - href: shells/bash.qmd
+            text: Bash
+          - href: shells/fish.qmd
+            text: Fish
+          - href: shells/nushell.qmd
+            text: Nushell
+          - href: shells/sh.qmd
+            text: POSIX sh
+          - href: shells/python.qmd
+            text: Python
       - href: docker.qmd
         text: Docker
       - href: demo-formats.qmd

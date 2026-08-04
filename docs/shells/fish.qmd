@@ -1,0 +1,53 @@
+---
+title: "Fish"
+engine: markdown
+extensions:
+  term:
+    shell: fish
+    shell-args: ["--no-config", "-C", "function fish_prompt; echo -n '$ '; end"]
+    prompt: "$"
+    init: []
+    spacing: false
+---
+
+Fish doesn't use `PS1` — it uses a `fish_prompt` function. Use fish's `-C` flag to define a simple prompt before the shell starts:
+
+```yaml
+extensions:
+  term:
+    shell: fish
+    shell-args: ["--no-config", "-C", "function fish_prompt; echo -n '$ '; end"]
+    prompt: "$"
+```
+
+## Basic Usage
+
+```{term}
+echo "Hello from fish $FISH_VERSION"
+```
+
+## For Loops
+
+```{term}
+for i in (seq 5)
+  echo "Item $i"
+end
+```
+
+## String Manipulation
+
+```{term}
+set greeting "Hello, World!"
+echo (string upper $greeting)
+echo (string replace "World" "Fish" $greeting)
+```
+
+## Lists
+
+```{term}
+set fruits apple banana cherry
+for fruit in $fruits
+  echo "I like $fruit"
+end
+echo "Count: "(count $fruits)
+```

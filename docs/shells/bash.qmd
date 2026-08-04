@@ -1,0 +1,51 @@
+---
+title: "Bash"
+engine: markdown
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    init: []
+    spacing: false
+---
+
+Bash is widely available and well-supported. quarto-term auto-detects the right `shell-args` (`--norc --noprofile`) when you set `shell: bash`.
+
+```yaml
+extensions:
+  term:
+    shell: bash
+```
+
+## Basic Usage
+
+```{term}
+echo "Hello from bash $BASH_VERSION"
+```
+
+## Associative Arrays
+
+```{term}
+declare -A colors
+colors=([red]="#ff0000" [green]="#00ff00" [blue]="#0000ff")
+for name in "${!colors[@]}"; do
+  echo "$name = ${colors[$name]}"
+done
+```
+
+## Process Substitution
+
+```{term}
+diff <(echo -e "a\nb\nc") <(echo -e "a\nx\nc")
+echo "(exit code: $?)"
+```
+
+## Here Strings
+
+```{term}
+while IFS=, read -r name age; do
+  echo "$name is $age years old"
+done <<< "Alice,30
+Bob,25
+Carol,35"
+```

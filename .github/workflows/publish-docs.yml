@@ -41,7 +41,12 @@ jobs:
         run: cargo build --release
 
       - name: Install dependencies
-        run: sudo apt-get install -y zsh htop zsh-syntax-highlighting cowsay lolcat
+        run: sudo apt-get install -y zsh fish htop zsh-syntax-highlighting cowsay lolcat python3
+
+      - name: Install Nushell
+        run: |
+          curl -sL https://github.com/nushell/nushell/releases/download/0.104.0/nu-0.104.0-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          sudo mv nu-0.104.0-x86_64-unknown-linux-gnu/nu /usr/local/bin/
 
       - name: Render
         run: quarto render docs

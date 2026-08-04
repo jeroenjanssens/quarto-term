@@ -1,0 +1,50 @@
+---
+title: "Shells"
+engine: markdown
+---
+
+quarto-term works with any shell — or any REPL — that provides a detectable prompt. Set `shell` to any executable on your system and configure `prompt` or `prompt-regex` to match what it emits.
+
+## Supported Shells
+
+Each shell below is a live demonstration rendered by quarto-term:
+
+| Shell | Config needed |
+|-------|---------------|
+| [Zsh](zsh.qmd) | None (default) |
+| [Bash](bash.qmd) | `shell: bash` |
+| [Fish](fish.qmd) | `shell: fish` + init for prompt function |
+| [Nushell](nushell.qmd) | `shell: nu` + env for prompt config |
+| [POSIX sh](sh.qmd) | `shell: sh` |
+| [Python](python.qmd) | `shell: python3` + `prompt: ">>>"` |
+
+## How It Works
+
+The `shell` option specifies the executable to spawn. quarto-term then:
+
+1. Starts the shell with the given `shell-args`
+2. Sets `PS1` via the environment (for shells that support it)
+3. Waits for the configured `prompt` pattern to appear in output
+4. Sends commands and captures output between prompts
+
+For shells that don't use `PS1` (like fish or nushell), configure the prompt through the shell's own mechanism using `init` or `env`, and set `prompt` or `prompt-regex` to match it.
+
+## Configuration Tips
+
+When adding a new shell, you need:
+
+1. **`shell`** — the executable name or path
+2. **`shell-args`** — flags to suppress rc files (for reproducibility)
+3. **`prompt`** — a literal string that appears at the start of each prompt line
+4. **`prompt-regex`** — (optional) a regex override if the prompt is more complex
+5. **`init`** — (optional) commands to configure the shell's prompt
+
+For project-wide configuration in `_quarto.yml`:
+
+```yaml
+extensions:
+  term:
+    shell: fish
+    shell-args: ["--no-config", "-C", "function fish_prompt; echo -n '$ '; end"]
+    prompt: "$"
+```

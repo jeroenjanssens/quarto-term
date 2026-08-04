@@ -1,0 +1,57 @@
+---
+title: "Python"
+engine: markdown
+extensions:
+  term:
+    shell: python3
+    shell-args: ["-q"]
+    prompt: ">>>"
+    init: []
+    spacing: false
+    env:
+      PS2: "... "
+---
+
+Any REPL can be used as a "shell". For Python, set the prompt to match `>>>`:
+
+```yaml
+extensions:
+  term:
+    shell: python3
+    shell-args: ["-q"]
+    prompt: ">>>"
+```
+
+## Basic Usage
+
+```{term}
+import sys
+print(f"Hello from Python {sys.version.split()[0]}")
+```
+
+## List Comprehensions
+
+```{term}
+squares = [x**2 for x in range(1, 11)]
+print(squares)
+```
+
+## Dictionaries
+
+```{term}
+data = {"name": "quarto-term", "version": "0.1.0", "shells": 6}
+for key, value in data.items():
+    print(f"  {key}: {value}")
+```
+
+## Multi-Line Expressions
+
+```{term}
+def fibonacci(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+
+[fibonacci(i) for i in range(10)]
+```

@@ -1,0 +1,53 @@
+---
+title: "Nushell"
+engine: markdown
+extensions:
+  term:
+    shell: nu
+    shell-args: ["--no-config-file", "--env-config", "shells/nu-env.nu"]
+    prompt: ">"
+    init: []
+    spacing: false
+---
+
+Nushell uses `$env.PROMPT_COMMAND` for prompt configuration. Pass a minimal env config file via `--env-config`:
+
+```yaml
+extensions:
+  term:
+    shell: nu
+    shell-args: ["--no-config-file", "--env-config", "shells/nu-env.nu"]
+    prompt: ">"
+```
+
+The env config file (`shells/nu-env.nu`):
+
+```nu
+$env.PROMPT_COMMAND = {|| "> " }
+$env.PROMPT_INDICATOR = ""
+$env.PROMPT_COMMAND_RIGHT = {|| "" }
+```
+
+## Basic Usage
+
+```{term}
+echo "Hello from Nushell"
+```
+
+## Structured Data
+
+```{term}
+[[name, age]; [Alice, 30], [Bob, 25], [Carol, 35]] | where age > 26
+```
+
+## Pipelines
+
+```{term}
+[1 2 3 4 5] | each { |x| $x * $x }
+```
+
+## Math
+
+```{term}
+[10 20 30 40 50] | math avg
+```

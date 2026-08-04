@@ -259,7 +259,10 @@ local function extract_config(meta)
       local parts = {}
       for _, el in ipairs(inlines) do
         if el.t == "Str" then
-          table.insert(parts, el.text)
+          -- Reverse pandoc smart typography on config values:
+          -- em-dash (U+2014) back to ---, en-dash (U+2013) back to --
+          local text = el.text:gsub("\xe2\x80\x94", "---"):gsub("\xe2\x80\x93", "--")
+          table.insert(parts, text)
         elseif el.t == "Space" then
           table.insert(parts, " ")
         elseif el.t == "Code" then
@@ -899,7 +902,7 @@ function Pandoc(doc)
         io.stderr:write("quarto-term: cell " .. pos.cell_i .. " error: " .. tostring(result.error) .. "\n")
       end
       if pos.include == false then
-        doc.blocks[pos.block_i] = pandoc.Null()
+        doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, "")
       else
         local content = result.html
         if type(content) == "string" and content ~= "" then
@@ -915,7 +918,7 @@ function Pandoc(doc)
           end
           doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
         else
-          doc.blocks[pos.block_i] = pandoc.Null()
+          doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, "")
         end
       end
     end
