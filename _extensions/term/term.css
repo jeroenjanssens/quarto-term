@@ -84,9 +84,8 @@ pre.term-source code span {
 .term-prompt {
   user-select: none;
   -webkit-user-select: none;
-}
-.term-prompt::before {
-  content: attr(data-prompt);
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 /* Window chrome */

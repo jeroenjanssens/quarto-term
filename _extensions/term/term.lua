@@ -1186,6 +1186,18 @@ function Pandoc(doc)
       -- Copy button script
       quarto.doc.include_text("after-body", [[<script>
 (function() {
+  function getTextWithoutPrompts(el) {
+    var text = '';
+    el.childNodes.forEach(function(node) {
+      if (node.nodeType === 3) {
+        text += node.textContent;
+      } else if (node.nodeType === 1) {
+        if (node.classList && node.classList.contains('term-prompt')) return;
+        text += getTextWithoutPrompts(node);
+      }
+    });
+    return text;
+  }
   function addCopyButtons() {
     var pres = document.querySelectorAll('pre.term-output, pre.term-screen, pre.term-source');
     pres.forEach(function(pre) {
@@ -1199,7 +1211,7 @@ function Pandoc(doc)
       btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M3.5 10.5h-1a1 1 0 01-1-1v-7a1 1 0 011-1h7a1 1 0 011 1v1"/></svg>';
       btn.addEventListener('click', function() {
         var code = pre.querySelector('code');
-        var text = code ? code.innerText : pre.innerText;
+        var text = getTextWithoutPrompts(code || pre);
         navigator.clipboard.writeText(text).then(function() {
           btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"/></svg>';
           setTimeout(function() {
@@ -1210,6 +1222,22 @@ function Pandoc(doc)
       wrap.appendChild(btn);
     });
   }
+  document.addEventListener('copy', function(e) {
+    var sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    var range = sel.getRangeAt(0);
+    var container = range.commonAncestorContainer;
+    if (container.nodeType === 3) container = container.parentNode;
+    var pre = container.closest && container.closest('pre.term-output, pre.term-screen');
+    if (!pre) return;
+    var fragment = range.cloneContents();
+    var div = document.createElement('div');
+    div.appendChild(fragment);
+    var prompts = div.querySelectorAll('.term-prompt');
+    prompts.forEach(function(p) { p.remove(); });
+    e.clipboardData.setData('text/plain', div.textContent);
+    e.preventDefault();
+  });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', addCopyButtons);
   } else {
