@@ -66,6 +66,37 @@ pub struct Config {
     pub verbose: bool,
     #[serde(default)]
     pub trailing_spaces: bool,
+    #[serde(default)]
+    pub docker: Option<DockerConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct DockerConfig {
+    pub image: String,
+    #[serde(default = "default_pull_policy")]
+    pub pull: String,
+    #[serde(default)]
+    pub platform: Option<String>,
+    #[serde(default)]
+    pub workdir: Option<String>,
+    #[serde(default)]
+    pub user: Option<String>,
+    #[serde(default)]
+    pub network: Option<String>,
+    #[serde(default)]
+    pub memory: Option<String>,
+    #[serde(default)]
+    pub cpus: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub ports: Vec<String>,
+    #[serde(default)]
+    pub volumes: Vec<String>,
+    #[serde(default)]
+    pub env: HashMap<String, String>,
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -299,6 +330,10 @@ fn default_speed() -> f64 {
     60.0
 }
 
+fn default_pull_policy() -> String {
+    "missing".to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -429,5 +464,58 @@ mod tests {
         assert_eq!(lo.delay, None);
         assert_eq!(lo.hold, None);
         assert_eq!(lo.expect_prompt, None);
+    }
+
+    #[test]
+    fn docker_config_minimal() {
+        let json = r#"{"config":{"docker":{"image":"python:3.12"}},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        let docker = req.config.docker.unwrap();
+        assert_eq!(docker.image, "python:3.12");
+        assert_eq!(docker.pull, "missing");
+        assert!(docker.volumes.is_empty());
+        assert!(docker.ports.is_empty());
+        assert!(docker.args.is_empty());
+        assert!(docker.platform.is_none());
+        assert!(docker.workdir.is_none());
+        assert!(docker.user.is_none());
+        assert!(docker.network.is_none());
+        assert!(docker.memory.is_none());
+        assert!(docker.cpus.is_none());
+        assert!(docker.name.is_none());
+    }
+
+    #[test]
+    fn docker_config_full() {
+        let json = r#"{"config":{"docker":{"image":"ubuntu:22.04","platform":"linux/amd64","pull":"always","workdir":"/app","user":"1000:1000","network":"none","memory":"256m","cpus":"0.5","name":"test-ctr","ports":["8080:8080"],"volumes":["/host/data:/data"],"args":["--read-only"],"env":{"FOO":"bar"}}},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        let docker = req.config.docker.unwrap();
+        assert_eq!(docker.image, "ubuntu:22.04");
+        assert_eq!(docker.platform.as_deref(), Some("linux/amd64"));
+        assert_eq!(docker.pull, "always");
+        assert_eq!(docker.workdir.as_deref(), Some("/app"));
+        assert_eq!(docker.user.as_deref(), Some("1000:1000"));
+        assert_eq!(docker.network.as_deref(), Some("none"));
+        assert_eq!(docker.memory.as_deref(), Some("256m"));
+        assert_eq!(docker.cpus.as_deref(), Some("0.5"));
+        assert_eq!(docker.name.as_deref(), Some("test-ctr"));
+        assert_eq!(docker.ports, vec!["8080:8080"]);
+        assert_eq!(docker.volumes, vec!["/host/data:/data"]);
+        assert_eq!(docker.args, vec!["--read-only"]);
+        assert_eq!(docker.env.get("FOO").map(|s| s.as_str()), Some("bar"));
+    }
+
+    #[test]
+    fn docker_config_absent() {
+        let json = r#"{"config":{},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        assert!(req.config.docker.is_none());
+    }
+
+    #[test]
+    fn docker_config_pull_default() {
+        let json = r#"{"config":{"docker":{"image":"alpine"}},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.config.docker.unwrap().pull, "missing");
     }
 }
