@@ -503,6 +503,79 @@ local function extract_config(meta)
   end
   config.ps2 = config.env["PS2"]
 
+  -- Docker config block
+  if term_meta["docker"] then
+    local docker_meta = term_meta["docker"]
+    if type(docker_meta) == "table" then
+      local docker = {}
+      if docker_meta["image"] then docker.image = meta_str(docker_meta["image"]) end
+      if docker_meta["pull"] then docker.pull = meta_str(docker_meta["pull"]) end
+      if docker_meta["platform"] then docker.platform = meta_str(docker_meta["platform"]) end
+      if docker_meta["workdir"] then docker.workdir = meta_str(docker_meta["workdir"]) end
+      if docker_meta["user"] then docker.user = meta_str(docker_meta["user"]) end
+      if docker_meta["network"] then docker.network = meta_str(docker_meta["network"]) end
+      if docker_meta["memory"] then docker.memory = meta_str(docker_meta["memory"]) end
+      if docker_meta["cpus"] then docker.cpus = meta_str(docker_meta["cpus"]) end
+      if docker_meta["name"] then docker.name = meta_str(docker_meta["name"]) end
+      -- ports
+      if docker_meta["ports"] then
+        docker.ports = {}
+        local ports_val = docker_meta["ports"]
+        if type(ports_val) == "table" then
+          for i = 1, #ports_val do
+            table.insert(docker.ports, meta_str(ports_val[i]))
+          end
+        end
+      end
+      -- args (escape hatch)
+      if docker_meta["args"] then
+        docker.args = {}
+        local args_val = docker_meta["args"]
+        if type(args_val) == "table" then
+          for i = 1, #args_val do
+            table.insert(docker.args, meta_str(args_val[i]))
+          end
+        end
+      end
+      -- volumes: resolve relative host paths
+      if docker_meta["volumes"] then
+        local cwd = pandoc.system.get_working_directory()
+        docker.volumes = {}
+        local vols_val = docker_meta["volumes"]
+        if type(vols_val) == "table" then
+          for i = 1, #vols_val do
+            local v = meta_str(vols_val[i])
+            local host, rest = v:match("^([^:]+)(:.*)$")
+            if host and not host:match("^/") then
+              host = cwd .. "/" .. host
+            end
+            if host then
+              table.insert(docker.volumes, host .. rest)
+            else
+              table.insert(docker.volumes, v)
+            end
+          end
+        end
+      end
+      -- env under docker block
+      if docker_meta["env"] then
+        local env_val = docker_meta["env"]
+        if type(env_val) == "table" then
+          docker.env = {}
+          for k, v in pairs(env_val) do
+            if type(k) == "string" then
+              docker.env[k] = meta_str(v)
+            end
+          end
+        end
+      end
+      -- Only set config.docker if image is present
+      if docker.image then
+        config.docker = docker
+      end
+    end
+  end
+
   return config
 end
 
@@ -766,6 +839,17 @@ function Pandoc(doc)
   end
   if not config.record or #config.record == 0 then
     config.record = pandoc.List({})
+  end
+  if config.docker then
+    if not config.docker.ports or #config.docker.ports == 0 then
+      config.docker.ports = pandoc.List({})
+    end
+    if not config.docker.volumes or #config.docker.volumes == 0 then
+      config.docker.volumes = pandoc.List({})
+    end
+    if not config.docker.args or #config.docker.args == 0 then
+      config.docker.args = pandoc.List({})
+    end
   end
   for _, cell in ipairs(cells) do
     if #cell.line_options == 0 then

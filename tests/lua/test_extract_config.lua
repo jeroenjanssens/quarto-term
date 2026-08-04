@@ -311,6 +311,69 @@ do
   assert_eq(config.trailing_spaces, true, "style.trailing_spaces snake_case")
 end
 
+-- Test: docker config with image
+do
+  local meta = { extensions = { term = { docker = { image = "python:3.12" } } } }
+  local config = extract_config(meta)
+  assert_not_nil(config.docker, "docker config present")
+  assert_eq(config.docker.image, "python:3.12", "docker.image")
+end
+
+-- Test: docker config without image is ignored
+do
+  local meta = { extensions = { term = { docker = { platform = "linux/amd64" } } } }
+  local config = extract_config(meta)
+  assert_eq(config.docker, nil, "docker without image is nil")
+end
+
+-- Test: docker config with all fields
+do
+  local meta = { extensions = { term = { docker = {
+    image = "ubuntu:22.04",
+    pull = "always",
+    platform = "linux/amd64",
+    workdir = "/app",
+    user = "1000:1000",
+    network = "none",
+    memory = "512m",
+    cpus = "2.0",
+    name = "my-ctr",
+    ports = { "8080:8080" },
+    args = { "--read-only" },
+    env = { FOO = "bar" },
+  } } } }
+  local config = extract_config(meta)
+  assert_not_nil(config.docker, "docker full config present")
+  assert_eq(config.docker.image, "ubuntu:22.04", "docker.image full")
+  assert_eq(config.docker.pull, "always", "docker.pull")
+  assert_eq(config.docker.platform, "linux/amd64", "docker.platform")
+  assert_eq(config.docker.workdir, "/app", "docker.workdir")
+  assert_eq(config.docker.user, "1000:1000", "docker.user")
+  assert_eq(config.docker.network, "none", "docker.network")
+  assert_eq(config.docker.memory, "512m", "docker.memory")
+  assert_eq(config.docker.cpus, "2.0", "docker.cpus")
+  assert_eq(config.docker.name, "my-ctr", "docker.name")
+  assert_eq(config.docker.ports[1], "8080:8080", "docker.ports[1]")
+  assert_eq(config.docker.args[1], "--read-only", "docker.args[1]")
+  assert_eq(config.docker.env["FOO"], "bar", "docker.env.FOO")
+end
+
+-- Test: docker volumes resolve relative paths
+do
+  local meta = { extensions = { term = { docker = {
+    image = "alpine",
+    volumes = { "./data:/data", "/abs/path:/abs:ro" },
+  } } } }
+  local config = extract_config(meta)
+  assert_not_nil(config.docker, "docker with volumes present")
+  assert_eq(#config.docker.volumes, 2, "two volumes")
+  -- Relative path should have been made absolute (starts with /)
+  assert_eq(config.docker.volumes[1]:sub(1, 1), "/", "relative volume resolved to absolute")
+  assert_eq(config.docker.volumes[1]:match(":/data$") ~= nil, true, "volume container path preserved")
+  -- Absolute path should be unchanged
+  assert_eq(config.docker.volumes[2], "/abs/path:/abs:ro", "absolute volume unchanged")
+end
+
 -- Report
 io.stderr:write(string.format("\nextract_config: %d passed, %d failed\n", pass_count, fail_count))
 if fail_count > 0 then
