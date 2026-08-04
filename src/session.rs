@@ -12,7 +12,7 @@ use crate::keymap;
 use crate::latex;
 use crate::markdown;
 use crate::protocol::{
-    AnnotationSpec, CellResult, Config, DockerConfig, EchoMode, HighlightSpec, InputCell,
+    CellResult, Config, DockerConfig, EchoMode, HighlightSpec, InputCell, LineSpec,
 };
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
@@ -599,9 +599,8 @@ impl PtySession {
                 apply_spacing(&mut lines, &self.config.prompt);
             }
 
-            let mut combined_remove = self.config.remove.clone();
-            combined_remove.extend(cell.options.remove.iter().cloned());
-            apply_remove(&mut lines, &combined_remove);
+            apply_remove(&mut lines, &cell.options.remove);
+            apply_truncate(&mut lines, &cell.options.truncate, format);
             apply_callouts(&mut lines, &cell.options.callouts);
 
             let theme_bg = cell.options.theme_bg.as_deref().or(self.config.theme_bg.as_deref());
@@ -854,32 +853,97 @@ fn apply_spacing(lines: &mut Vec<RenderedLine>, prompt: &str) {
     }
 }
 
-fn apply_remove(lines: &mut Vec<RenderedLine>, specs: &[AnnotationSpec]) {
-    if specs.is_empty() {
-        return;
+fn resolve_single_index(i: i32, len: usize) -> Option<usize> {
+    if i > 0 {
+        let idx = (i as usize).saturating_sub(1);
+        if idx < len { Some(idx) } else { None }
+    } else if i < 0 {
+        let idx = len as i32 + i;
+        if idx >= 0 && (idx as usize) < len { Some(idx as usize) } else { None }
+    } else {
+        None
+    }
+}
+
+fn parse_range_spec(s: &str, len: usize) -> Vec<usize> {
+    let parts: Vec<&str> = s.splitn(2, ':').collect();
+    if parts.len() != 2 {
+        return Vec::new();
     }
 
-    let mut to_remove = Vec::new();
+    let start_str = parts[0].trim();
+    let end_str = parts[1].trim();
+
+    let start = if start_str.is_empty() {
+        0i32
+    } else if let Ok(n) = start_str.parse::<i32>() {
+        n
+    } else {
+        return Vec::new();
+    };
+
+    let end = if end_str.is_empty() {
+        len as i32
+    } else if let Ok(n) = end_str.parse::<i32>() {
+        n
+    } else {
+        return Vec::new();
+    };
+
+    let resolve = |v: i32| -> usize {
+        if v > 0 {
+            (v as usize).saturating_sub(1)
+        } else if v < 0 {
+            let r = len as i32 + v;
+            if r >= 0 { r as usize } else { 0 }
+        } else {
+            0
+        }
+    };
+
+    let start_idx = resolve(start);
+    let end_idx = if end_str.is_empty() {
+        len
+    } else {
+        resolve(end) + 1
+    };
+
+    let start_idx = start_idx.min(len);
+    let end_idx = end_idx.min(len);
+
+    if start_idx >= end_idx {
+        return Vec::new();
+    }
+
+    (start_idx..end_idx).collect()
+}
+
+fn is_range_syntax(s: &str) -> bool {
+    s.contains(':') && s.bytes().all(|b| b.is_ascii_digit() || b == b':' || b == b'-' || b == b' ')
+}
+
+fn resolve_line_specs(specs: &[LineSpec], lines: &[RenderedLine]) -> Vec<usize> {
+    let len = lines.len();
+    let mut indices = Vec::new();
 
     for spec in specs {
         match spec {
-            AnnotationSpec::Index(i) => {
-                let idx = if *i > 0 {
-                    (*i as usize).saturating_sub(1)
-                } else if *i < 0 {
-                    (lines.len() as i32 + i) as usize
-                } else {
-                    continue;
-                };
-                if idx < lines.len() {
-                    to_remove.push(idx);
+            LineSpec::Index(i) => {
+                if let Some(idx) = resolve_single_index(*i, len) {
+                    indices.push(idx);
                 }
             }
-            AnnotationSpec::Pattern(pat) => {
-                if let Ok(re) = Regex::new(pat) {
+            LineSpec::Expr(s) => {
+                if let Ok(n) = s.parse::<i32>() {
+                    if let Some(idx) = resolve_single_index(n, len) {
+                        indices.push(idx);
+                    }
+                } else if is_range_syntax(s) {
+                    indices.extend(parse_range_spec(s, len));
+                } else if let Ok(re) = Regex::new(s) {
                     for (idx, line) in lines.iter().enumerate() {
                         if re.is_match(&line.text) {
-                            to_remove.push(idx);
+                            indices.push(idx);
                         }
                     }
                 }
@@ -887,14 +951,72 @@ fn apply_remove(lines: &mut Vec<RenderedLine>, specs: &[AnnotationSpec]) {
         }
     }
 
-    to_remove.sort_unstable();
-    to_remove.dedup();
+    indices.sort_unstable();
+    indices.dedup();
+    indices
+}
+
+fn apply_remove(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
+    if specs.is_empty() {
+        return;
+    }
+    let to_remove = resolve_line_specs(specs, lines);
     for idx in to_remove.into_iter().rev() {
         lines.remove(idx);
     }
 }
 
-fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[AnnotationSpec]) {
+fn apply_truncate(lines: &mut Vec<RenderedLine>, specs: &[LineSpec], format: &str) {
+    if specs.is_empty() {
+        return;
+    }
+    let to_truncate = resolve_line_specs(specs, lines);
+    if to_truncate.is_empty() {
+        return;
+    }
+
+    // Group consecutive indices into runs
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    let mut run_start = to_truncate[0];
+    let mut run_end = to_truncate[0];
+
+    for &idx in &to_truncate[1..] {
+        if idx == run_end + 1 {
+            run_end = idx;
+        } else {
+            runs.push((run_start, run_end));
+            run_start = idx;
+            run_end = idx;
+        }
+    }
+    runs.push((run_start, run_end));
+
+    // Process runs from end to start to preserve indices
+    for &(start, end) in runs.iter().rev() {
+        let count = end - start + 1;
+        let msg = format_truncation_message(count, format);
+        // Remove lines in this run (from end to start+1), keep start for the message
+        for idx in (start + 1..=end).rev() {
+            lines.remove(idx);
+        }
+        // Replace the first line of the run with the message
+        lines[start] = msg;
+    }
+}
+
+fn format_truncation_message(count: usize, format: &str) -> RenderedLine {
+    let word = if count == 1 { "line" } else { "lines" };
+    let text = format!("[{} {} truncated]", count, word);
+    let html = match format {
+        "latex" => format!("\\textit{{{}}}", text),
+        "typst" => format!("_{}_", text),
+        "markdown" => format!("*{}*", text),
+        _ => format!("<span class=\"term-truncated\">{}</span>", text),
+    };
+    RenderedLine { html, text }
+}
+
+fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
     if specs.is_empty() {
         return;
     }
@@ -902,23 +1024,28 @@ fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[AnnotationSpec]) {
     for (n, spec) in specs.iter().enumerate() {
         let annotation_num = n + 1;
         match spec {
-            AnnotationSpec::Index(i) => {
-                let idx = if *i > 0 {
-                    (*i as usize).saturating_sub(1)
-                } else if *i < 0 {
-                    (lines.len() as i32 + i) as usize
-                } else {
-                    continue;
-                };
-                if let Some(line) = lines.get_mut(idx) {
-                    line.html = format!(
-                        "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
-                        line.html, annotation_num
-                    );
+            LineSpec::Index(i) => {
+                if let Some(idx) = resolve_single_index(*i, lines.len()) {
+                    if let Some(line) = lines.get_mut(idx) {
+                        line.html = format!(
+                            "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
+                            line.html, annotation_num
+                        );
+                    }
                 }
             }
-            AnnotationSpec::Pattern(pat) => {
-                if let Ok(re) = Regex::new(pat) {
+            LineSpec::Expr(s) => {
+                if is_range_syntax(s) {
+                    let indices = parse_range_spec(s, lines.len());
+                    if let Some(&idx) = indices.first() {
+                        if let Some(line) = lines.get_mut(idx) {
+                            line.html = format!(
+                                "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
+                                line.html, annotation_num
+                            );
+                        }
+                    }
+                } else if let Ok(re) = Regex::new(s) {
                     for line in lines.iter_mut() {
                         if re.is_match(&line.text) {
                             line.html = format!(
@@ -1090,7 +1217,7 @@ mod tests {
     #[test]
     fn apply_remove_positive_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_remove(&mut lines, &[AnnotationSpec::Index(1)]);
+        apply_remove(&mut lines, &[LineSpec::Index(1)]);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0].text, "b");
     }
@@ -1098,7 +1225,7 @@ mod tests {
     #[test]
     fn apply_remove_negative_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_remove(&mut lines, &[AnnotationSpec::Index(-1)]);
+        apply_remove(&mut lines, &[LineSpec::Index(-1)]);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[1].text, "b");
     }
@@ -1106,14 +1233,14 @@ mod tests {
     #[test]
     fn apply_remove_zero_index_skipped() {
         let mut lines = vec![make_rendered("a"), make_rendered("b")];
-        apply_remove(&mut lines, &[AnnotationSpec::Index(0)]);
+        apply_remove(&mut lines, &[LineSpec::Index(0)]);
         assert_eq!(lines.len(), 2);
     }
 
     #[test]
     fn apply_remove_out_of_bounds() {
         let mut lines = vec![make_rendered("a")];
-        apply_remove(&mut lines, &[AnnotationSpec::Index(99)]);
+        apply_remove(&mut lines, &[LineSpec::Index(99)]);
         assert_eq!(lines.len(), 1);
     }
 
@@ -1124,7 +1251,7 @@ mod tests {
             make_rendered("remove_me"),
             make_rendered("also keep"),
         ];
-        apply_remove(&mut lines, &[AnnotationSpec::Pattern("remove_me".to_string())]);
+        apply_remove(&mut lines, &[LineSpec::Expr("remove_me".to_string())]);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0].text, "keep this");
         assert_eq!(lines[1].text, "also keep");
@@ -1138,7 +1265,7 @@ mod tests {
             make_rendered("c"),
             make_rendered("d"),
         ];
-        apply_remove(&mut lines, &[AnnotationSpec::Index(1), AnnotationSpec::Index(-1)]);
+        apply_remove(&mut lines, &[LineSpec::Index(1), LineSpec::Index(-1)]);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0].text, "b");
         assert_eq!(lines[1].text, "c");
@@ -1156,7 +1283,7 @@ mod tests {
     #[test]
     fn apply_callouts_positive_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b")];
-        apply_callouts(&mut lines, &[AnnotationSpec::Index(1)]);
+        apply_callouts(&mut lines, &[LineSpec::Index(1)]);
         assert!(lines[0].html.contains("term-callout"));
         assert!(lines[0].html.contains("&lt;1&gt;"));
         assert!(!lines[1].html.contains("term-callout"));
@@ -1165,7 +1292,7 @@ mod tests {
     #[test]
     fn apply_callouts_negative_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_callouts(&mut lines, &[AnnotationSpec::Index(-1)]);
+        apply_callouts(&mut lines, &[LineSpec::Index(-1)]);
         assert!(lines[2].html.contains("term-callout"));
         assert!(lines[2].html.contains("&lt;1&gt;"));
     }
@@ -1177,7 +1304,7 @@ mod tests {
             make_rendered("target line"),
             make_rendered("another"),
         ];
-        apply_callouts(&mut lines, &[AnnotationSpec::Pattern("target".to_string())]);
+        apply_callouts(&mut lines, &[LineSpec::Expr("target".to_string())]);
         assert!(lines[1].html.contains("term-callout"));
         assert!(!lines[2].html.contains("term-callout"));
     }
@@ -1185,9 +1312,155 @@ mod tests {
     #[test]
     fn apply_callouts_sequential_numbering() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_callouts(&mut lines, &[AnnotationSpec::Index(1), AnnotationSpec::Index(3)]);
+        apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(3)]);
         assert!(lines[0].html.contains("&lt;1&gt;"));
         assert!(lines[2].html.contains("&lt;2&gt;"));
+    }
+
+    // --- parse_range_spec ---
+
+    #[test]
+    fn parse_range_start_end() {
+        assert_eq!(parse_range_spec("3:7", 10), vec![2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn parse_range_open_start() {
+        assert_eq!(parse_range_spec(":3", 10), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn parse_range_open_end() {
+        assert_eq!(parse_range_spec("8:", 10), vec![7, 8, 9]);
+    }
+
+    #[test]
+    fn parse_range_negative_start() {
+        assert_eq!(parse_range_spec("-3:", 10), vec![7, 8, 9]);
+    }
+
+    #[test]
+    fn parse_range_negative_both() {
+        assert_eq!(parse_range_spec("-5:-2", 10), vec![5, 6, 7, 8]);
+    }
+
+    #[test]
+    fn parse_range_out_of_bounds_fully() {
+        assert_eq!(parse_range_spec("8:20", 5), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn parse_range_partially_out_of_bounds() {
+        assert_eq!(parse_range_spec("4:20", 5), vec![3, 4]);
+    }
+
+    #[test]
+    fn parse_range_invalid() {
+        assert_eq!(parse_range_spec("abc:def", 10), Vec::<usize>::new());
+    }
+
+    // --- resolve_line_specs with ranges ---
+
+    #[test]
+    fn resolve_specs_range() {
+        let lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c"),
+                         make_rendered("d"), make_rendered("e")];
+        let specs = vec![LineSpec::Expr("2:4".to_string())];
+        assert_eq!(resolve_line_specs(&specs, &lines), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn resolve_specs_mixed() {
+        let lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c"),
+                         make_rendered("d"), make_rendered("e")];
+        let specs = vec![LineSpec::Index(1), LineSpec::Expr("-1:".to_string())];
+        assert_eq!(resolve_line_specs(&specs, &lines), vec![0, 4]);
+    }
+
+    #[test]
+    fn resolve_specs_regex() {
+        let lines = vec![make_rendered("hello"), make_rendered("world"), make_rendered("hello again")];
+        let specs = vec![LineSpec::Expr("^hello".to_string())];
+        assert_eq!(resolve_line_specs(&specs, &lines), vec![0, 2]);
+    }
+
+    // --- apply_truncate ---
+
+    #[test]
+    fn apply_truncate_empty_specs() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b")];
+        apply_truncate(&mut lines, &[], "html");
+        assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn apply_truncate_single_run() {
+        let mut lines: Vec<_> = (1..=10).map(|i| make_rendered(&format!("line {}", i))).collect();
+        apply_truncate(&mut lines, &[LineSpec::Expr("3:7".to_string())], "html");
+        assert_eq!(lines.len(), 6);
+        assert_eq!(lines[0].text, "line 1");
+        assert_eq!(lines[1].text, "line 2");
+        assert!(lines[2].html.contains("term-truncated"));
+        assert!(lines[2].text.contains("5 lines truncated"));
+        assert_eq!(lines[3].text, "line 8");
+        assert_eq!(lines[4].text, "line 9");
+        assert_eq!(lines[5].text, "line 10");
+    }
+
+    #[test]
+    fn apply_truncate_two_runs() {
+        let mut lines: Vec<_> = (1..=10).map(|i| make_rendered(&format!("line {}", i))).collect();
+        apply_truncate(&mut lines, &[LineSpec::Expr(":2".to_string()), LineSpec::Expr("-2:".to_string())], "html");
+        assert_eq!(lines.len(), 8);
+        assert!(lines[0].text.contains("2 lines truncated"));
+        assert_eq!(lines[1].text, "line 3");
+        assert_eq!(lines[6].text, "line 8");
+        assert!(lines[7].text.contains("2 lines truncated"));
+    }
+
+    #[test]
+    fn apply_truncate_adjacent_merge() {
+        let mut lines: Vec<_> = (1..=10).map(|i| make_rendered(&format!("line {}", i))).collect();
+        apply_truncate(&mut lines, &[LineSpec::Expr("2:4".to_string()), LineSpec::Expr("5:6".to_string())], "html");
+        assert_eq!(lines.len(), 6);
+        assert_eq!(lines[0].text, "line 1");
+        assert!(lines[1].text.contains("5 lines truncated"));
+        assert_eq!(lines[2].text, "line 7");
+    }
+
+    #[test]
+    fn apply_truncate_single_line() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        apply_truncate(&mut lines, &[LineSpec::Index(2)], "html");
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[0].text, "a");
+        assert!(lines[1].text.contains("1 line truncated"));
+        assert_eq!(lines[2].text, "c");
+    }
+
+    #[test]
+    fn apply_truncate_latex_format() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        apply_truncate(&mut lines, &[LineSpec::Index(2)], "latex");
+        assert!(lines[1].html.contains("\\textit"));
+    }
+
+    #[test]
+    fn apply_truncate_markdown_format() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        apply_truncate(&mut lines, &[LineSpec::Index(2)], "markdown");
+        assert_eq!(lines[1].html, "*[1 line truncated]*");
+    }
+
+    // --- apply_remove with ranges ---
+
+    #[test]
+    fn apply_remove_range() {
+        let mut lines: Vec<_> = (1..=5).map(|i| make_rendered(&format!("line {}", i))).collect();
+        apply_remove(&mut lines, &[LineSpec::Expr("2:4".to_string())]);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].text, "line 1");
+        assert_eq!(lines[1].text, "line 5");
     }
 
     // --- html_escape_basic ---

@@ -174,6 +174,20 @@ do
   assert_eq(cell.options.remove[2], "pattern", "remove[2] = pattern")
 end
 
+-- Test: truncate as list
+do
+  local cell = build_cell(mock_block('#| truncate: ["3:7", ":5", -1]\necho hi\n'), 1, {})
+  assert_eq(cell.options.truncate[1], "3:7", "truncate[1] = 3:7")
+  assert_eq(cell.options.truncate[2], ":5", "truncate[2] = :5")
+  assert_eq(cell.options.truncate[3], -1, "truncate[3] = -1")
+end
+
+-- Test: truncate defaults to empty
+do
+  local cell = build_cell(mock_block("echo hi\n"), 1, {})
+  assert_eq(#cell.options.truncate, 0, "truncate defaults to empty list")
+end
+
 -- Test: highlight
 do
   local cell = build_cell(mock_block("#| highlight: python\nprint('hi')\n"), 1, {})

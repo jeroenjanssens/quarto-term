@@ -75,3 +75,8 @@ pre.term-source code span {
   color: var(--term-8);
   font-style: italic;
 }
+
+.term-truncated {
+  font-style: italic;
+  opacity: 0.7;
+}

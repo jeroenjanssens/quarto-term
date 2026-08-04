@@ -44,8 +44,6 @@ pub struct Config {
     pub keep_last_prompt: bool,
     #[serde(default = "default_highlight")]
     pub highlight: HighlightSpec,
-    #[serde(default)]
-    pub remove: Vec<AnnotationSpec>,
     #[serde(default, alias = "font")]
     pub font_family: Option<String>,
     #[serde(default, alias = "fontsize")]
@@ -151,9 +149,11 @@ pub struct CellOptions {
     #[serde(default)]
     pub theme_fg: Option<String>,
     #[serde(default)]
-    pub callouts: Vec<AnnotationSpec>,
+    pub callouts: Vec<LineSpec>,
     #[serde(default)]
-    pub remove: Vec<AnnotationSpec>,
+    pub remove: Vec<LineSpec>,
+    #[serde(default)]
+    pub truncate: Vec<LineSpec>,
     #[serde(default)]
     pub highlight: Option<HighlightSpec>,
     #[serde(default)]
@@ -209,10 +209,11 @@ pub enum EchoMode {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
-pub enum AnnotationSpec {
+pub enum LineSpec {
     Index(i32),
-    Pattern(String),
+    Expr(String),
 }
+
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
@@ -375,15 +376,28 @@ mod tests {
     }
 
     #[test]
-    fn annotation_spec_index() {
-        let v: AnnotationSpec = serde_json::from_str("1").unwrap();
-        matches!(v, AnnotationSpec::Index(1));
+    fn line_spec_index() {
+        let v: LineSpec = serde_json::from_str("1").unwrap();
+        assert!(matches!(v, LineSpec::Index(1)));
     }
 
     #[test]
-    fn annotation_spec_pattern() {
-        let v: AnnotationSpec = serde_json::from_str(r#""hello""#).unwrap();
-        matches!(v, AnnotationSpec::Pattern(s) if s == "hello");
+    fn line_spec_expr_pattern() {
+        let v: LineSpec = serde_json::from_str(r#""hello""#).unwrap();
+        assert!(matches!(v, LineSpec::Expr(ref s) if s == "hello"));
+    }
+
+    #[test]
+    fn line_spec_expr_range() {
+        let v: LineSpec = serde_json::from_str(r#""3:7""#).unwrap();
+        assert!(matches!(v, LineSpec::Expr(ref s) if s == "3:7"));
+    }
+
+    #[test]
+    fn truncate_field_deserializes() {
+        let json = r#"{"config":{},"cells":[{"id":1,"code":"x","options":{"truncate":["3:7",":5",-1]},"line_options":[],"source_lines":[]}]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.cells[0].options.truncate.len(), 3);
     }
 
     #[test]

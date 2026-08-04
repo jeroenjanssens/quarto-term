@@ -9,7 +9,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 
 | Option | Project | Document | Cell | Line | Default | Description |
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
-| `callouts` | | | x | | `[]` | Line indices or patterns to annotate with callout markers |
+| `callouts` | | | x | | `[]` | Line specs to annotate with callout markers |
 | `delay` | x | x | x | x | `0.1` | Seconds to wait before executing a line |
 | `docker` | x | x | | | (none) | Run commands in a Docker container (see [Docker](docker.qmd)) |
 | `echo` | x | x | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
@@ -30,12 +30,13 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `prompt` | x | x | | | `$` | Literal prompt string (auto-sets `PS1`) |
 | `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection |
 | `record` | x | x | | | (none) | File path(s) to record session (`.cast` or `.termshow`) |
-| `remove` | x | x | x | | `[]` | Line indices or patterns to remove from output |
+| `remove` | | | x | | `[]` | Line specs to remove from output (indices, ranges, or regex) |
 | `scroll` | | | x | | `!fullscreen` | Include scrollback in capture |
 | `shell` | x | x | | | `zsh` | Shell to use |
 | `shell-args` | x | x | | | (auto) | Shell arguments |
 | `spacing` | x | x | x | | `false` | Add blank lines between commands in output |
 | `timeout` | x | x | x | x | `10.0` | Seconds to wait for prompt before error |
+| `truncate` | | | x | | `[]` | Line specs to truncate (replaced with "[N lines truncated]" message) |
 | `typing` | x | x | x | x | `false` | Human typing simulation |
 | `verbose` | x | x | | | `false` | Print execution details to stderr |
 
@@ -73,7 +74,6 @@ Set these under `extensions: term:` in your YAML front matter:
 | `echo` | `terminal` | Default output mode for cells |
 | `keep-last-prompt` | `false` | Default: keep trailing prompt in cell output |
 | `highlight` | `bash` | Default syntax highlighting language for `echo: source` cells |
-| `remove` | `[]` | Patterns to remove from all cells' output (merged with cell-level remove) |
 | `marker` | `#!` | Prefix for line option annotations |
 | `typing` | `false` | Human typing simulation (see below) |
 | `record` | (none) | File path to record session (`.cast` or `.termshow`) |
@@ -107,6 +107,9 @@ Set these with `#|` at the top of a cell:
 | `expect-prompt` | (from `enter`) | Default `expect-prompt` for all lines in this cell |
 | `highlight` | (from config) | Syntax highlighting language (for `echo: source`) |
 | `marker` | (from config) | Override line marker for this cell |
+| `remove` | `[]` | Line specs to remove from output |
+| `truncate` | `[]` | Line specs to truncate (replaced with "[N lines truncated]" message) |
+| `callouts` | `[]` | Line specs for callout annotations |
 | `style` | (from config) | Override style options for this cell (see [Styling](styling.qmd#per-cell-style)) |
 
 ## Line Options
@@ -129,6 +132,30 @@ ctrl-c #! literal: false, delay: 0.5
 | `hold` | `0.1` | Seconds to wait after executing (captures output) |
 | `timeout` | (from cell/config) | Seconds to wait for prompt after this line |
 | `typing` | (from cell/config) | Enable/disable typing simulation for this line (`true`/`false`) |
+
+## Line Specs
+
+The `remove`, `truncate`, and `callouts` options accept a list of **line specs** that identify lines in the rendered output (input + output combined). Line numbers refer to the original output before any removals or truncations.
+
+| Format | Example | Description |
+|--------|---------|-------------|
+| Integer | `3` | Line 3 (1-indexed) |
+| Negative integer | `-1` | Last line, `-2` second-to-last, etc. |
+| Range | `"3:7"` | Lines 3 through 7 (inclusive) |
+| Open start | `":5"` | First 5 lines (lines 1-5) |
+| Open end | `"5:"` | From line 5 to the end |
+| Negative range | `"-3:"` | Last 3 lines |
+| Regex | `"error"` | Lines matching the pattern |
+
+Examples:
+
+```yaml
+#| remove: [":2", -1]
+#| truncate: ["3:7"]
+#| callouts: [1, -1]
+```
+
+For `truncate`, removed lines are replaced with an italic "[N lines truncated]" message. Consecutive truncated lines are grouped into a single message.
 
 ## Special Keys
 

@@ -133,6 +133,37 @@ echo KEEPALSO
 ```' \
   "REMOVEME"
 
+run_test "truncate inserts message" \
+  '``` {.term}
+#| truncate: ["2:4"]
+echo line1
+echo line2
+echo line3
+echo line4
+echo line5
+```' \
+  "truncated"
+
+run_test_absent "truncate removes specified lines" \
+  '``` {.term}
+#| truncate: ["2:4"]
+echo line1
+echo line2
+echo line3
+echo line4
+echo line5
+```' \
+  "line2"
+
+run_test "remove with range" \
+  '``` {.term}
+#| remove: [":2"]
+echo first
+echo second
+echo third
+```' \
+  "third"
+
 # --- Special characters ---
 echo ""
 echo "Special characters:"

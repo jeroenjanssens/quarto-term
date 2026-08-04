@@ -380,16 +380,6 @@ local function extract_config(meta)
     if b ~= nil then config.highlight = b
     else config.highlight = meta_str(term_meta["highlight"]) end
   end
-  if term_meta["remove"] ~= nil then
-    local rv = term_meta["remove"]
-    if type(rv) == "table" and rv.t == nil and #rv > 0 then
-      config.remove = {}
-      for i = 1, #rv do table.insert(config.remove, meta_str(rv[i])) end
-    else
-      local s = meta_str(rv)
-      if s then config.remove = {s} end
-    end
-  end
 
   -- marker option (used only in Lua, not sent to Rust)
   if term_meta["marker"] then
@@ -619,6 +609,7 @@ local function build_cell(block, cell_id, config)
     fullscreen = false,
     callouts = pandoc.List({}),
     remove = pandoc.List({}),
+    truncate = pandoc.List({}),
   }
 
   local eval = cell_opts["eval"]
@@ -649,6 +640,7 @@ local function build_cell(block, cell_id, config)
   if cell_opts["hold"] ~= nil then options.hold = cell_opts["hold"] end
   if cell_opts["callouts"] ~= nil then options.callouts = cell_opts["callouts"] end
   if cell_opts["remove"] ~= nil then options.remove = cell_opts["remove"] end
+  if cell_opts["truncate"] ~= nil then options.truncate = cell_opts["truncate"] end
   if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end
 
   if cell_opts["literal"] ~= nil then options.literal = cell_opts["literal"] end
@@ -866,6 +858,9 @@ function Pandoc(doc)
     end
     if #cell.options.remove == 0 then
       cell.options.remove = pandoc.List({})
+    end
+    if #cell.options.truncate == 0 then
+      cell.options.truncate = pandoc.List({})
     end
   end
 
