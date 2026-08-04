@@ -218,10 +218,10 @@ do
   assert_eq(cell.options.truncate[1], 3, "truncate single[1] = 3")
 end
 
--- Test: remove with regex containing comma (no split)
+-- Test: regex with comma uses bracket syntax
 do
-  local cell = build_cell(mock_block('#| remove: foo,bar\necho hi\n'), 1, {})
-  assert_eq(#cell.options.remove, 1, "comma in regex stays as one item")
+  local cell = build_cell(mock_block('#| remove: ["foo,bar"]\necho hi\n'), 1, {})
+  assert_eq(#cell.options.remove, 1, "bracket syntax preserves comma in regex")
   assert_eq(cell.options.remove[1], "foo,bar", "regex with comma preserved")
 end
 

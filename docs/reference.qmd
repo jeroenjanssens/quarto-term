@@ -147,7 +147,7 @@ The `remove`, `truncate`, and `callouts` options accept a list of **line specs**
 | Negative range | `"-3:"` | Last 3 lines |
 | Regex | `"error"` | Lines matching the pattern |
 
-Values can be comma-separated or wrapped in brackets:
+Values are comma-separated:
 
 ```yaml
 #| truncate: 3:7
@@ -155,7 +155,7 @@ Values can be comma-separated or wrapped in brackets:
 #| callouts: 1, -1
 ```
 
-Bracket syntax also works: `#| truncate: ["3:7"]`.
+Use bracket syntax when a regex contains a comma: `#| remove: ["foo,bar"]`.
 
 For `truncate`, removed lines are replaced with an italic "[N lines truncated]" message. Consecutive truncated lines are grouped into a single message.
 

@@ -103,18 +103,8 @@ local function as_list(val)
   if type(val) == "number" then return {val} end
   if type(val) == "string" then
     local items = {}
-    local pos = 1
-    while pos <= #val do
-      local sep = val:find(", ", pos, true)
-      local item_str
-      if sep then
-        item_str = val:sub(pos, sep - 1)
-        pos = sep + 2
-      else
-        item_str = val:sub(pos)
-        pos = #val + 1
-      end
-      table.insert(items, coerce_value(item_str))
+    for item in val:gmatch("[^,]+") do
+      table.insert(items, coerce_value(item))
     end
     return items
   end
@@ -150,8 +140,29 @@ local function parse_cell_options(text, line_marker)
         local list_match = v:match("^%[(.*)%]$")
         if list_match then
           parsed_value = {}
-          for item in list_match:gmatch("[^,]+") do
-            table.insert(parsed_value, coerce_value(item))
+          local pos = 1
+          while pos <= #list_match do
+            local c = list_match:sub(pos, pos)
+            if c:match("%s") then
+              pos = pos + 1
+            elseif c == '"' or c == "'" then
+              local close = list_match:find(c, pos + 1, true)
+              if close then
+                table.insert(parsed_value, list_match:sub(pos + 1, close - 1))
+                pos = close + 1
+              else
+                table.insert(parsed_value, coerce_value(list_match:sub(pos)))
+                break
+              end
+            else
+              local next_comma = list_match:find(",", pos, true)
+              local token = next_comma and list_match:sub(pos, next_comma - 1) or list_match:sub(pos)
+              table.insert(parsed_value, coerce_value(token))
+              pos = next_comma and next_comma + 1 or #list_match + 1
+            end
+            if pos <= #list_match and list_match:sub(pos, pos) == "," then
+              pos = pos + 1
+            end
           end
         else
           parsed_value = coerce_value(v)
