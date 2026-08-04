@@ -460,6 +460,14 @@ local function extract_config(meta)
     if style_meta["spacing"] ~= nil then s.spacing = meta_bool(style_meta["spacing"]) end
     if style_meta["cols"] then s.cols = meta_num(style_meta["cols"]) end
     if style_meta["rows"] then s.rows = meta_num(style_meta["rows"]) end
+    if style_meta["chrome"] ~= nil then
+      local cv = style_meta["chrome"]
+      if type(cv) == "boolean" or (type(cv) == "userdata" and (tostring(cv) == "true" or tostring(cv) == "false")) then
+        s.chrome = meta_bool(cv)
+      else
+        s.chrome = meta_str(cv)
+      end
+    end
     -- Collect format-specific overrides
     s._format_overrides = {}
     for k, v in pairs(style_meta) do
@@ -484,6 +492,7 @@ local function extract_config(meta)
     if style.spacing ~= nil then config.spacing = style.spacing end
     if style.cols then config.cols = style.cols end
     if style.rows then config.rows = style.rows end
+    if style.chrome ~= nil then config._chrome = style.chrome end
     if style._format_overrides then
       -- Pre-extract each format override so we don't need the function later
       config._style_overrides = {}
@@ -643,6 +652,16 @@ local function is_term_block(block)
   return false
 end
 
+local function wrap_chrome(html, title)
+  local bar = '<div class="term-chrome-bar">'
+    .. '<span class="term-chrome-dot term-chrome-close"></span>'
+    .. '<span class="term-chrome-dot term-chrome-minimize"></span>'
+    .. '<span class="term-chrome-dot term-chrome-maximize"></span>'
+    .. (title and ('<span class="term-chrome-title">' .. title .. '</span>') or '')
+    .. '</div>'
+  return '<div class="term-chrome">\n' .. bar .. '\n' .. html .. '</div>\n'
+end
+
 local function build_cell(block, cell_id, config)
   -- Determine the line marker: chunk-level overrides document-level, default "#!"
   local line_marker = "#!"
@@ -660,6 +679,25 @@ local function build_cell(block, cell_id, config)
     local chunk_marker = cell_opts["marker"]
     if chunk_marker ~= line_marker then
       cell_opts, code, line_options, source_lines = parse_cell_options(block.text, chunk_marker)
+    end
+  end
+
+  if cell_opts["source"] then
+    local src_path = cell_opts["source"]
+    if not src_path:match("^/") then
+      src_path = pandoc.system.get_working_directory() .. "/" .. src_path
+    end
+    local sf = io.open(src_path, "r")
+    if sf then
+      local file_content = sf:read("*a"):gsub("\n$", "")
+      sf:close()
+      local _, new_code, new_line_opts, new_source =
+        parse_cell_options(file_content, line_marker)
+      code = new_code
+      line_options = new_line_opts
+      source_lines = new_source
+    else
+      io.stderr:write("quarto-term: source file not found: " .. src_path .. "\n")
     end
   end
 
@@ -716,7 +754,9 @@ local function build_cell(block, cell_id, config)
   local cell_colorscheme = nil
   local cell_colorscheme_light = nil
   local cell_colorscheme_dark = nil
+  local cell_chrome = nil
   if type(cell_style) == "table" then
+    if cell_style["chrome"] ~= nil then cell_chrome = cell_style["chrome"] end
     -- Apply base style
     if cell_style["colorscheme"] then cell_colorscheme = cell_style["colorscheme"] end
     local csl = cell_style["colorscheme-light"] or cell_style["colorscheme_light"]
@@ -752,6 +792,7 @@ local function build_cell(block, cell_id, config)
       if ov["spacing"] ~= nil then options.spacing = ov["spacing"] end
       local ov_ts = ov["trailing-spaces"] or ov["trailing_spaces"]
       if ov_ts ~= nil then options.trailing_spaces = ov_ts end
+      if ov["chrome"] ~= nil then cell_chrome = ov["chrome"] end
     end
   end
 
@@ -767,6 +808,7 @@ local function build_cell(block, cell_id, config)
     _colorscheme = cell_colorscheme,
     _colorscheme_light = cell_colorscheme_light,
     _colorscheme_dark = cell_colorscheme_dark,
+    _chrome = cell_chrome,
   }
 end
 
@@ -848,11 +890,14 @@ function Pandoc(doc)
       local cell_colorscheme = cell._colorscheme
       local cell_colorscheme_light = cell._colorscheme_light
       local cell_colorscheme_dark = cell._colorscheme_dark
+      local cell_chrome = cell._chrome
+      if cell_chrome == nil then cell_chrome = config._chrome end
       cell._eval = nil
       cell._include = nil
       cell._colorscheme = nil
       cell._colorscheme_light = nil
       cell._colorscheme_dark = nil
+      cell._chrome = nil
       -- For non-HTML formats, resolve cell colorscheme to bg/fg colors
       if cell_colorscheme and config.format ~= "html" then
         local bg, fg = read_theme_colors(cell_colorscheme)
@@ -868,6 +913,7 @@ function Pandoc(doc)
           colorscheme = cell_colorscheme,
           colorscheme_light = cell_colorscheme_light,
           colorscheme_dark = cell_colorscheme_dark,
+          chrome = cell_chrome,
         })
       else
         -- Strip #| option lines from the code block
@@ -970,6 +1016,10 @@ function Pandoc(doc)
               end
             end
           end
+          if pos.chrome and raw_format == "html" then
+            local title = (type(pos.chrome) == "string") and pos.chrome or nil
+            content = wrap_chrome(content, title)
+          end
           doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
         else
           doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, "")
@@ -1057,6 +1107,41 @@ function Pandoc(doc)
       if #cell_css_parts > 0 then
         quarto.doc.include_text("in-header", "<style>\n" .. table.concat(cell_css_parts, "\n") .. "</style>")
       end
+
+      -- Copy button script
+      quarto.doc.include_text("after-body", [[<script>
+(function() {
+  function addCopyButtons() {
+    var pres = document.querySelectorAll('pre.term-output, pre.term-screen, pre.term-source');
+    pres.forEach(function(pre) {
+      var wrap = document.createElement('div');
+      wrap.className = 'term-container';
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.appendChild(pre);
+      var btn = document.createElement('button');
+      btn.className = 'term-copy-btn';
+      btn.setAttribute('aria-label', 'Copy to clipboard');
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M3.5 10.5h-1a1 1 0 01-1-1v-7a1 1 0 011-1h7a1 1 0 011 1v1"/></svg>';
+      btn.addEventListener('click', function() {
+        var code = pre.querySelector('code');
+        var text = code ? code.innerText : pre.innerText;
+        navigator.clipboard.writeText(text).then(function() {
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"/></svg>';
+          setTimeout(function() {
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M3.5 10.5h-1a1 1 0 01-1-1v-7a1 1 0 011-1h7a1 1 0 011 1v1"/></svg>';
+          }, 1500);
+        });
+      });
+      wrap.appendChild(btn);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addCopyButtons);
+  } else {
+    addCopyButtons();
+  }
+})();
+</script>]])
     end
   end
 

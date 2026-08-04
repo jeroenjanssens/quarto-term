@@ -80,3 +80,88 @@ pre.term-source code span {
   font-style: italic;
   opacity: 0.7;
 }
+
+/* Window chrome */
+.term-chrome {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  margin: 1rem 0;
+}
+
+.term-chrome pre.term-output,
+.term-chrome pre.term-screen,
+.term-chrome pre.term-source {
+  margin: 0;
+  border-radius: 0;
+}
+
+.term-chrome-bar {
+  background: #3c3c3c;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.term-chrome-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.term-chrome-close {
+  background: #ff5f57;
+}
+
+.term-chrome-minimize {
+  background: #febc2e;
+}
+
+.term-chrome-maximize {
+  background: #28c840;
+}
+
+.term-chrome-title {
+  flex: 1;
+  text-align: center;
+  font-size: 0.75em;
+  color: #999;
+  font-family: var(--term-font-family);
+}
+
+/* Copy button */
+.term-container {
+  position: relative;
+}
+
+.term-copy-btn {
+  position: absolute;
+  top: 0.4em;
+  right: 0.5em;
+  padding: 0.3em;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--term-fg, #d4d4d4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.term-container:hover .term-copy-btn {
+  opacity: 0.7;
+}
+
+.term-copy-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.term-chrome .term-copy-btn {
+  top: calc(8px + 12px + 8px + 0.4em);
+}
