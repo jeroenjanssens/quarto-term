@@ -164,6 +164,8 @@ pub struct CellOptions {
     pub enter: Option<bool>,
     #[serde(default)]
     pub expect_prompt: Option<bool>,
+    #[serde(default)]
+    pub assert: Option<String>,
 }
 
 impl fmt::Display for CellOptions {

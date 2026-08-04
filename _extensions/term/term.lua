@@ -747,6 +747,7 @@ local function build_cell(block, cell_id, config)
   if enter_val ~= nil then options.enter = enter_val end
   local ep_val = cell_opts["expect-prompt"] or cell_opts["expect_prompt"]
   if ep_val ~= nil then options.expect_prompt = ep_val end
+  if cell_opts["assert"] ~= nil then options.assert = cell_opts["assert"] end
 
   local label = cell_opts["label"]
 

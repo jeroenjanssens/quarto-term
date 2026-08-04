@@ -9,7 +9,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 
 | Option | Project | Document | Cell | Line | Default | Description |
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
-| `assert` | | | | x | (none) | Regex/substring pattern to validate in line output |
+| `assert` | | | x | x | (none) | Regex/substring pattern to validate in output |
 | `cache` | x | x | | | `true` | Cache results to skip re-execution on unchanged inputs |
 | `disable-auto-indent` | x | x | | | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
 | `callouts` | | | x | | `[]` | Line specs to annotate with callout markers |
@@ -99,6 +99,7 @@ Set these with `#|` at the top of a cell:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `assert` | (none) | Regex or substring pattern; fails if not found in cell output |
 | `eval` | `true` | Execute the cell; `false` renders it as a static code block |
 | `include` | `true` | Execute the cell but hide it entirely from output |
 | `label` | (none) | Cell label (shown in verbose mode) |

@@ -347,6 +347,21 @@ impl PtySession {
         let use_ansi = cell.options.ansi.unwrap_or(self.config.ansi);
         let html = self.build_cell_html(cell, before_cursor_row, before_scrollback, use_ansi);
 
+        if error.is_none() {
+            if let Some(ref pattern) = cell.options.assert {
+                let cell_output = String::from_utf8_lossy(&self.output_since_cell_start).to_string();
+                let matched = regex::Regex::new(pattern)
+                    .map(|re| re.is_match(&cell_output))
+                    .unwrap_or_else(|_| cell_output.contains(pattern.as_str()));
+                if !matched {
+                    error = Some(format!(
+                        "assertion failed: pattern {:?} not found in cell output",
+                        pattern
+                    ));
+                }
+            }
+        }
+
         let scroll = cell.options.scroll.unwrap_or(!cell.options.fullscreen);
         if scroll {
             self.save_position();
