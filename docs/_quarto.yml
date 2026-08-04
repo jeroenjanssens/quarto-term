@@ -63,6 +63,8 @@ website:
             text: DuckDB
       - href: docker.qmd
         text: Docker
+      - href: debugging.qmd
+        text: Debugging
       - href: demo-formats.qmd
         text: Formats
     right:

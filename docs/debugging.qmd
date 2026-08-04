@@ -1,0 +1,149 @@
+---
+title: "Debugging"
+engine: markdown
+---
+
+## Verbose Mode
+
+Enable verbose output to see what quarto-term is doing during execution:
+
+```yaml
+extensions:
+  term:
+    verbose: true
+```
+
+This prints to stderr:
+
+- Session startup (shell, prompt)
+- Each line being sent (prefixed with `>`)
+- Errors and timeouts
+- Recording paths
+
+## Terminal Recordings
+
+Record sessions to asciicast or termshow format for playback:
+
+```yaml
+extensions:
+  term:
+    record: "session.cast"
+```
+
+Supported formats (detected by file extension):
+
+- `.cast` --- asciicast v2, playable with [asciinema](https://asciinema.org/)
+- `.termshow` --- works with [termshow](https://github.com/posit-dev/great-docs/)
+
+Record to multiple files simultaneously:
+
+```yaml
+extensions:
+  term:
+    record:
+      - "session.cast"
+      - "session.termshow"
+```
+
+## Assertions
+
+Validate terminal output with the `assert` option. Use it at the line level to check a specific command's output:
+
+````markdown
+```{term}
+echo "hello world" #! assert: "hello world"
+python3 -c "print(2+2)" #! assert: "4"
+```
+````
+
+Or at the cell level to check the entire cell output:
+
+````markdown
+```{term}
+#| assert: "hello"
+echo "hello world"
+```
+````
+
+Multiple patterns (all must match):
+
+````markdown
+```{term}
+#| assert: ["hello", "world"]
+echo "hello world"
+```
+````
+
+The pattern is tried as a regex first, falling back to a substring match if it's not valid regex.
+
+## `quarto-term check`
+
+Run assertions as a CI-friendly check:
+
+```bash
+quarto-term check docs/tutorial.qmd
+```
+
+This runs `quarto render` under the hood and fails (exit code 1) if any assertion doesn't match. Use it in CI to catch documentation drift:
+
+```yaml
+# .github/workflows/check.yml
+- name: Check terminal examples
+  run: quarto-term check docs/tutorial.qmd
+```
+
+### Recording during check
+
+Combine assertion checking with terminal recording:
+
+```bash
+quarto-term check --record session.cast docs/tutorial.qmd
+```
+
+This validates all assertions AND produces a recording file in one pass.
+
+## Caching
+
+quarto-term caches execution results to speed up repeated renders. If no cell inputs or configuration have changed, the binary is skipped entirely:
+
+```
+quarto-term: cache hit (a3f2b1c4)
+```
+
+The cache is stored in `.quarto-term-cache/` (add to `.gitignore`). To force re-execution:
+
+```yaml
+extensions:
+  term:
+    cache: false
+```
+
+Or simply delete the `.quarto-term-cache/` directory.
+
+## Common Issues
+
+### Timeout errors
+
+If a cell times out, the shell likely didn't return to the prompt. Common causes:
+
+- The command is interactive (waiting for input)
+- The prompt regex doesn't match the actual prompt
+- The shell sends terminal queries that aren't answered
+
+Increase the timeout or check your prompt configuration:
+
+```yaml
+extensions:
+  term:
+    timeout: 30
+```
+
+### PS2 (continuation prompt) issues
+
+Multi-line commands can hang if the continuation prompt isn't detected. Configure `ps2` or `ps2-regex`:
+
+```yaml
+extensions:
+  term:
+    ps2: ">"
+```

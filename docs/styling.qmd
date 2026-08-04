@@ -146,6 +146,27 @@ echo "Different sizes per format"
 ```
 ````
 
+## Window Chrome
+
+Add macOS-style window decoration to terminal blocks with `style.chrome: true`:
+
+```{term}
+#| style.chrome: true
+echo "Hello from a terminal window"
+ls -la ~/.zshrc
+```
+
+Pass a string to show a title in the chrome bar:
+
+```{term}
+#| style.chrome: "~/projects/quarto-term"
+#| style.colorscheme: dracula
+echo "Window chrome with a custom title"
+date
+```
+
+Set `style.chrome: true` at the document or project level to apply chrome to all cells.
+
 ## Dark Colorschemes
 
 ### ayu-dark
