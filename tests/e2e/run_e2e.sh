@@ -164,6 +164,17 @@ echo third
 ```' \
   "third"
 
+run_test "truncate comma-separated syntax" \
+  '``` {.term}
+#| truncate: 2:4
+echo line1
+echo line2
+echo line3
+echo line4
+echo line5
+```' \
+  "truncated"
+
 # --- Special characters ---
 echo ""
 echo "Special characters:"

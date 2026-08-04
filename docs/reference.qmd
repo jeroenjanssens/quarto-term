@@ -147,13 +147,15 @@ The `remove`, `truncate`, and `callouts` options accept a list of **line specs**
 | Negative range | `"-3:"` | Last 3 lines |
 | Regex | `"error"` | Lines matching the pattern |
 
-Examples:
+Values can be comma-separated or wrapped in brackets:
 
 ```yaml
-#| remove: [":2", -1]
-#| truncate: ["3:7"]
-#| callouts: [1, -1]
+#| truncate: 3:7
+#| remove: :2, -1
+#| callouts: 1, -1
 ```
+
+Bracket syntax also works: `#| truncate: ["3:7"]`.
 
 For `truncate`, removed lines are replaced with an italic "[N lines truncated]" message. Consecutive truncated lines are grouped into a single message.
 

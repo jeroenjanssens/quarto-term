@@ -98,6 +98,19 @@ local function coerce_value(s)
   return s
 end
 
+local function as_list(val)
+  if type(val) == "table" then return val end
+  if type(val) == "number" then return {val} end
+  if type(val) == "string" then
+    local items = {}
+    for item in val:gmatch("[^,]+") do
+      table.insert(items, coerce_value(item))
+    end
+    return items
+  end
+  return {}
+end
+
 local function parse_cell_options(text, line_marker)
   local cell_opts = {}
   local code_lines = {}
@@ -638,9 +651,9 @@ local function build_cell(block, cell_id, config)
   end
   if cell_opts["timeout"] ~= nil then options.timeout = cell_opts["timeout"] end
   if cell_opts["hold"] ~= nil then options.hold = cell_opts["hold"] end
-  if cell_opts["callouts"] ~= nil then options.callouts = cell_opts["callouts"] end
-  if cell_opts["remove"] ~= nil then options.remove = cell_opts["remove"] end
-  if cell_opts["truncate"] ~= nil then options.truncate = cell_opts["truncate"] end
+  if cell_opts["callouts"] ~= nil then options.callouts = as_list(cell_opts["callouts"]) end
+  if cell_opts["remove"] ~= nil then options.remove = as_list(cell_opts["remove"]) end
+  if cell_opts["truncate"] ~= nil then options.truncate = as_list(cell_opts["truncate"]) end
   if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end
 
   if cell_opts["literal"] ~= nil then options.literal = cell_opts["literal"] end

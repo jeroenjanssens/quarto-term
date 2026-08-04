@@ -42,12 +42,13 @@ f:close()
 -- Extract needed functions
 local escape_pattern_src = source:match("(local function escape_pattern.-\nend)")
 local coerce_value_src = source:match("(local function coerce_value.-\nend)")
+local as_list_src = source:match("(local function as_list.-\nend)")
 local parse_cell_options_src = source:match("(local function parse_cell_options.-\nend)")
 local build_cell_src = source:match("(local function build_cell.-\nend)")
 
 local chunk = [[
 local pandoc = { List = function(t) return t or {} end }
-]] .. escape_pattern_src .. "\n" .. coerce_value_src .. "\n" .. parse_cell_options_src .. "\n" .. build_cell_src ..
+]] .. escape_pattern_src .. "\n" .. coerce_value_src .. "\n" .. as_list_src .. "\n" .. parse_cell_options_src .. "\n" .. build_cell_src ..
   "\nreturn build_cell"
 local build_cell = load(chunk)()
 
@@ -186,6 +187,35 @@ end
 do
   local cell = build_cell(mock_block("echo hi\n"), 1, {})
   assert_eq(#cell.options.truncate, 0, "truncate defaults to empty list")
+end
+
+-- Test: truncate comma-separated (no brackets)
+do
+  local cell = build_cell(mock_block('#| truncate: 3:7, :5, -1\necho hi\n'), 1, {})
+  assert_eq(cell.options.truncate[1], "3:7", "truncate comma-sep[1] = 3:7")
+  assert_eq(cell.options.truncate[2], ":5", "truncate comma-sep[2] = :5")
+  assert_eq(cell.options.truncate[3], -1, "truncate comma-sep[3] = -1")
+end
+
+-- Test: remove comma-separated (no brackets)
+do
+  local cell = build_cell(mock_block('#| remove: 1, pattern\necho hi\n'), 1, {})
+  assert_eq(cell.options.remove[1], 1, "remove comma-sep[1] = 1")
+  assert_eq(cell.options.remove[2], "pattern", "remove comma-sep[2] = pattern")
+end
+
+-- Test: callouts comma-separated (no brackets)
+do
+  local cell = build_cell(mock_block('#| callouts: 1, -1\necho hi\n'), 1, {})
+  assert_eq(cell.options.callouts[1], 1, "callouts comma-sep[1] = 1")
+  assert_eq(cell.options.callouts[2], -1, "callouts comma-sep[2] = -1")
+end
+
+-- Test: truncate single value (no brackets, no comma)
+do
+  local cell = build_cell(mock_block('#| truncate: 3\necho hi\n'), 1, {})
+  assert_eq(#cell.options.truncate, 1, "truncate single has 1 item")
+  assert_eq(cell.options.truncate[1], 3, "truncate single[1] = 3")
 end
 
 -- Test: highlight
