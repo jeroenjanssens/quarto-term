@@ -27,8 +27,9 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `literal` | | | x | x | `true` | Send text as typed characters; `false` for key names |
 | `marker` | x | x | x | | `#!` | Prefix for line option annotations |
 | `output` | | | x | | `true` | Show terminal output |
-| `prompt` | x | x | | | `$` | Literal prompt string (auto-sets `PS1`) |
-| `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection |
+| `prompt` | x | x | | | `$` | Literal prompt string (auto-sets `PS1`). Alias: `ps1` |
+| `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection. Alias: `ps1-regex` |
+| `ps2` | x | x | | | (derived) | Literal continuation prompt string |
 | `ps2-regex` | x | x | | | (derived from `ps2`) | Raw regex override for continuation prompt detection |
 | `record` | x | x | | | (none) | File path(s) to record session (`.cast` or `.termshow`) |
 | `remove` | | | x | | `[]` | Line specs to remove from output (indices, ranges, or regex) |
@@ -67,8 +68,9 @@ Set these under `extensions: term:` in your YAML front matter:
 |--------|---------|-------------|
 | `shell` | `zsh` | Shell to use |
 | `shell-args` | auto | Shell arguments (defaults: `--no-rcs` for zsh, `--norc --noprofile` for bash) |
-| `prompt` | `$` | Literal prompt string. Auto-sets `PS1` and builds the matching regex. |
-| `prompt-regex` | (derived) | Raw regex override for prompt detection |
+| `prompt` | `$` | Literal prompt string. Auto-sets `PS1` and builds the matching regex. Alias: `ps1` |
+| `prompt-regex` | (derived) | Raw regex override for prompt detection. Alias: `ps1-regex` |
+| `ps2` | (derived) | Literal continuation prompt string |
 | `ps2-regex` | (derived from `ps2`) | Raw regex for continuation prompt (e.g., `"^\\s*$"` for fish) |
 | `timeout` | `10.0` | Seconds to wait for prompt before error |
 | `delay` | `0.1` | Default seconds to wait before executing each line |

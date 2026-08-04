@@ -364,12 +364,14 @@ local function extract_config(meta)
     end
   end
 
-  if term_meta["prompt"] then
-    config.prompt = meta_str(term_meta["prompt"])
+  local prompt_val = term_meta["prompt"] or term_meta["ps1"]
+  if prompt_val then
+    config.prompt = meta_str(prompt_val)
   end
 
-  -- prompt-regex: raw regex override for prompt matching
+  -- prompt-regex / ps1-regex: raw regex override for prompt matching
   local prompt_regex_val = term_meta["prompt-regex"] or term_meta["prompt_regex"]
+    or term_meta["ps1-regex"] or term_meta["ps1_regex"]
   if prompt_regex_val then
     config.prompt_regex = meta_str(prompt_regex_val)
   end
