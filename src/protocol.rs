@@ -165,7 +165,7 @@ pub struct CellOptions {
     #[serde(default)]
     pub expect_prompt: Option<bool>,
     #[serde(default)]
-    pub assert: Option<String>,
+    pub assert: Option<AssertSpec>,
 }
 
 impl fmt::Display for CellOptions {
@@ -284,7 +284,23 @@ pub struct LineOptions {
     #[serde(default)]
     pub typing: Option<bool>,
     #[serde(default)]
-    pub assert: Option<String>,
+    pub assert: Option<AssertSpec>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum AssertSpec {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+impl AssertSpec {
+    pub fn patterns(&self) -> &[String] {
+        match self {
+            AssertSpec::Single(s) => std::slice::from_ref(s),
+            AssertSpec::Multiple(v) => v,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]

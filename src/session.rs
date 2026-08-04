@@ -295,7 +295,7 @@ impl PtySession {
                 }
             }
 
-            if let Some(assert_pattern) = line_opts.and_then(|lo| lo.assert.as_ref()) {
+            if let Some(assert_spec) = line_opts.and_then(|lo| lo.assert.as_ref()) {
                 let line_output = String::from_utf8_lossy(
                     &self.output_since_cell_start[output_before..],
                 ).to_string();
@@ -303,14 +303,19 @@ impl PtySession {
                     line_index: idx as u32,
                     output: line_output.clone(),
                 });
-                let matched = regex::Regex::new(assert_pattern)
-                    .map(|re| re.is_match(&line_output))
-                    .unwrap_or_else(|_| line_output.contains(assert_pattern));
-                if !matched {
-                    error = Some(format!(
-                        "assertion failed on line {}: pattern {:?} not found in output",
-                        idx + 1, assert_pattern
-                    ));
+                for pattern in assert_spec.patterns() {
+                    let matched = regex::Regex::new(pattern)
+                        .map(|re| re.is_match(&line_output))
+                        .unwrap_or_else(|_| line_output.contains(pattern.as_str()));
+                    if !matched {
+                        error = Some(format!(
+                            "assertion failed on line {}: pattern {:?} not found in output",
+                            idx + 1, pattern
+                        ));
+                        break;
+                    }
+                }
+                if error.is_some() {
                     break;
                 }
             }
@@ -348,16 +353,19 @@ impl PtySession {
         let html = self.build_cell_html(cell, before_cursor_row, before_scrollback, use_ansi);
 
         if error.is_none() {
-            if let Some(ref pattern) = cell.options.assert {
+            if let Some(ref assert_spec) = cell.options.assert {
                 let cell_output = String::from_utf8_lossy(&self.output_since_cell_start).to_string();
-                let matched = regex::Regex::new(pattern)
-                    .map(|re| re.is_match(&cell_output))
-                    .unwrap_or_else(|_| cell_output.contains(pattern.as_str()));
-                if !matched {
-                    error = Some(format!(
-                        "assertion failed: pattern {:?} not found in cell output",
-                        pattern
-                    ));
+                for pattern in assert_spec.patterns() {
+                    let matched = regex::Regex::new(pattern)
+                        .map(|re| re.is_match(&cell_output))
+                        .unwrap_or_else(|_| cell_output.contains(pattern.as_str()));
+                    if !matched {
+                        error = Some(format!(
+                            "assertion failed: pattern {:?} not found in cell output",
+                            pattern
+                        ));
+                        break;
+                    }
                 }
             }
         }
