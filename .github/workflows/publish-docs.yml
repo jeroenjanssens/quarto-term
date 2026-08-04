@@ -41,7 +41,7 @@ jobs:
         run: cargo build --release
 
       - name: Install dependencies
-        run: sudo apt-get install -y zsh fish htop zsh-syntax-highlighting cowsay lolcat python3
+        run: sudo apt-get install -y zsh fish htop zsh-syntax-highlighting cowsay lolcat python3 r-base
 
       - name: Install Nushell
         run: |

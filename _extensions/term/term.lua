@@ -373,6 +373,10 @@ local function extract_config(meta)
   if prompt_regex_val then
     config.prompt_regex = meta_str(prompt_regex_val)
   end
+  local ps2_val = term_meta["ps2"]
+  if ps2_val then
+    config._ps2_explicit = meta_str(ps2_val)
+  end
   local ps2_regex_val = term_meta["ps2-regex"] or term_meta["ps2_regex"]
   if ps2_regex_val then
     config.ps2_regex = meta_str(ps2_regex_val)
@@ -535,10 +539,18 @@ local function extract_config(meta)
   end
 
   -- Set a known PS2 so we can detect continuation prompts
-  if not config.env["PS2"] then
-    config.env["PS2"] = "> "
+  if config._ps2_explicit then
+    config.ps2 = config._ps2_explicit
+    if not config.env["PS2"] then
+      config.env["PS2"] = config._ps2_explicit
+    end
+  else
+    if not config.env["PS2"] then
+      config.env["PS2"] = "> "
+    end
+    config.ps2 = config.env["PS2"]
   end
-  config.ps2 = config.env["PS2"]
+  config._ps2_explicit = nil
 
   -- Docker config block
   if term_meta["docker"] then

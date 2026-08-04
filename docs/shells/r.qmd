@@ -1,0 +1,67 @@
+---
+title: "R"
+engine: markdown
+extensions:
+  term:
+    shell: R
+    shell-args: ["--no-save", "--no-restore", "--quiet"]
+    prompt: "`>`"
+    ps2: "`+`"
+    init: false
+    spacing: false
+---
+
+R can be used as a shell by pointing to the `R` binary. Use `--quiet` to suppress the startup message:
+
+```yaml
+extensions:
+  term:
+    shell: R
+    shell-args: ["--no-save", "--no-restore", "--quiet"]
+    prompt: "`>`"
+    ps2: "`+`"
+```
+
+Note: wrap `>` and `+` in backticks since pandoc interprets bare `>` as a blockquote marker and `+` as a list item.
+
+## Basic Usage
+
+```{term}
+cat("Hello from R", R.version.string, "\n")
+```
+
+## Vectors and Arithmetic
+
+```{term}
+x <- 1:10
+mean(x)
+sd(x)
+```
+
+## Data Frames
+
+```{term}
+df <- data.frame(name = c("Alice", "Bob", "Carol"), age = c(30, 25, 35))
+df[df$age > 26, ]
+```
+
+## Functions
+
+```{term}
+fibonacci <- function(n) {
+  a <- 0; b <- 1
+  for (i in seq_len(n)) {
+    tmp <- b
+    b <- a + b
+    a <- tmp
+  }
+  a
+}
+sapply(1:10, fibonacci)
+```
+
+## Apply and Pipes
+
+```{term}
+mtcars |> head(5) |> subset(select = c(mpg, cyl, hp))
+```

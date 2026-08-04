@@ -51,6 +51,8 @@ website:
             text: POSIX sh
           - href: shells/python.qmd
             text: Python
+          - href: shells/r.qmd
+            text: R
       - href: docker.qmd
         text: Docker
       - href: demo-formats.qmd

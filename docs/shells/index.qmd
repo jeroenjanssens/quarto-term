@@ -14,9 +14,10 @@ Each shell below is a live demonstration rendered by quarto-term:
 | [Zsh](zsh.qmd) | None (default) |
 | [Bash](bash.qmd) | `shell: bash` |
 | [Fish](fish.qmd) | `shell: fish` + init for prompt function |
-| [Nushell](nushell.qmd) | `shell: nu` + env for prompt config |
+| [Nushell](nushell.qmd) | `shell: nu` + inline config via `-e` |
 | [POSIX sh](sh.qmd) | `shell: sh` |
 | [Python](python.qmd) | `shell: python3` + `prompt: ">>>"` |
+| [R](r.qmd) | `shell: R` + `prompt: ">"` |
 
 ## How It Works
 
@@ -48,3 +49,42 @@ extensions:
     shell-args: ["--no-config", "-C", "function fish_prompt; echo -n '$ '; end"]
     prompt: "$"
 ```
+
+## Syntax Highlighting
+
+quarto-term captures whatever the shell renders, including ANSI colors. Shells that support syntax highlighting will produce colored output automatically.
+
+| Shell | Syntax highlighting |
+|-------|-------------------|
+| Zsh | [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) via `init` |
+| Fish | Built-in — configure `fish_color_*` variables |
+| Nushell | Built-in (enabled by default) |
+| Bash | Not available natively |
+| Python / R / sh | Not available |
+
+### Zsh
+
+Add `zsh-syntax-highlighting` to `init`. quarto-term auto-detects common installation paths:
+
+```yaml
+extensions:
+  term:
+    init:
+      - zsh-syntax-highlighting
+```
+
+### Fish
+
+Set `fish_color_*` variables in the `-C` init argument:
+
+```yaml
+extensions:
+  term:
+    shell: fish
+    shell-args:
+      - "--no-config"
+      - "-C"
+      - "`function fish_prompt; ...; set fish_color_command blue; ...`"
+```
+
+See the [Fish](fish.qmd) page for the full list of color variables.

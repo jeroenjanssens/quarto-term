@@ -277,11 +277,27 @@ impl PtySession {
             }
         }
 
+        if error.is_none() && self.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
+            for _ in 0..10 {
+                self.writer.write_all(b"\r").ok();
+                self.writer.flush().ok();
+                thread::sleep(Duration::from_millis(50));
+                self.drain_pty();
+                if self.last_line_is_primary_prompt() {
+                    break;
+                }
+            }
+            if !self.last_line_is_primary_prompt() {
+                if let Err(e) = self.wait_for_prompt() {
+                    error = Some(e.to_string());
+                }
+            }
+        }
+
         let cell_hold = cell.options.hold.unwrap_or(self.config.hold);
         if cell_hold > 0.0 {
             self.drain_during(Duration::from_secs_f64(cell_hold));
         }
-
 
         self.config.timeout = orig_timeout;
 
@@ -492,6 +508,17 @@ impl PtySession {
                 Err(TryRecvError::Disconnected) => break,
             }
         }
+    }
+
+    fn last_line_is_primary_prompt(&self) -> bool {
+        let view_lines: Vec<_> = self.vt.view().collect();
+        for line in view_lines.iter().rev() {
+            let text = line_text(line);
+            if !text.is_empty() {
+                return self.prompt_re.is_match(&text);
+            }
+        }
+        false
     }
 
     fn last_line_matches_prompt(&self) -> bool {

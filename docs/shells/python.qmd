@@ -5,22 +5,28 @@ extensions:
   term:
     shell: python3
     shell-args: ["-q"]
-    prompt: ">>>"
+    prompt: "`>>>`"
+    ps2: "`...`"
     init: false
     spacing: false
     env:
-      PS2: "... "
+      PYTHON_BASIC_REPL: "1"
 ---
 
-Any REPL can be used as a "shell". For Python, set the prompt to match `>>>`:
+Any REPL can be used as a "shell". For Python, set the prompt to match `>>>` and configure `ps2` for multi-line block detection:
 
 ```yaml
 extensions:
   term:
     shell: python3
     shell-args: ["-q"]
-    prompt: ">>>"
+    prompt: "`>>>`"
+    ps2: "`...`"
+    env:
+      PYTHON_BASIC_REPL: "1"
 ```
+
+Note: `PYTHON_BASIC_REPL=1` disables Python 3.13+'s new auto-indenting REPL, which interferes with sending pre-indented code. Wrap `>>>` and `...` in backticks since pandoc interprets bare `>` as a blockquote marker.
 
 ## Basic Usage
 
