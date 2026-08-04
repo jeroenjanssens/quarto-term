@@ -372,3 +372,13 @@ fn config_prompt_regex() {
     let html = result[0]["html"].as_str().unwrap();
     assert!(html.contains("regex"), "output with custom regex: {}", html);
 }
+
+#[test]
+fn docker_config_error_propagates() {
+    // Use a non-existent image with pull:never so it always fails
+    // regardless of whether Docker is installed or not
+    let json = r#"{"config":{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":3.0,"docker":{"image":"quarto-term-nonexistent-test-image-zzz999","pull":"never"}},"cells":[{"id":1,"code":"echo hi","options":{},"line_options":[],"source_lines":[]}]}"#;
+    let result = run_binary(json);
+    let error = result[0]["error"].as_str().unwrap_or("");
+    assert!(!error.is_empty(), "docker error should propagate: {:?}", result[0]);
+}

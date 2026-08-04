@@ -154,6 +154,70 @@ echo done
 ```' \
   "done"
 
+# --- Docker mode ---
+echo ""
+echo "Docker mode:"
+
+if docker info >/dev/null 2>&1; then
+  DOCKER_METADATA='---
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    timeout: 30.0
+    prompt: "$"
+    docker:
+      image: "bash:5"
+      pull: missing
+---
+
+'
+
+  run_docker_test() {
+    local name="$1"
+    local input="$2"
+    local expected="$3"
+    local output
+
+    output=$(printf '%s%s' "$DOCKER_METADATA" "$input" | timeout 60 pandoc -f markdown -t html --lua-filter "$FILTER" 2>/dev/null) || true
+
+    if echo "$output" | grep -qF "$expected"; then
+      echo "  PASS: $name"
+      PASS=$((PASS + 1))
+    else
+      echo "  FAIL: $name"
+      echo "    expected: '$expected'"
+      echo "    got: $(echo "$output" | head -5)"
+      FAIL=$((FAIL + 1))
+    fi
+  }
+
+  run_docker_test "echo in container" \
+    '``` {.term}
+echo docker-test-output
+```' \
+    "docker-test-output"
+
+  run_docker_test "state persists in container" \
+    '``` {.term}
+export DOCKER_VAR=container42
+```
+
+``` {.term}
+echo $DOCKER_VAR
+```' \
+    "container42"
+
+  run_docker_test "volume mount" \
+    '``` {.term}
+echo volume-test > /tmp/qt-vol-test.txt
+cat /tmp/qt-vol-test.txt
+```' \
+    "volume-test"
+else
+  echo "  SKIP (docker not available)"
+fi
+
 # --- Summary ---
 echo ""
 echo "==========================="
