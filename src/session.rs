@@ -34,6 +34,7 @@ pub struct PtySession {
     prompt_re: Regex,
     prompt_prefix_re: Regex,
     ps2_re: Option<Regex>,
+    ps2_prefix_re: Option<Regex>,
     config: Config,
     recorders: Vec<Recorder>,
     output_since_cell_start: Vec<u8>,
@@ -68,6 +69,17 @@ impl PtySession {
                 })
                 .transpose()
                 .map_err(|e| TermError::RegexCompile(e.to_string()))?
+        };
+        let ps2_prefix_re = if let Some(ref re) = config.ps2_regex {
+            Regex::new(&format!("^(?:{})", re.trim_end_matches('$'))).ok()
+        } else {
+            config
+                .ps2
+                .as_ref()
+                .and_then(|s| {
+                    let escaped = regex::escape(s.trim_end());
+                    Regex::new(&format!("^{}\\s?", escaped)).ok()
+                })
         };
 
         let pty_system = native_pty_system();
@@ -150,6 +162,7 @@ impl PtySession {
             prompt_re,
             prompt_prefix_re,
             ps2_re,
+            ps2_prefix_re,
             config: config.clone(),
             recorders,
             output_since_cell_start: Vec::new(),
@@ -657,13 +670,9 @@ impl PtySession {
         for line in lines.iter_mut() {
             let prompt_len = if let Some(m) = self.prompt_prefix_re.find(&line.text) {
                 m.end()
-            } else if let Some(ref ps2) = self.ps2_re {
+            } else if let Some(ref ps2) = self.ps2_prefix_re {
                 if let Some(m) = ps2.find(&line.text) {
-                    if m.start() == 0 {
-                        m.end()
-                    } else {
-                        0
-                    }
+                    m.end()
                 } else {
                     0
                 }
