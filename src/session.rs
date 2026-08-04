@@ -32,9 +32,7 @@ pub struct PtySession {
     rx: Receiver<Vec<u8>>,
     vt: avt::Vt,
     prompt_re: Regex,
-    prompt_prefix_re: Regex,
     ps2_re: Option<Regex>,
-    ps2_prefix_re: Option<Regex>,
     config: Config,
     recorders: Vec<Recorder>,
     output_since_cell_start: Vec<u8>,
@@ -50,13 +48,6 @@ impl PtySession {
         };
         let prompt_re = Regex::new(&prompt_pattern)
             .map_err(|e| TermError::RegexCompile(e.to_string()))?;
-        let prompt_prefix_pattern = match &config.prompt_regex {
-            Some(re) => format!("^(?:{})", re.trim_end_matches('$')),
-            None => format!("^{}\\s?", regex::escape(&config.prompt)),
-        };
-        let prompt_prefix_re = Regex::new(&prompt_prefix_pattern).unwrap_or_else(|_| {
-            Regex::new(&format!("^{}\\s?", regex::escape(&config.prompt))).unwrap()
-        });
         let ps2_re = if let Some(ref re) = config.ps2_regex {
             Some(Regex::new(re).map_err(|e| TermError::RegexCompile(e.to_string()))?)
         } else {
@@ -69,17 +60,6 @@ impl PtySession {
                 })
                 .transpose()
                 .map_err(|e| TermError::RegexCompile(e.to_string()))?
-        };
-        let ps2_prefix_re = if let Some(ref re) = config.ps2_regex {
-            Regex::new(&format!("^(?:{})", re.trim_end_matches('$'))).ok()
-        } else {
-            config
-                .ps2
-                .as_ref()
-                .and_then(|s| {
-                    let escaped = regex::escape(s.trim_end());
-                    Regex::new(&format!("^{}\\s?", escaped)).ok()
-                })
         };
 
         let pty_system = native_pty_system();
@@ -160,9 +140,7 @@ impl PtySession {
             rx,
             vt,
             prompt_re,
-            prompt_prefix_re,
             ps2_re,
-            ps2_prefix_re,
             config: config.clone(),
             recorders,
             output_since_cell_start: Vec::new(),
@@ -666,26 +644,6 @@ impl PtySession {
         false
     }
 
-    fn mark_prompts(&self, lines: &mut [RenderedLine]) {
-        for line in lines.iter_mut() {
-            let prompt_len = if let Some(m) = self.prompt_prefix_re.find(&line.text) {
-                m.end()
-            } else if let Some(ref ps2) = self.ps2_prefix_re {
-                if let Some(m) = ps2.find(&line.text) {
-                    m.end()
-                } else {
-                    0
-                }
-            } else {
-                0
-            };
-
-            if prompt_len > 0 {
-                let char_len = line.text[..prompt_len].chars().count();
-                line.html = renderer::wrap_prompt_span(&line.html, char_len);
-            }
-        }
-    }
 
     fn save_position(&mut self) {
         let scrollback_count = self.vt.lines().count().saturating_sub(self.config.rows as usize);
@@ -820,7 +778,6 @@ impl PtySession {
                     }
                 }
                 _ => {
-                    self.mark_prompts(&mut lines);
                     if cell.options.fullscreen {
                         out.push_str(&renderer::render_fullscreen_to_html(&lines, &html_style));
                     } else {

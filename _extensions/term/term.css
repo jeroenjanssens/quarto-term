@@ -81,11 +81,9 @@ pre.term-source code span {
   opacity: 0.7;
 }
 
-.term-prompt {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+/* Prompt: rendered via ::before so it's not selectable/copyable */
+.term-prompt::before {
+  content: attr(data-prompt);
 }
 
 /* Window chrome */

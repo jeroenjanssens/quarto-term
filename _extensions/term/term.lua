@@ -663,6 +663,28 @@ local function wrap_chrome(html, title)
   return '<div class="term-chrome">\n' .. bar .. '\n' .. html .. '</div>\n'
 end
 
+local function html_escape_attr(s)
+  return s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;")
+end
+
+local function strip_prompts_from_html(html, prompt, ps2)
+  local ps1_display = prompt .. " "
+  local ps1_html = ps1_display:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
+  local ps2_html = ps2 and ps2:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;") or nil
+  local ps1_pat = escape_pattern(ps1_html)
+  local ps2_pat = ps2_html and escape_pattern(ps2_html) or nil
+  local ps1_repl = '<span class="term-prompt" data-prompt="' .. html_escape_attr(ps1_display) .. '"></span>'
+  local ps2_repl = ps2_html and '<span class="term-prompt" data-prompt="' .. html_escape_attr(ps2) .. '"></span>' or nil
+
+  html = html:gsub("(\n)" .. ps1_pat, "%1" .. ps1_repl)
+  html = html:gsub("(<code>)" .. ps1_pat, "%1" .. ps1_repl)
+  if ps2_pat then
+    html = html:gsub("(\n)" .. ps2_pat, "%1" .. ps2_repl)
+    html = html:gsub("(<code>)" .. ps2_pat, "%1" .. ps2_repl)
+  end
+  return html
+end
+
 local function build_cell(block, cell_id, config)
   -- Determine the line marker: chunk-level overrides document-level, default "#!"
   local line_marker = "#!"
@@ -1053,6 +1075,9 @@ function Pandoc(doc)
       else
         local content = result.html
         if type(content) == "string" and content ~= "" then
+          if raw_format == "html" then
+            content = strip_prompts_from_html(content, config.prompt, config.ps2)
+          end
           if pos.colorscheme and raw_format == "html" then
             local scope_class = "term-theme-" .. pos.colorscheme
             content = "<div class=\"" .. scope_class .. "\">\n" .. content .. "</div>\n"
@@ -1186,18 +1211,6 @@ function Pandoc(doc)
       -- Copy button script
       quarto.doc.include_text("after-body", [[<script>
 (function() {
-  function getTextWithoutPrompts(el) {
-    var text = '';
-    el.childNodes.forEach(function(node) {
-      if (node.nodeType === 3) {
-        text += node.textContent;
-      } else if (node.nodeType === 1) {
-        if (node.classList && node.classList.contains('term-prompt')) return;
-        text += getTextWithoutPrompts(node);
-      }
-    });
-    return text;
-  }
   function addCopyButtons() {
     var pres = document.querySelectorAll('pre.term-output, pre.term-screen, pre.term-source');
     pres.forEach(function(pre) {
@@ -1211,7 +1224,7 @@ function Pandoc(doc)
       btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M3.5 10.5h-1a1 1 0 01-1-1v-7a1 1 0 011-1h7a1 1 0 011 1v1"/></svg>';
       btn.addEventListener('click', function() {
         var code = pre.querySelector('code');
-        var text = getTextWithoutPrompts(code || pre);
+        var text = code ? code.innerText : pre.innerText;
         navigator.clipboard.writeText(text).then(function() {
           btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"/></svg>';
           setTimeout(function() {
@@ -1222,22 +1235,6 @@ function Pandoc(doc)
       wrap.appendChild(btn);
     });
   }
-  document.addEventListener('copy', function(e) {
-    var sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    var range = sel.getRangeAt(0);
-    var container = range.commonAncestorContainer;
-    if (container.nodeType === 3) container = container.parentNode;
-    var pre = container.closest && container.closest('pre.term-output, pre.term-screen');
-    if (!pre) return;
-    var fragment = range.cloneContents();
-    var div = document.createElement('div');
-    div.appendChild(fragment);
-    var prompts = div.querySelectorAll('.term-prompt');
-    prompts.forEach(function(p) { p.remove(); });
-    e.clipboardData.setData('text/plain', div.textContent);
-    e.preventDefault();
-  });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', addCopyButtons);
   } else {
