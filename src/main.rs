@@ -33,6 +33,9 @@ fn main() {
     };
 
     if request.config.verbose {
+        if let Some(ref docker) = request.config.docker {
+            eprintln!("quarto-term: docker mode (image: {})", docker.image);
+        }
         eprintln!("quarto-term: starting session (shell: {}, prompt: {:?})",
             request.config.shell, request.config.prompt);
     }
