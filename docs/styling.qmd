@@ -23,6 +23,7 @@ extensions:
 
 | Option | Project | Document | Cell | Default | Description |
 |--------|:-------:|:--------:|:----:|---------|-------------|
+| `chrome` | x | x | x | `false` | Window chrome with traffic light dots; string value becomes title |
 | `colorscheme` | x | x | x | (none) | Colorscheme name (see below) |
 | `colorscheme-light` | x | x | x | (none) | Colorscheme for light mode (HTML only) |
 | `colorscheme-dark` | x | x | x | (none) | Colorscheme for dark mode (HTML only) |
