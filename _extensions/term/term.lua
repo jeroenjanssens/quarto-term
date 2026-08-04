@@ -1039,6 +1039,9 @@ function Pandoc(doc)
     if result then
       if result.error and result.error ~= pandoc.json.null and result.error ~= "" then
         io.stderr:write("quarto-term: cell " .. pos.cell_i .. " error: " .. tostring(result.error) .. "\n")
+        if os.getenv("QUARTO_TERM_CHECK") then
+          error("quarto-term check: assertion failed in cell " .. pos.cell_i)
+        end
       end
       if pos.include == false then
         doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, "")
@@ -1063,6 +1066,34 @@ function Pandoc(doc)
         else
           doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, "")
         end
+      end
+    end
+  end
+
+  if os.getenv("QUARTO_TERM_RECORD") then
+    local assertions = {}
+    for _, pos in ipairs(term_positions) do
+      local result = results[pos.cell_i]
+      if result and result.recorded_assertions then
+        for _, ra in ipairs(result.recorded_assertions) do
+          table.insert(assertions, {
+            cell_id = pos.cell_i,
+            line_index = ra.line_index,
+            output = ra.output,
+          })
+        end
+      end
+    end
+    if #assertions > 0 then
+      local input_files = PANDOC_STATE and PANDOC_STATE.input_files
+      local src = input_files and input_files[1] and pandoc.utils.stringify(input_files[1])
+        or "document"
+      local sidecar = src:gsub("%.[^.]+$", "") .. ".assertions.json"
+      local sf = io.open(sidecar, "w")
+      if sf then
+        sf:write(pandoc.json.encode(assertions))
+        sf:close()
+        io.stderr:write("quarto-term: recorded assertions to " .. sidecar .. "\n")
       end
     end
   end

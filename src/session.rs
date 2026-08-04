@@ -13,6 +13,7 @@ use crate::latex;
 use crate::markdown;
 use crate::protocol::{
     CellResult, Config, DockerConfig, EchoMode, HighlightSpec, InputCell, LineSpec,
+    RecordedAssertion,
 };
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
@@ -192,6 +193,7 @@ impl PtySession {
 
         let lines: Vec<&str> = cell.code.lines().collect();
         let mut error: Option<String> = None;
+        let mut recorded_assertions: Vec<RecordedAssertion> = Vec::new();
 
         let cell_literal = cell.options.literal.unwrap_or(true);
         let cell_delay = cell.options.delay.unwrap_or(self.config.delay);
@@ -238,6 +240,8 @@ impl PtySession {
             if delay > 0.0 {
                 thread::sleep(Duration::from_secs_f64(delay));
             }
+
+            let output_before = self.output_since_cell_start.len();
 
             let use_paste = self.config.disable_auto_indent && literal && idx > 0
                 && !self.last_line_is_primary_prompt();
@@ -290,6 +294,26 @@ impl PtySession {
                     break;
                 }
             }
+
+            if let Some(assert_pattern) = line_opts.and_then(|lo| lo.assert.as_ref()) {
+                let line_output = String::from_utf8_lossy(
+                    &self.output_since_cell_start[output_before..],
+                ).to_string();
+                recorded_assertions.push(RecordedAssertion {
+                    line_index: idx as u32,
+                    output: line_output.clone(),
+                });
+                let matched = regex::Regex::new(assert_pattern)
+                    .map(|re| re.is_match(&line_output))
+                    .unwrap_or_else(|_| line_output.contains(assert_pattern));
+                if !matched {
+                    error = Some(format!(
+                        "assertion failed on line {}: pattern {:?} not found in output",
+                        idx + 1, assert_pattern
+                    ));
+                    break;
+                }
+            }
         }
 
         if error.is_none() && self.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
@@ -332,6 +356,7 @@ impl PtySession {
             id: cell.id,
             html,
             error,
+            recorded_assertions,
         }
     }
 

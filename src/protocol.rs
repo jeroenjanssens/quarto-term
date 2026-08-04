@@ -281,6 +281,8 @@ pub struct LineOptions {
     pub timeout: Option<f64>,
     #[serde(default)]
     pub typing: Option<bool>,
+    #[serde(default)]
+    pub assert: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -288,6 +290,14 @@ pub struct CellResult {
     pub id: u32,
     pub html: String,
     pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recorded_assertions: Vec<RecordedAssertion>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecordedAssertion {
+    pub line_index: u32,
+    pub output: String,
 }
 
 fn default_shell() -> String {

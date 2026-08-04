@@ -11,11 +11,17 @@ mod terminal_line;
 mod typst;
 
 use std::io::{self, Read};
+use std::process::Command;
 
 use protocol::{BatchRequest, CellResult};
 use session::PtySession;
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(|s| s.as_str()) == Some("check") {
+        std::process::exit(run_check(&args[2..]));
+    }
+
     let mut input = String::new();
     io::stdin().read_to_string(&mut input).unwrap();
 
@@ -26,6 +32,7 @@ fn main() {
                 id: 0,
                 html: String::new(),
                 error: Some(format!("failed to parse input: {e}")),
+                recorded_assertions: Vec::new(),
             }];
             println!("{}", serde_json::to_string(&error_result).unwrap());
             return;
@@ -50,6 +57,7 @@ fn main() {
                     id: cell.id,
                     html: String::new(),
                     error: Some(format!("session failed to start: {e}")),
+                    recorded_assertions: Vec::new(),
                 })
                 .collect();
             println!("{}", serde_json::to_string(&results).unwrap());
@@ -96,4 +104,46 @@ fn main() {
     }
 
     println!("{}", serde_json::to_string(&results).unwrap());
+}
+
+fn run_check(args: &[String]) -> i32 {
+    let record = args.iter().any(|a| a == "--record");
+    let file = match args.iter().find(|a| !a.starts_with('-')) {
+        Some(f) => f,
+        None => {
+            eprintln!("usage: quarto-term check [--record] <file.qmd>");
+            return 1;
+        }
+    };
+
+    if !std::path::Path::new(file).exists() {
+        eprintln!("quarto-term check: file not found: {}", file);
+        return 1;
+    }
+
+    let env_key = if record { "QUARTO_TERM_RECORD" } else { "QUARTO_TERM_CHECK" };
+
+    let status = Command::new("quarto")
+        .args(["render", file, "--to", "html"])
+        .env(env_key, "1")
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            if record {
+                eprintln!("quarto-term check: recorded assertions for {}", file);
+            } else {
+                eprintln!("quarto-term check: PASSED ({})", file);
+            }
+            0
+        }
+        Ok(_) => {
+            eprintln!("quarto-term check: FAILED ({})", file);
+            1
+        }
+        Err(e) => {
+            eprintln!("quarto-term check: failed to run quarto: {}", e);
+            1
+        }
+    }
 }
