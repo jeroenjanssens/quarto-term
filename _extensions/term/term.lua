@@ -945,6 +945,10 @@ function Pandoc(doc)
   if not config.record or #config.record == 0 then
     config.record = pandoc.List({})
   end
+  local env_record = os.getenv("QUARTO_TERM_RECORD")
+  if env_record and env_record ~= "" and env_record ~= "1" then
+    table.insert(config.record, env_record)
+  end
   if config.docker then
     if not config.docker.ports or #config.docker.ports == 0 then
       config.docker.ports = pandoc.List({})
@@ -1071,7 +1075,7 @@ function Pandoc(doc)
     end
   end
 
-  if os.getenv("QUARTO_TERM_RECORD") then
+  if os.getenv("QUARTO_TERM_CHECK") then
     local assertions = {}
     for _, pos in ipairs(term_positions) do
       local result = results[pos.cell_i]

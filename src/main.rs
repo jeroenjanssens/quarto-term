@@ -107,11 +107,14 @@ fn main() {
 }
 
 fn run_check(args: &[String]) -> i32 {
-    let record = args.iter().any(|a| a == "--record");
-    let file = match args.iter().find(|a| !a.starts_with('-')) {
+    let record_path = args.iter()
+        .position(|a| a == "--record")
+        .and_then(|i| args.get(i + 1).filter(|a| !a.starts_with('-')))
+        .cloned();
+    let file = match args.iter().find(|a| !a.starts_with('-') && !a.ends_with(".cast") && !a.ends_with(".termshow") || a.ends_with(".qmd")) {
         Some(f) => f,
         None => {
-            eprintln!("usage: quarto-term check [--record] <file.qmd>");
+            eprintln!("usage: quarto-term check [--record <path.cast>] <file.qmd>");
             return 1;
         }
     };
@@ -121,17 +124,19 @@ fn run_check(args: &[String]) -> i32 {
         return 1;
     }
 
-    let env_key = if record { "QUARTO_TERM_RECORD" } else { "QUARTO_TERM_CHECK" };
+    let mut cmd = Command::new("quarto");
+    cmd.args(["render", file, "--to", "html"]);
+    cmd.env("QUARTO_TERM_CHECK", "1");
+    if let Some(ref path) = record_path {
+        cmd.env("QUARTO_TERM_RECORD", path);
+    }
 
-    let status = Command::new("quarto")
-        .args(["render", file, "--to", "html"])
-        .env(env_key, "1")
-        .status();
+    let status = cmd.status();
 
     match status {
         Ok(s) if s.success() => {
-            if record {
-                eprintln!("quarto-term check: recorded assertions for {}", file);
+            if let Some(ref path) = record_path {
+                eprintln!("quarto-term check: PASSED, recorded to {} ({})", path, file);
             } else {
                 eprintln!("quarto-term check: PASSED ({})", file);
             }
