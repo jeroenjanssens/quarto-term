@@ -35,6 +35,8 @@ website:
         text: Styling
       - href: examples.qmd
         text: Examples
+      - href: docker.qmd
+        text: Docker
       - href: demo-formats.qmd
         text: Formats
     right:

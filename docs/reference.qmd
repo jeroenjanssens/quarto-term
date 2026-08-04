@@ -11,6 +11,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
 | `callouts` | | | x | | `[]` | Line indices or patterns to annotate with callout markers |
 | `delay` | x | x | x | x | `0.1` | Seconds to wait before executing a line |
+| `docker` | x | x | | | (none) | Run commands in a Docker container (see [Docker](docker.qmd)) |
 | `echo` | x | x | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
 | `enter` | | | x | x | (from `literal`) | Press Enter after the line |
 | `env` | x | x | | | `{}` | Additional environment variables |
@@ -79,6 +80,7 @@ Set these under `extensions: term:` in your YAML front matter:
 | `verbose` | `false` | Print execution details to stderr |
 | `init` | (none) | Script(s) or command(s) to run at session start (string or list) |
 | `env` | `{}` | Additional environment variables |
+| `docker` | (none) | Run commands in a Docker container (see [Docker](docker.qmd)) |
 | `style` | (none) | Style options (see [Styling](styling.qmd)) |
 
 ## Cell Options

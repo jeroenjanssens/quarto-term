@@ -1,0 +1,181 @@
+---
+title: "Docker"
+engine: markdown
+---
+
+## Overview
+
+quarto-term can execute commands inside a Docker container instead of a local shell. This is useful for:
+
+- Reproducible builds with a fixed toolbox image
+- Running commands that require specific system packages
+- Isolating the execution environment from the host
+
+Each document gets its own container: started when the Quarto render begins, automatically removed when it ends. State persists across all `{term}` cells within a single document, just like in local mode.
+
+## Configuration
+
+Set the `docker:` block under `extensions: term:` in your front matter or `_quarto.yml`:
+
+```yaml
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    docker:
+      image: "python:3.12"
+```
+
+The `image` field is required. All other fields are optional.
+
+## All Docker Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `image` | (required) | Docker image to use |
+| `pull` | `missing` | Pull policy: `always`, `missing`, `never` |
+| `platform` | (none) | Platform override (e.g., `linux/amd64`) |
+| `workdir` | (none) | Working directory inside the container |
+| `user` | (none) | Run as `user[:group]` |
+| `network` | (docker default) | Network mode (`bridge`, `host`, `none`, or a named network) |
+| `memory` | (none) | Memory limit (e.g., `512m`, `2g`) |
+| `cpus` | (none) | CPU limit (e.g., `1.5`) |
+| `name` | (none) | Container name (useful for debugging) |
+| `ports` | `[]` | Port mappings (e.g., `["8080:8080"]`) |
+| `volumes` | `[]` | Volume mounts as `host:container[:options]` |
+| `env` | `{}` | Environment variables passed to the container |
+| `args` | `[]` | Raw extra `docker run` arguments (escape hatch) |
+
+## Examples
+
+### Minimal
+
+```yaml
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    docker:
+      image: "ubuntu:24.04"
+```
+
+### With Volumes
+
+```yaml
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    docker:
+      image: "myorg/toolbox:latest"
+      workdir: /workspace
+      volumes:
+        - "./data:/workspace/data"
+        - "./output:/workspace/output"
+```
+
+Relative host paths (like `./data`) are resolved relative to the document's working directory.
+
+### Full-Featured
+
+```yaml
+extensions:
+  term:
+    shell: zsh
+    shell-args: ["--no-rcs"]
+    prompt: "$"
+    timeout: 30.0
+    docker:
+      image: "myorg/toolbox:latest"
+      platform: "linux/amd64"
+      pull: missing
+      workdir: /home/user
+      user: "1000:1000"
+      network: none
+      memory: "2g"
+      cpus: "2.0"
+      volumes:
+        - "./data:/data"
+        - "./images:/images"
+      env:
+        BAT_THEME: "ansi"
+      args: ["--security-opt=no-new-privileges"]
+```
+
+### Project-Level Defaults
+
+In `_quarto.yml`, Docker config applies to all documents:
+
+```yaml
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    prompt: "$"
+    timeout: 30.0
+    docker:
+      image: "myorg/toolbox:latest"
+      pull: missing
+      volumes:
+        - "./data:/data"
+```
+
+## Volume Mounts
+
+Volume mount syntax follows Docker's `-v` flag: `host_path:container_path[:options]`.
+
+- **Relative host paths** (starting with `./` or not starting with `/`) are resolved relative to the document's working directory.
+- **Absolute host paths** are used as-is.
+- **Options** like `:ro` (read-only) are passed through.
+
+```yaml
+volumes:
+  - "./data:/data"           # relative to document directory
+  - "/tmp/cache:/cache:ro"   # absolute, read-only
+```
+
+## Pull Policies
+
+| Policy | Behavior |
+|--------|----------|
+| `missing` | Pull only if the image is not already present locally (default) |
+| `always` | Always pull, even if the image exists locally |
+| `never` | Never pull; fail if the image is not present |
+
+Use `never` for air-gapped environments or when you've pre-pulled images. Use `always` when you want the latest tag on every render.
+
+## Shell Configuration
+
+The `shell` and `shell-args` from the quarto-term config are used as the container's entrypoint command. The image must have the configured shell installed.
+
+For example, with `shell: zsh` the container is started as:
+
+```
+docker run --rm -i -t <options> <image> zsh --no-rcs
+```
+
+If the shell doesn't exist in the image, you'll get a timeout error (the prompt never appears).
+
+## Error Handling
+
+| Scenario | Error Message |
+|----------|---------------|
+| Docker CLI not installed | `docker not found in PATH` |
+| Docker daemon not running | `docker daemon is not running or not accessible` |
+| Image not found (pull: never) | Container fails to start, timeout error |
+| Image pull fails | `failed to pull image '<image>'` |
+| Shell not in image | Timeout waiting for prompt |
+
+All errors appear in the rendered output as cell-level error messages (visible in verbose mode on stderr).
+
+## Platform Notes
+
+On Apple Silicon (M1/M2/M3) Macs, many images are built for `linux/amd64` only. Use the `platform` option to run them under Rosetta:
+
+```yaml
+docker:
+  image: "some-amd64-only-image:latest"
+  platform: "linux/amd64"
+```
+
+This adds `--platform linux/amd64` to the `docker run` command.
