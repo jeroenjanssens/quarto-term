@@ -103,8 +103,18 @@ local function as_list(val)
   if type(val) == "number" then return {val} end
   if type(val) == "string" then
     local items = {}
-    for item in val:gmatch("[^,]+") do
-      table.insert(items, coerce_value(item))
+    local pos = 1
+    while pos <= #val do
+      local sep = val:find(", ", pos, true)
+      local item_str
+      if sep then
+        item_str = val:sub(pos, sep - 1)
+        pos = sep + 2
+      else
+        item_str = val:sub(pos)
+        pos = #val + 1
+      end
+      table.insert(items, coerce_value(item_str))
     end
     return items
   end
