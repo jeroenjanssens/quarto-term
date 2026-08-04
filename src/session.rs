@@ -370,12 +370,7 @@ impl PtySession {
 
             match self.rx.recv_timeout(remaining.min(Duration::from_millis(50))) {
                 Ok(bytes) => {
-                    for rec in &mut self.recorders {
-                        rec.record_output(&bytes);
-                    }
-                    self.output_since_cell_start.extend_from_slice(&bytes);
-                    let text = String::from_utf8_lossy(&bytes);
-                    self.vt.feed_str(&text);
+                    self.process_bytes(&bytes);
 
                     if self.last_line_matches_prompt() {
                         thread::sleep(Duration::from_millis(10));
@@ -446,6 +441,30 @@ impl PtySession {
         Ok(())
     }
 
+    fn process_bytes(&mut self, bytes: &[u8]) {
+        for rec in &mut self.recorders {
+            rec.record_output(bytes);
+        }
+        self.output_since_cell_start.extend_from_slice(bytes);
+        let text = String::from_utf8_lossy(bytes);
+        self.vt.feed_str(&text);
+        self.respond_to_dsr(bytes);
+    }
+
+    fn respond_to_dsr(&mut self, bytes: &[u8]) {
+        // Respond to Device Status Report (CSI 6 n) with cursor position
+        let dsr = b"\x1b[6n";
+        let mut start = 0;
+        while let Some(pos) = bytes[start..].windows(dsr.len()).position(|w| w == dsr) {
+            let row = self.vt.cursor().row + 1;
+            let col = self.vt.cursor().col + 1;
+            let response = format!("\x1b[{};{}R", row, col);
+            let _ = self.writer.write_all(response.as_bytes());
+            let _ = self.writer.flush();
+            start += pos + dsr.len();
+        }
+    }
+
     fn drain_during(&mut self, duration: Duration) {
         let deadline = Instant::now() + duration;
         loop {
@@ -455,12 +474,7 @@ impl PtySession {
             }
             match self.rx.recv_timeout(remaining.min(Duration::from_millis(50))) {
                 Ok(bytes) => {
-                    for rec in &mut self.recorders {
-                        rec.record_output(&bytes);
-                    }
-                    self.output_since_cell_start.extend_from_slice(&bytes);
-                    let text = String::from_utf8_lossy(&bytes);
-                    self.vt.feed_str(&text);
+                    self.process_bytes(&bytes);
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => continue,
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -472,12 +486,7 @@ impl PtySession {
         loop {
             match self.rx.try_recv() {
                 Ok(bytes) => {
-                    for rec in &mut self.recorders {
-                        rec.record_output(&bytes);
-                    }
-                    self.output_since_cell_start.extend_from_slice(&bytes);
-                    let text = String::from_utf8_lossy(&bytes);
-                    self.vt.feed_str(&text);
+                    self.process_bytes(&bytes);
                 }
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => break,

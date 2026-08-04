@@ -4,29 +4,29 @@ engine: markdown
 extensions:
   term:
     shell: nu
-    shell-args: ["--no-config-file", "--env-config", "shells/nu-env.nu"]
-    prompt: ">"
+    shell-args:
+      - "--no-config-file"
+      - "-e"
+      - "`$env.config.show_banner = false; $env.config.bracketed_paste = false; $env.config.shell_integration.osc2 = false; $env.config.shell_integration.osc7 = false; $env.config.shell_integration.osc8 = false; $env.config.shell_integration.osc9_9 = false; $env.config.shell_integration.osc133 = false; $env.config.shell_integration.osc633 = false; $env.config.shell_integration.reset_application_mode = false; $env.PROMPT_COMMAND = {|| '> ' }; $env.PROMPT_INDICATOR = ''; $env.PROMPT_COMMAND_RIGHT = {|| '' }`"
+    prompt: "`>`"
     init: false
     spacing: false
 ---
 
-Nushell uses `$env.PROMPT_COMMAND` for prompt configuration. Pass a minimal env config file via `--env-config`:
+Nushell uses `$env.PROMPT_COMMAND` for prompt configuration. Use `--no-config-file` and `-e` to set up a minimal environment:
 
 ```yaml
 extensions:
   term:
     shell: nu
-    shell-args: ["--no-config-file", "--env-config", "shells/nu-env.nu"]
-    prompt: ">"
+    shell-args:
+      - "--no-config-file"
+      - "-e"
+      - "`$env.config.show_banner = false; ...`"
+    prompt: "`>`"
 ```
 
-The env config file (`shells/nu-env.nu`):
-
-```nu
-$env.PROMPT_COMMAND = {|| "> " }
-$env.PROMPT_INDICATOR = ""
-$env.PROMPT_COMMAND_RIGHT = {|| "" }
-```
+The `-e` argument configures nushell inline — disabling the banner, shell integration, and bracket paste, then setting a simple prompt. Wrap it in backticks to prevent pandoc from altering the content.
 
 ## Basic Usage
 
