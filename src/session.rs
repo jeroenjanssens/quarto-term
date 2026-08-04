@@ -681,8 +681,9 @@ impl PtySession {
             };
 
             if prompt_len > 0 {
-                let char_len = line.text[..prompt_len].chars().count();
-                line.html = renderer::wrap_prompt_span(&line.html, char_len);
+                let prompt_text = &line.text[..prompt_len];
+                let char_len = prompt_text.chars().count();
+                line.html = renderer::wrap_prompt_span(&line.html, char_len, prompt_text);
             }
         }
     }
