@@ -414,6 +414,7 @@ local function extract_config(meta)
       end
     end
   end
+  if term_meta["cache"] ~= nil then config._cache = meta_bool(term_meta["cache"]) end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
   if term_meta["disable-auto-indent"] ~= nil then config.disable_auto_indent = meta_bool(term_meta["disable-auto-indent"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
@@ -874,7 +875,10 @@ function Pandoc(doc)
 
   -- These fields are only used in Lua; remove before sending to Rust
   local _marker = config.marker
+  local _chrome = config._chrome
   config.marker = nil
+  config._cache = nil
+  config._chrome = nil
 
   local term_positions = {}
   local cells = {}
@@ -891,7 +895,7 @@ function Pandoc(doc)
       local cell_colorscheme_light = cell._colorscheme_light
       local cell_colorscheme_dark = cell._colorscheme_dark
       local cell_chrome = cell._chrome
-      if cell_chrome == nil then cell_chrome = config._chrome end
+      if cell_chrome == nil then cell_chrome = _chrome end
       cell._eval = nil
       cell._include = nil
       cell._colorscheme = nil
@@ -975,14 +979,49 @@ function Pandoc(doc)
   }
 
   local input_json = pandoc.json.encode(request)
-  local ok, output = pcall(pandoc.pipe, ENGINE, {}, input_json)
 
-  if not ok then
-    io.stderr:write("quarto-term: engine error: " .. tostring(output) .. "\n")
-    return nil
+  local results
+  local use_cache = config._cache ~= false
+  local cache_hit = false
+
+  if use_cache then
+    local cache_key = pandoc.utils.sha1(input_json)
+    local cache_dir = pandoc.system.get_working_directory() .. "/.quarto-term-cache"
+    local cache_file = cache_dir .. "/" .. cache_key .. ".json"
+    local cf = io.open(cache_file, "r")
+    if cf then
+      local cached = cf:read("*a")
+      cf:close()
+      results = pandoc.json.decode(cached)
+      cache_hit = true
+      if config.verbose then
+        io.stderr:write("quarto-term: cache hit (" .. cache_key:sub(1, 8) .. ")\n")
+      end
+    else
+      local ok, output = pcall(pandoc.pipe, ENGINE, {}, input_json)
+      if not ok then
+        io.stderr:write("quarto-term: engine error: " .. tostring(output) .. "\n")
+        return nil
+      end
+      results = pandoc.json.decode(output)
+      os.execute('mkdir -p "' .. cache_dir .. '"')
+      local wf = io.open(cache_file, "w")
+      if wf then
+        wf:write(output)
+        wf:close()
+      end
+      if config.verbose then
+        io.stderr:write("quarto-term: cache miss, stored (" .. cache_key:sub(1, 8) .. ")\n")
+      end
+    end
+  else
+    local ok, output = pcall(pandoc.pipe, ENGINE, {}, input_json)
+    if not ok then
+      io.stderr:write("quarto-term: engine error: " .. tostring(output) .. "\n")
+      return nil
+    end
+    results = pandoc.json.decode(output)
   end
-
-  local results = pandoc.json.decode(output)
 
   local raw_format = "html"
   if config.format == "latex" then
