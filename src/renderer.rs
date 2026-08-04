@@ -106,6 +106,40 @@ pub fn is_safe_hex_color(s: &str) -> bool {
 }
 
 
+pub fn wrap_prompt_span(html: &str, prompt_char_len: usize, prompt_text: &str) -> String {
+    if prompt_char_len == 0 {
+        return html.to_string();
+    }
+
+    let mut i = 0;
+    let mut chars_counted = 0;
+    let bytes = html.as_bytes();
+
+    while i < bytes.len() && chars_counted < prompt_char_len {
+        if bytes[i] == b'<' {
+            let end = html[i..].find('>').map(|p| i + p + 1).unwrap_or(bytes.len());
+            i = end;
+        } else if bytes[i] == b'&' {
+            let end = html[i..].find(';').map(|p| i + p + 1).unwrap_or(i + 1);
+            chars_counted += 1;
+            i = end;
+        } else {
+            let c = html[i..].chars().next().unwrap();
+            chars_counted += 1;
+            i += c.len_utf8();
+        }
+    }
+
+    let escaped_prompt = html_escape(prompt_text);
+    let mut result = String::with_capacity(html.len() + 80);
+    result.push_str(&format!(
+        "<span class=\"term-prompt\" data-prompt=\"{}\"></span>",
+        escaped_prompt
+    ));
+    result.push_str(&html[i..]);
+    result
+}
+
 pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str, style: &HtmlStyle) -> String {
     if lines.is_empty() {
         return String::new();

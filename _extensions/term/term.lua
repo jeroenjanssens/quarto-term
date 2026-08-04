@@ -663,27 +663,6 @@ local function wrap_chrome(html, title)
   return '<div class="term-chrome">\n' .. bar .. '\n' .. html .. '</div>\n'
 end
 
-local function html_escape_attr(s)
-  return s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;")
-end
-
-local function strip_prompts_from_html(html, prompt, ps2)
-  local ps1_display = prompt .. " "
-  local ps1_html = ps1_display:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
-  local ps2_html = ps2 and ps2:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;") or nil
-  local ps1_pat = escape_pattern(ps1_html)
-  local ps2_pat = ps2_html and escape_pattern(ps2_html) or nil
-  local ps1_repl = '<span class="term-prompt" data-prompt="' .. html_escape_attr(ps1_display) .. '"></span>'
-  local ps2_repl = ps2_html and '<span class="term-prompt" data-prompt="' .. html_escape_attr(ps2) .. '"></span>' or nil
-
-  html = html:gsub("(\n)" .. ps1_pat, "%1" .. ps1_repl)
-  html = html:gsub("(<code>)" .. ps1_pat, "%1" .. ps1_repl)
-  if ps2_pat then
-    html = html:gsub("(\n)" .. ps2_pat, "%1" .. ps2_repl)
-    html = html:gsub("(<code>)" .. ps2_pat, "%1" .. ps2_repl)
-  end
-  return html
-end
 
 local function build_cell(block, cell_id, config)
   -- Determine the line marker: chunk-level overrides document-level, default "#!"
@@ -1075,9 +1054,6 @@ function Pandoc(doc)
       else
         local content = result.html
         if type(content) == "string" and content ~= "" then
-          if raw_format == "html" then
-            content = strip_prompts_from_html(content, config.prompt, config.ps2)
-          end
           if pos.colorscheme and raw_format == "html" then
             local scope_class = "term-theme-" .. pos.colorscheme
             content = "<div class=\"" .. scope_class .. "\">\n" .. content .. "</div>\n"
