@@ -105,6 +105,43 @@ pub fn is_safe_hex_color(s: &str) -> bool {
         && s.strip_prefix('#').unwrap_or(s).bytes().all(|b| b.is_ascii_hexdigit())
 }
 
+pub fn wrap_prompt_span(html: &str, prompt_char_len: usize) -> String {
+    if prompt_char_len == 0 {
+        return html.to_string();
+    }
+    let mut result = String::with_capacity(html.len() + 60);
+    let mut chars_counted = 0;
+    let mut i = 0;
+    let bytes = html.as_bytes();
+
+    result.push_str("<span class=\"term-prompt\">");
+
+    while i < bytes.len() {
+        if chars_counted >= prompt_char_len {
+            break;
+        }
+        if bytes[i] == b'<' {
+            let end = html[i..].find('>').map(|p| i + p + 1).unwrap_or(bytes.len());
+            result.push_str(&html[i..end]);
+            i = end;
+        } else if bytes[i] == b'&' {
+            let end = html[i..].find(';').map(|p| i + p + 1).unwrap_or(i + 1);
+            result.push_str(&html[i..end]);
+            chars_counted += 1;
+            i = end;
+        } else {
+            let c = html[i..].chars().next().unwrap();
+            result.push(c);
+            chars_counted += 1;
+            i += c.len_utf8();
+        }
+    }
+
+    result.push_str("</span>");
+    result.push_str(&html[i..]);
+    result
+}
+
 pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str, style: &HtmlStyle) -> String {
     if lines.is_empty() {
         return String::new();
