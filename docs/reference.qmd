@@ -9,6 +9,8 @@ All project and document options are set under `extensions: term:` — in `_quar
 
 | Option | Project | Document | Cell | Line | Default | Description |
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
+| `assert` | | | | x | (none) | Regex/substring pattern to validate in line output |
+| `cache` | x | x | | | `true` | Cache results to skip re-execution on unchanged inputs |
 | `disable-auto-indent` | x | x | | | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
 | `callouts` | | | x | | `[]` | Line specs to annotate with callout markers |
 | `delay` | x | x | x | x | `0.1` | Seconds to wait before executing a line |
@@ -36,6 +38,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `remove` | | | x | | `[]` | Line specs to remove from output (indices, ranges, or regex) |
 | `scroll` | | | x | | `!fullscreen` | Include scrollback in capture |
 | `shell` | x | x | | | `zsh` | Shell to use |
+| `source` | | | x | | (none) | Import cell code from an external file |
 | `shell-args` | x | x | | | (auto) | Shell arguments |
 | `spacing` | x | x | x | | `false` | Add blank lines between commands in output |
 | `timeout` | x | x | x | x | `10.0` | Seconds to wait for prompt before error |
@@ -49,6 +52,7 @@ Style options live under `style:` and control visual appearance. They support fo
 
 | Option | Project | Document | Cell | Default | Description |
 |--------|:-------:|:--------:|:----:|---------|-------------|
+| `chrome` | x | x | x | `false` | macOS-style window chrome (traffic light dots); string value becomes title |
 | `colorscheme` | x | x | x | (none) | Color theme name |
 | `colorscheme-light` | x | x | x | (none) | Theme for light mode |
 | `colorscheme-dark` | x | x | x | (none) | Theme for dark mode |
@@ -114,6 +118,7 @@ Set these with `#|` at the top of a cell:
 | `highlight` | (from config) | Syntax highlighting language (for `echo: source`) |
 | `marker` | (from config) | Override line marker for this cell |
 | `remove` | `[]` | Line specs to remove from output |
+| `source` | (none) | Import cell code from an external file path |
 | `truncate` | `[]` | Line specs to truncate (replaced with "[N lines truncated]" message) |
 | `callouts` | `[]` | Line specs for callout annotations |
 | `style` | (from config) | Override style options for this cell (see [Styling](styling.qmd#per-cell-style)) |
@@ -131,6 +136,7 @@ ctrl-c #! literal: false, delay: 0.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `assert` | (none) | Regex or substring pattern; fails if not found in output after this line |
 | `literal` | `true` | Send text as typed characters. Set to `false` for key names. |
 | `enter` | (from cell/literal) | Press Enter after the line |
 | `expect-prompt` | (from cell/enter) | Wait for prompt after the line |
