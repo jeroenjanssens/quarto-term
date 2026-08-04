@@ -4,21 +4,29 @@ engine: markdown
 extensions:
   term:
     shell: fish
-    shell-args: ["--no-config", "-C", "function fish_prompt; echo -n '$ '; end"]
+    shell-args:
+      - "--no-config"
+      - "-C"
+      - "`function fish_prompt; echo -n '$ '; end`"
     prompt: "$"
-    init: []
+    init: false
     spacing: false
 ---
 
-Fish doesn't use `PS1` — it uses a `fish_prompt` function. Use fish's `-C` flag to define a simple prompt before the shell starts:
+Fish doesn't use `PS1` — it uses a `fish_prompt` function. Use fish's `-C` flag to define a simple prompt:
 
 ```yaml
 extensions:
   term:
     shell: fish
-    shell-args: ["--no-config", "-C", "function fish_prompt; echo -n '$ '; end"]
+    shell-args:
+      - "--no-config"
+      - "-C"
+      - "`function fish_prompt; echo -n '$ '; end`"
     prompt: "$"
 ```
+
+Note: wrap the `-C` argument in backticks to prevent pandoc from mangling the quoted characters.
 
 ## Basic Usage
 
@@ -26,18 +34,11 @@ extensions:
 echo "Hello from fish $FISH_VERSION"
 ```
 
-## For Loops
-
-```{term}
-for i in (seq 5)
-  echo "Item $i"
-end
-```
-
-## String Manipulation
+## Variables and String Operations
 
 ```{term}
 set greeting "Hello, World!"
+echo $greeting
 echo (string upper $greeting)
 echo (string replace "World" "Fish" $greeting)
 ```
@@ -46,8 +47,14 @@ echo (string replace "World" "Fish" $greeting)
 
 ```{term}
 set fruits apple banana cherry
-for fruit in $fruits
-  echo "I like $fruit"
-end
 echo "Count: "(count $fruits)
+echo "First: $fruits[1]"
+echo "Last: $fruits[-1]"
+```
+
+## Command Substitution
+
+```{term}
+echo "Today is "(date +%A)
+echo "Files: "(count (ls))
 ```

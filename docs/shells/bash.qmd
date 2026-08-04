@@ -5,7 +5,7 @@ extensions:
   term:
     shell: bash
     shell-args: ["--norc", "--noprofile"]
-    init: []
+    init: false
     spacing: false
 ---
 

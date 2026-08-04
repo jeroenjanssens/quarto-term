@@ -6,7 +6,7 @@ extensions:
     shell: python3
     shell-args: ["-q"]
     prompt: ">>>"
-    init: []
+    init: false
     spacing: false
     env:
       PS2: "... "

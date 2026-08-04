@@ -6,7 +6,7 @@ extensions:
     shell: nu
     shell-args: ["--no-config-file", "--env-config", "shells/nu-env.nu"]
     prompt: ">"
-    init: []
+    init: false
     spacing: false
 ---
 

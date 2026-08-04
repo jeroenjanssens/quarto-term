@@ -3,7 +3,7 @@ title: "Zsh"
 engine: markdown
 extensions:
   term:
-    init: []
+    init: false
     spacing: false
 ---
 

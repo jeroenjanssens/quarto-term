@@ -303,6 +303,9 @@ local function extract_config(meta)
           table.insert(parts, el.text)
         elseif el.t == "SoftBreak" then
           table.insert(parts, "\n")
+        elseif el.t == "Quoted" then
+          local q = el.quotetype == "SingleQuote" and "'" or '"'
+          table.insert(parts, q .. pandoc.utils.stringify(el.content) .. q)
         else
           table.insert(parts, pandoc.utils.stringify(el))
         end
@@ -371,28 +374,31 @@ local function extract_config(meta)
     config.prompt_regex = meta_str(prompt_regex_val)
   end
   if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
-  if term_meta["init"] then
+  if term_meta["init"] ~= nil then
     local init_val = term_meta["init"]
-    local init_list = {}
-    if type(init_val) == "table" and init_val.t == nil
-        and #init_val > 0 and type(init_val[1]) ~= "userdata" then
-      for i = 1, #init_val do
-        table.insert(init_list, meta_str(init_val[i]))
-      end
+    if init_val == false or (type(init_val) == "userdata" and tostring(init_val) == "false") then
+      config.init = {}
     else
-      table.insert(init_list, meta_str(init_val))
-    end
-    config.init = {}
-    for _, entry in ipairs(init_list) do
-      local resolved = resolve_init_path(entry)
-      if resolved then
-        table.insert(config.init, "source " .. resolved)
+      local init_list = {}
+      if type(init_val) == "table" and init_val.t == nil
+          and #init_val > 0 and type(init_val[1]) ~= "userdata" then
+        for i = 1, #init_val do
+          table.insert(init_list, meta_str(init_val[i]))
+        end
       else
-        -- Inline command(s) — split multi-line blocks
-        for line in entry:gmatch("[^\n]+") do
-          local trimmed = line:match("^%s*(.-)%s*$")
-          if trimmed and trimmed ~= "" then
-            table.insert(config.init, trimmed)
+        table.insert(init_list, meta_str(init_val))
+      end
+      config.init = {}
+      for _, entry in ipairs(init_list) do
+        local resolved = resolve_init_path(entry)
+        if resolved then
+          table.insert(config.init, "source " .. resolved)
+        else
+          for line in entry:gmatch("[^\n]+") do
+            local trimmed = line:match("^%s*(.-)%s*$")
+            if trimmed and trimmed ~= "" then
+              table.insert(config.init, trimmed)
+            end
           end
         end
       end
