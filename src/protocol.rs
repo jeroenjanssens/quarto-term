@@ -20,6 +20,8 @@ pub struct Config {
     pub prompt_regex: Option<String>,
     #[serde(default)]
     pub ps2: Option<String>,
+    #[serde(default)]
+    pub ps2_regex: Option<String>,
     #[serde(default = "default_cols")]
     pub cols: u16,
     #[serde(default = "default_rows")]

@@ -373,6 +373,10 @@ local function extract_config(meta)
   if prompt_regex_val then
     config.prompt_regex = meta_str(prompt_regex_val)
   end
+  local ps2_regex_val = term_meta["ps2-regex"] or term_meta["ps2_regex"]
+  if ps2_regex_val then
+    config.ps2_regex = meta_str(ps2_regex_val)
+  end
   if term_meta["timeout"] then config.timeout = meta_num(term_meta["timeout"]) or config.timeout end
   if term_meta["init"] ~= nil then
     local init_val = term_meta["init"]

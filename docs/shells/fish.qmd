@@ -9,11 +9,12 @@ extensions:
       - "-C"
       - "`function fish_prompt; echo -n '$ '; end`"
     prompt: "$"
+    ps2-regex: "^\\s*$"
     init: false
     spacing: false
 ---
 
-Fish doesn't use `PS1` — it uses a `fish_prompt` function. Use fish's `-C` flag to define a simple prompt:
+Fish doesn't use `PS1` — it uses a `fish_prompt` function. Use fish's `-C` flag to define a simple prompt, and `ps2-regex` to detect the continuation prompt (fish uses whitespace indentation):
 
 ```yaml
 extensions:
@@ -24,6 +25,7 @@ extensions:
       - "-C"
       - "`function fish_prompt; echo -n '$ '; end`"
     prompt: "$"
+    ps2-regex: "^\\s*$"
 ```
 
 Note: wrap the `-C` argument in backticks to prevent pandoc from mangling the quoted characters.
@@ -34,11 +36,18 @@ Note: wrap the `-C` argument in backticks to prevent pandoc from mangling the qu
 echo "Hello from fish $FISH_VERSION"
 ```
 
-## Variables and String Operations
+## For Loops
+
+```{term}
+for i in (seq 5)
+  echo "Item $i"
+end
+```
+
+## String Manipulation
 
 ```{term}
 set greeting "Hello, World!"
-echo $greeting
 echo (string upper $greeting)
 echo (string replace "World" "Fish" $greeting)
 ```
@@ -47,14 +56,8 @@ echo (string replace "World" "Fish" $greeting)
 
 ```{term}
 set fruits apple banana cherry
+for fruit in $fruits
+  echo "I like $fruit"
+end
 echo "Count: "(count $fruits)
-echo "First: $fruits[1]"
-echo "Last: $fruits[-1]"
-```
-
-## Command Substitution
-
-```{term}
-echo "Today is "(date +%A)
-echo "Files: "(count (ls))
 ```

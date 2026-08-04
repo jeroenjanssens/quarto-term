@@ -47,15 +47,19 @@ impl PtySession {
         };
         let prompt_re = Regex::new(&prompt_pattern)
             .map_err(|e| TermError::RegexCompile(e.to_string()))?;
-        let ps2_re = config
-            .ps2
-            .as_ref()
-            .map(|s| {
-                let escaped = regex::escape(s.trim_end());
-                Regex::new(&format!("^{}\\s*$", escaped))
-            })
-            .transpose()
-            .map_err(|e| TermError::RegexCompile(e.to_string()))?;
+        let ps2_re = if let Some(ref re) = config.ps2_regex {
+            Some(Regex::new(re).map_err(|e| TermError::RegexCompile(e.to_string()))?)
+        } else {
+            config
+                .ps2
+                .as_ref()
+                .map(|s| {
+                    let escaped = regex::escape(s.trim_end());
+                    Regex::new(&format!("^{}\\s*$", escaped))
+                })
+                .transpose()
+                .map_err(|e| TermError::RegexCompile(e.to_string()))?
+        };
 
         let pty_system = native_pty_system();
         let pair = pty_system
@@ -482,7 +486,19 @@ impl PtySession {
     }
 
     fn last_line_matches_prompt(&self) -> bool {
+        let cursor_col = self.vt.cursor().col;
         let view_lines: Vec<_> = self.vt.view().collect();
+        if let Some(ref ps2) = self.ps2_re {
+            if cursor_col > 0 {
+                let cursor_row = self.vt.cursor().row;
+                if let Some(cursor_line) = view_lines.get(cursor_row) {
+                    let cursor_text = line_text(cursor_line);
+                    if ps2.is_match(&cursor_text) {
+                        return true;
+                    }
+                }
+            }
+        }
         for line in view_lines.iter().rev() {
             let text = line_text(line);
             if !text.is_empty() {
@@ -503,9 +519,6 @@ impl PtySession {
             if m.end() >= text.len() {
                 return true;
             }
-        }
-        if let Some(ref ps2) = self.ps2_re {
-            return ps2.is_match(text);
         }
         false
     }
