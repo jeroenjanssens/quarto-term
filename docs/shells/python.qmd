@@ -7,10 +7,9 @@ extensions:
     shell-args: ["-q"]
     prompt: "`>>>`"
     ps2: "`...`"
+    disable-auto-indent: true
     init: false
     spacing: false
-    env:
-      PYTHON_BASIC_REPL: "1"
 ---
 
 Any REPL can be used as a "shell". For Python, set the prompt to match `>>>` and configure `ps2` for multi-line block detection:
@@ -22,11 +21,14 @@ extensions:
     shell-args: ["-q"]
     prompt: "`>>>`"
     ps2: "`...`"
-    env:
-      PYTHON_BASIC_REPL: "1"
+    disable-auto-indent: true
 ```
 
-Note: `PYTHON_BASIC_REPL=1` disables Python 3.13+'s new auto-indenting REPL, which interferes with sending pre-indented code. Wrap `>>>` and `...` in backticks since pandoc interprets bare `>` as a blockquote marker.
+Python 3.13+ includes PyREPL with syntax highlighting. The `disable-auto-indent` option tells quarto-term to counteract PyREPL's automatic indentation of continuation lines. Wrap `>>>` and `...` in backticks since pandoc interprets bare `>` as a blockquote marker.
+
+::: {.callout-note}
+To use the basic REPL instead (no colors, no auto-indent), set `env: {PYTHON_BASIC_REPL: "1"}` and remove `disable-auto-indent`.
+:::
 
 ## Basic Usage
 

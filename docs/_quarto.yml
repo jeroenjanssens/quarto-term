@@ -51,8 +51,16 @@ website:
             text: POSIX sh
           - href: shells/python.qmd
             text: Python
+          - href: shells/node.qmd
+            text: Node.js
+          - href: shells/ruby.qmd
+            text: Ruby
           - href: shells/r.qmd
             text: R
+          - href: shells/sqlite.qmd
+            text: SQLite
+          - href: shells/duckdb.qmd
+            text: DuckDB
       - href: docker.qmd
         text: Docker
       - href: demo-formats.qmd

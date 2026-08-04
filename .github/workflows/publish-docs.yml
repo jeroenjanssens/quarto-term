@@ -41,12 +41,18 @@ jobs:
         run: cargo build --release
 
       - name: Install dependencies
-        run: sudo apt-get install -y zsh fish htop zsh-syntax-highlighting cowsay lolcat python3 r-base
+        run: sudo apt-get install -y zsh fish htop zsh-syntax-highlighting cowsay lolcat python3 r-base nodejs ruby sqlite3
 
       - name: Install Nushell
         run: |
           curl -sL https://github.com/nushell/nushell/releases/download/0.104.0/nu-0.104.0-x86_64-unknown-linux-gnu.tar.gz | tar xz
           sudo mv nu-0.104.0-x86_64-unknown-linux-gnu/nu /usr/local/bin/
+
+      - name: Install DuckDB
+        run: |
+          curl -sL https://github.com/duckdb/duckdb/releases/download/v1.3.0/duckdb_cli-linux-amd64.zip -o duckdb.zip
+          unzip -q duckdb.zip
+          sudo mv duckdb /usr/local/bin/
 
       - name: Render
         run: quarto render docs

@@ -98,7 +98,7 @@ seq 1 10 | paste -sd+ | bc
 ```{term}
 sleep 100 #! expect-prompt: false
 ctrl-c #! literal: false, delay: 0.5, expect-prompt: true
-echo "Back to the prompt!"
+echo 'Back to the prompt!'
 ```
 
 ## Per-cell styling

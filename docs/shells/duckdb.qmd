@@ -1,0 +1,49 @@
+---
+title: "DuckDB"
+engine: markdown
+extensions:
+  term:
+    shell: duckdb
+    shell-args: ["-no-init"]
+    prompt: "D"
+    prompt-regex: "`D\\s*$`"
+    init: false
+    spacing: false
+---
+
+DuckDB's CLI has colorful output with box-drawing tables:
+
+```yaml
+extensions:
+  term:
+    shell: duckdb
+    shell-args: ["-no-init"]
+    prompt: "D"
+```
+
+## Basic Queries
+
+```{term}
+SELECT 'Hello from DuckDB ' || version() AS greeting;
+SELECT unnest(range(1, 6)) AS n, unnest(range(1, 6)) * unnest(range(1, 6)) AS square;
+```
+
+## Creating Tables
+
+```{term}
+CREATE TABLE sales AS SELECT date '2024-01-01' + INTERVAL (i) DAY AS date, ['Widget','Gadget','Doohickey'][1 + (i % 3)] AS product, (random() * 100)::INTEGER AS quantity FROM range(10) t(i);
+SELECT * FROM sales LIMIT 5;
+```
+
+## Aggregation
+
+```{term}
+SELECT product, SUM(quantity) AS total, AVG(quantity)::INTEGER AS avg_qty FROM sales GROUP BY product ORDER BY total DESC;
+```
+
+## Built-in Functions
+
+```{term}
+SELECT [x*x FOR x IN [1, 2, 3, 4, 5]] AS squares;
+SELECT strftime(CURRENT_DATE, '%A, %B %d, %Y') AS today;
+```

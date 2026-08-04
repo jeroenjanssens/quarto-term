@@ -67,6 +67,8 @@ pub struct Config {
     #[serde(default)]
     pub trailing_spaces: bool,
     #[serde(default)]
+    pub disable_auto_indent: bool,
+    #[serde(default)]
     pub docker: Option<DockerConfig>,
 }
 

@@ -9,6 +9,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 
 | Option | Project | Document | Cell | Line | Default | Description |
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
+| `disable-auto-indent` | x | x | | | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
 | `callouts` | | | x | | `[]` | Line specs to annotate with callout markers |
 | `delay` | x | x | x | x | `0.1` | Seconds to wait before executing a line |
 | `docker` | x | x | | | (none) | Run commands in a Docker container (see [Docker](docker.qmd)) |
@@ -66,6 +67,7 @@ Set these under `extensions: term:` in your YAML front matter:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `auto-indent` | `false` | Strip REPL auto-indentation from continuation lines (for Python PyREPL) |
 | `shell` | `zsh` | Shell to use |
 | `shell-args` | auto | Shell arguments (defaults: `--no-rcs` for zsh, `--norc --noprofile` for bash) |
 | `prompt` | `$` | Literal prompt string. Auto-sets `PS1` and builds the matching regex. Alias: `ps1` |

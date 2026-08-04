@@ -1,0 +1,52 @@
+---
+title: "SQLite"
+engine: markdown
+extensions:
+  term:
+    shell: sqlite3
+    shell-args: []
+    prompt: "sqlite>"
+    init:
+      - ".mode column"
+      - ".headers on"
+    spacing: false
+---
+
+SQLite's command-line shell works out of the box with a simple prompt:
+
+```yaml
+extensions:
+  term:
+    shell: sqlite3
+    prompt: "sqlite>"
+    init:
+      - ".mode column"
+      - ".headers on"
+```
+
+## Creating Tables
+
+```{term}
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+INSERT INTO users VALUES (1, 'Alice', 30), (2, 'Bob', 25), (3, 'Charlie', 35);
+```
+
+## Queries
+
+```{term}
+SELECT * FROM users;
+SELECT name, age FROM users WHERE age > 28 ORDER BY age DESC;
+```
+
+## Aggregation
+
+```{term}
+SELECT COUNT(*) AS total, AVG(age) AS avg_age, MIN(age) AS youngest, MAX(age) AS oldest FROM users;
+```
+
+## Schema Inspection
+
+```{term}
+.schema users
+.tables
+```

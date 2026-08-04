@@ -17,7 +17,11 @@ Each shell below is a live demonstration rendered by quarto-term:
 | [Nushell](nushell.qmd) | `shell: nu` + inline config via `-e` |
 | [POSIX sh](sh.qmd) | `shell: sh` |
 | [Python](python.qmd) | `shell: python3` + `prompt: ">>>"` |
+| [Node.js](node.qmd) | `shell: node` + `prompt: ">"` |
+| [Ruby](ruby.qmd) | `shell: irb` + `prompt-regex` |
 | [R](r.qmd) | `shell: R` + `prompt: ">"` |
+| [SQLite](sqlite.qmd) | `shell: sqlite3` + `prompt: "sqlite>"` |
+| [DuckDB](duckdb.qmd) | `shell: duckdb` + `prompt: "D"` |
 
 ## How It Works
 
@@ -59,8 +63,11 @@ quarto-term captures whatever the shell renders, including ANSI colors. Shells t
 | Zsh | [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) via `init` |
 | Fish | Built-in — configure `fish_color_*` variables |
 | Nushell | Built-in (enabled by default) |
-| Bash | Not available natively |
-| Python / R / sh | Not available |
+| Python | Built-in via PyREPL (3.13+) — use `disable-auto-indent: true` |
+| Node.js | Built-in (colored output values) |
+| Ruby | Built-in via reline (Ruby 3.x+) — use `disable-auto-indent: true` |
+| DuckDB | Built-in (colored SQL and tables) |
+| Bash / R / SQLite / sh | Not available |
 
 ### Zsh
 

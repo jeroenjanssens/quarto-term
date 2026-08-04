@@ -239,6 +239,9 @@ impl PtySession {
                 thread::sleep(Duration::from_secs_f64(delay));
             }
 
+            let use_paste = self.config.disable_auto_indent && literal && idx > 0
+                && !self.last_line_is_primary_prompt();
+
             if !literal && line_text.contains(' ') {
                 let keys: Vec<&str> = line_text.split_whitespace().collect();
                 for (ki, key) in keys.iter().enumerate() {
@@ -263,6 +266,18 @@ impl PtySession {
                 if error.is_some() {
                     break;
                 }
+            } else if use_paste {
+                let resolved = ResolvedLineOpts {
+                    literal,
+                    enter,
+                    hold,
+                    expect_prompt,
+                };
+                let prefixed = format!("\x15{}", line_text);
+                if let Err(e) = self.send_line_resolved(&prefixed, &resolved, line_is_human, speed, error_rate) {
+                    error = Some(e.to_string());
+                    break;
+                }
             } else {
                 let resolved = ResolvedLineOpts {
                     literal,
@@ -278,8 +293,12 @@ impl PtySession {
         }
 
         if error.is_none() && self.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
-            for _ in 0..10 {
-                self.writer.write_all(b"\r").ok();
+            for attempt in 0..3 {
+                if attempt < 2 {
+                    self.writer.write_all(b"\r").ok();
+                } else {
+                    self.writer.write_all(b"\x03").ok();
+                }
                 self.writer.flush().ok();
                 thread::sleep(Duration::from_millis(50));
                 self.drain_pty();
@@ -468,16 +487,34 @@ impl PtySession {
     }
 
     fn respond_to_dsr(&mut self, bytes: &[u8]) {
-        // Respond to Device Status Report (CSI 6 n) with cursor position
-        let dsr = b"\x1b[6n";
         let mut start = 0;
-        while let Some(pos) = bytes[start..].windows(dsr.len()).position(|w| w == dsr) {
-            let row = self.vt.cursor().row + 1;
-            let col = self.vt.cursor().col + 1;
-            let response = format!("\x1b[{};{}R", row, col);
-            let _ = self.writer.write_all(response.as_bytes());
-            let _ = self.writer.flush();
-            start += pos + dsr.len();
+        while start < bytes.len() {
+            if bytes[start..].starts_with(b"\x1b[6n") {
+                // Device Status Report: respond with cursor position
+                let row = self.vt.cursor().row + 1;
+                let col = self.vt.cursor().col + 1;
+                let response = format!("\x1b[{};{}R", row, col);
+                let _ = self.writer.write_all(response.as_bytes());
+                let _ = self.writer.flush();
+                start += 4;
+            } else if bytes[start..].starts_with(b"\x1b[c") || bytes[start..].starts_with(b"\x1b[0c") {
+                // Device Attributes: respond as VT220
+                let _ = self.writer.write_all(b"\x1b[?62;22c");
+                let _ = self.writer.flush();
+                start += if bytes[start..].starts_with(b"\x1b[0c") { 4 } else { 3 };
+            } else if bytes[start..].starts_with(b"\x1b]11;?\x07") {
+                // Background color query (OSC 11): respond with dark background
+                let _ = self.writer.write_all(b"\x1b]11;rgb:0000/0000/0000\x1b\\");
+                let _ = self.writer.flush();
+                start += 6;
+            } else if bytes[start..].starts_with(b"\x1b]10;?\x07") {
+                // Foreground color query (OSC 10): respond with light foreground
+                let _ = self.writer.write_all(b"\x1b]10;rgb:ffff/ffff/ffff\x1b\\");
+                let _ = self.writer.flush();
+                start += 6;
+            } else {
+                start += 1;
+            }
         }
     }
 

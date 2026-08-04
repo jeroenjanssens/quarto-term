@@ -1,0 +1,70 @@
+---
+title: "Ruby"
+engine: markdown
+extensions:
+  term:
+    shell: irb
+    shell-args: ["--noautocomplete"]
+    prompt: "irb"
+    prompt-regex: "`irb\\(main\\):\\d+>\\s*$`"
+    ps2-regex: "`irb\\(main\\):\\d+[*|]\\s*$`"
+    disable-auto-indent: true
+    init: false
+    spacing: false
+---
+
+Ruby's `irb` (Interactive Ruby) has syntax highlighting since Ruby 3.x. It uses a numbered prompt with `*` for continuation lines:
+
+```yaml
+extensions:
+  term:
+    shell: irb
+    shell-args: ["--noautocomplete"]
+    prompt: "irb"
+    prompt-regex: "`irb\\(main\\):\\d+>\\s*$`"
+    ps2-regex: "`irb\\(main\\):\\d+[*|]\\s*$`"
+    disable-auto-indent: true
+```
+
+The `disable-auto-indent` option counteracts irb's automatic indentation of continuation lines.
+
+## Basic Usage
+
+```{term}
+puts "Hello from Ruby #{RUBY_VERSION}"
+```
+
+## Expressions
+
+```{term}
+(1..10).sum
+"hello".chars.map(&:upcase).join
+```
+
+## Arrays and Hashes
+
+```{term}
+squares = (1..5).map { |x| x ** 2 }
+squares
+data = {name: "quarto-term", language: "Ruby", version: RUBY_VERSION}
+data.each { |k, v| puts "  #{k}: #{v}" }
+```
+
+## Methods
+
+```{term}
+def fibonacci(n)
+  a, b = 0, 1
+  n.times { a, b = b, a + b }
+  a
+end
+(0...10).map { |i| fibonacci(i) }
+```
+
+## Blocks and Iterators
+
+```{term}
+%w[apple banana cherry].each_with_index do |fruit, i|
+  puts "#{i + 1}. #{fruit}"
+end
+```

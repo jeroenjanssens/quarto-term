@@ -1,0 +1,59 @@
+---
+title: "Node.js"
+engine: markdown
+extensions:
+  term:
+    shell: node
+    shell-args: []
+    prompt: "`>`"
+    ps2: "|"
+    init: false
+    spacing: false
+---
+
+Node.js has a built-in REPL with syntax highlighting. Its continuation prompt is `|`:
+
+```yaml
+extensions:
+  term:
+    shell: node
+    prompt: "`>`"
+    ps2: "|"
+```
+
+## Basic Usage
+
+```{term}
+console.log("Hello from Node.js " + process.version)
+```
+
+## Expressions
+
+```{term}
+1 + 1
+Math.PI * 2
+```
+
+## Objects and Arrays
+
+```{term}
+const data = {name: "quarto-term", version: "0.4.3", shells: 10}
+data
+[1, 2, 3, 4, 5].map(x => x * x)
+```
+
+## Functions
+
+```{term}
+function fibonacci(n) {
+  if (n <= 1) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+Array.from({length: 10}, (_, i) => fibonacci(i))
+```
+
+## Promises
+
+```{term}
+await Promise.all([1, 2, 3].map(x => Promise.resolve(x * 10)))
+```
