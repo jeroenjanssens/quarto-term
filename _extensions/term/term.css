@@ -167,6 +167,3 @@ pre.term-source code span {
   background: rgba(255, 255, 255, 0.15);
 }
 
-.term-chrome .term-copy-btn {
-  top: calc(8px + 12px + 8px + 0.4em);
-}

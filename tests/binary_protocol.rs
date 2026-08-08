@@ -199,7 +199,7 @@ fn ansi_disabled() {
     let json = r#"{"config":{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0},"cells":[{"id":1,"code":"echo $'\\e[31mRED\\e[0m'","options":{"ansi":false},"line_options":[],"source_lines":[]}]}"#;
     let result = run_binary(json);
     let html = result[0]["html"].as_str().unwrap();
-    assert!(!html.contains("<span"), "should have no spans with ansi:false: {}", html);
+    assert!(!html.contains("style="), "should have no style spans with ansi:false: {}", html);
 }
 
 #[test]
@@ -211,7 +211,7 @@ fn keep_last_prompt() {
     let result = run_binary(&json);
     let html = result[0]["html"].as_str().unwrap();
     // The trailing prompt $ should appear at the end (bash-3.2$ or $)
-    assert!(html.contains("$\n") || html.ends_with("$</code></pre>\n"),
+    assert!(html.contains("$\n") || html.contains("$</span>\n") || html.contains("$</code></pre>\n") || html.contains("$</span></code></pre>\n"),
         "should have trailing prompt: {}", html);
 }
 

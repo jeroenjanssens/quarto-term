@@ -219,6 +219,7 @@ impl PtySession {
 
         let cell_literal = cell.options.literal.unwrap_or(true);
         let cell_delay = cell.options.delay.unwrap_or(self.config.delay);
+        let mut last_enter = true;
 
         for (idx, line_text) in lines.iter().enumerate() {
             let line_opts = cell
@@ -243,6 +244,7 @@ impl PtySession {
             let expect_prompt = line_opts
                 .and_then(|lo| lo.expect_prompt)
                 .unwrap_or(cell_expect);
+            last_enter = enter;
 
             self.config.timeout = line_opts
                 .and_then(|lo| lo.timeout)
@@ -343,7 +345,7 @@ impl PtySession {
             }
         }
 
-        if error.is_none() && self.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
+        if error.is_none() && last_enter && self.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
             for attempt in 0..3 {
                 if attempt < 2 {
                     self.writer.write_all(b"\r").ok();
@@ -684,6 +686,8 @@ impl PtySession {
                 let prompt_text = &line.text[..prompt_len];
                 let char_len = prompt_text.chars().count();
                 line.html = renderer::wrap_prompt_span(&line.html, char_len, prompt_text);
+            } else {
+                line.html = format!("<span class=\"term-output\">{}</span>", line.html);
             }
         }
     }
@@ -821,10 +825,10 @@ impl PtySession {
                     }
                 }
                 _ => {
-                    self.mark_prompts(&mut lines);
                     if cell.options.fullscreen {
                         out.push_str(&renderer::render_fullscreen_to_html(&lines, &html_style));
                     } else {
+                        self.mark_prompts(&mut lines);
                         out.push_str(&renderer::render_lines_to_html(&lines, "term-output", &html_style));
                     }
                 }
