@@ -1,3 +1,7 @@
+local FILTER_DIR = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+
+local chrome = dofile(FILTER_DIR .. "chrome.lua")
+
 local function detect_platform()
   local os_name = pandoc.system.os
   local arch = pandoc.system.arch
@@ -21,7 +25,7 @@ local function detect_platform()
 end
 
 local function find_engine()
-  local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+  local filter_dir = FILTER_DIR
   local project_root = filter_dir:match("(.*/?)_extensions/term/") or "./"
 
   -- 1. Check for platform-specific binary bundled with the extension
@@ -61,8 +65,7 @@ local ENGINE = find_engine()
 
 local function read_theme_file(theme_name)
   if not theme_name then return nil end
-  local filter_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
-  local path = filter_dir .. "themes/" .. theme_name .. ".css"
+  local path = FILTER_DIR .. "themes/" .. theme_name .. ".css"
   local f = io.open(path, "r")
   if not f then return nil end
   local content = f:read("*a")
@@ -686,52 +689,6 @@ local function is_term_block(block)
   return false
 end
 
-local function normalize_chrome(val)
-  if val == nil or val == false then return nil end
-  if val == true then
-    return { os = "macos", shadow = true }
-  end
-  if type(val) == "table" then
-    return {
-      os     = val.os or "macos",
-      color  = val.color,
-      title  = val.title,
-      shadow = (val.shadow == nil) and true or val.shadow,
-    }
-  end
-  return nil
-end
-
-local function wrap_chrome(html, cfg)
-  local os_style = cfg.os or "macos"
-  local title = cfg.title
-  local color = cfg.color
-  local shadow = cfg.shadow
-
-  local bar_style = color and (' style="background:' .. color .. '"') or ''
-  local outer_style = (shadow == false) and ' style="box-shadow:none"' or ''
-
-  local title_html = title
-    and ('<span class="term-chrome-title">' .. title .. '</span>')
-    or ''
-
-  local bar_inner
-  if os_style == "windows" then
-    bar_inner = title_html
-      .. '<span class="term-chrome-btn term-chrome-minimize">&#x2500;</span>'
-      .. '<span class="term-chrome-btn term-chrome-maximize">&#x25A1;</span>'
-      .. '<span class="term-chrome-btn term-chrome-close">&#x2715;</span>'
-  else
-    bar_inner = '<span class="term-chrome-dot term-chrome-close"></span>'
-      .. '<span class="term-chrome-dot term-chrome-minimize"></span>'
-      .. '<span class="term-chrome-dot term-chrome-maximize"></span>'
-      .. title_html
-  end
-
-  local bar = '<div class="term-chrome-bar"' .. bar_style .. '>' .. bar_inner .. '</div>'
-  return '<div class="term-chrome term-chrome-' .. os_style .. '"' .. outer_style .. '>\n'
-    .. bar .. '\n' .. html .. '</div>\n'
-end
 
 
 local function build_cell(block, cell_id, config)
@@ -1154,9 +1111,9 @@ function Pandoc(doc)
             end
           end
           if pos.chrome and raw_format == "html" then
-            local chrome_cfg = normalize_chrome(pos.chrome)
+            local chrome_cfg = chrome.normalize(pos.chrome)
             if chrome_cfg then
-              content = wrap_chrome(content, chrome_cfg)
+              content = chrome.wrap(content, chrome_cfg)
             end
           end
           doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
