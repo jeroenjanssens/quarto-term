@@ -3,7 +3,7 @@ title: "Recipes"
 engine: markdown
 ---
 
-Common patterns for documenting terminal workflows. Each recipe is self-contained — copy the fenced block into your own `.qmd` file.
+Common patterns for documenting terminal workflows. Each recipe is self-contained; copy the fenced block into your own `.qmd` file.
 
 ## Interrupt a long-running process
 
@@ -23,31 +23,39 @@ ctrl-c #! literal: false, delay: 0.5
 
 ## Capture a fullscreen TUI
 
-Render the full terminal screen (not just scrollback output). Set `fullscreen: true` on the cell and use `scroll: false` to discard scrollback. End with `expect-prompt: false` so the screen is captured while the app is still displayed.
+Render the full terminal screen (not just scrollback output) for apps like `htop`, `vim`, or `less`. The trick is to type the command in one cell without pressing Enter, then send Enter in a separate `fullscreen: true` cell with a `hold` to capture the screen while the app is displayed.
 
 ````markdown
 ```{term}
+htop #! enter: false, hold: 0.5
+```
+
+```{term}
 #| fullscreen: true
-#| scroll: false
-cal -y 2026
+#| timeout: 4
+enter #! literal: false, hold: 3.0
+```
+
+```{term}
+#| include: false
+q #! literal: false
 ```
 ````
 
 ```{term}
-#| fullscreen: true
-#| scroll: false
-cal -y 2026
+htop #! enter: false, hold: 0.5
 ```
 
-For interactive TUIs like `htop` or `less`, end the last command with `expect-prompt: false` and `hold` to capture while still running:
-
-````markdown
 ```{term}
 #| fullscreen: true
-#| scroll: false
-htop #! expect-prompt: false, hold: 1.0
+#| timeout: 4
+enter #! literal: false, hold: 3.0
 ```
-````
+
+```{term}
+#| include: false
+q #! literal: false
+```
 
 ## Drive an interactive prompt
 
@@ -57,42 +65,42 @@ Respond to a program that asks questions. Use `expect-prompt: false` on lines th
 ```{term}
 read "name?What is your name? " #! expect-prompt: false
 World #! expect-prompt: true
-echo "Hello, $name!"
+echo "Hello, $name"
 ```
 ````
 
 ```{term}
 read "name?What is your name? " #! expect-prompt: false
 World #! expect-prompt: true
-echo "Hello, $name!"
+echo "Hello, $name"
 ```
 
 ## Persist state across cells
 
-Each cell runs in the same shell session. Variables, the working directory, and shell state carry over from one cell to the next. This is the key difference from static code blocks.
+Each cell runs in the same shell session. Variables and shell state carry over from one cell to the next. This is the key difference from static code blocks.
 
 ````markdown
 ```{term}
-PROJECT="my-app"
-mkdir -p /tmp/$PROJECT && cd /tmp/$PROJECT
-echo "version: 1.0" > config.yml
+GREETING="Hello from quarto-term"
+COUNT=3
 ```
 
 ```{term}
-pwd
-cat config.yml
+for i in $(seq 1 $COUNT); do
+  echo "$GREETING (#$i)"
+done
 ```
 ````
 
 ```{term}
-PROJECT="my-app"
-mkdir -p /tmp/$PROJECT && cd /tmp/$PROJECT
-echo "version: 1.0" > config.yml
+GREETING="Hello from quarto-term"
+COUNT=3
 ```
 
 ```{term}
-pwd
-cat config.yml
+for i in $(seq 1 $COUNT); do
+  echo "$GREETING (#$i)"
+done
 ```
 
 ## Truncate verbose output
@@ -113,27 +121,31 @@ seq 1 20
 
 The range `3:-3` keeps the first two and last two lines, replacing everything between with a "[N lines truncated]" message. You can also use regex patterns or multiple ranges.
 
-## Annotate output with callouts
+## Annotate code with callouts
 
-Draw attention to specific lines with numbered callout markers. Use line indices (1-based), negative indices (from end), or regex patterns.
+Add numbered markers to specific lines. This is particularly useful for technical books (e.g., O'Reilly style) where you reference lines by number in the surrounding prose.
+
+The `callouts` option takes line indices (1-based, referring to the rendered output which includes both commands and their output). Use it to highlight specific parts of a script:
 
 ````markdown
 ```{term}
-#| callouts: [2, -1]
-echo "start"
-echo "important result"
-echo "another line"
-echo "final output"
+#| callouts: [1, 2, 3]
+for planet in Mercury Venus Earth Mars; do
+  echo "- $planet"
+done
 ```
 ````
 
 ```{term}
-#| callouts: [2, -1]
-echo "start"
-echo "important result"
-echo "another line"
-echo "final output"
+#| callouts: [1, 2, 3]
+for planet in Mercury Venus Earth Mars; do
+  echo "- $planet"
+done
 ```
+
+1. The `for` loop iterates over a space-separated list of values.
+2. The loop body runs once per item, with `$planet` bound to the current value.
+3. `done` closes the loop; the shell waits until here before executing.
 
 ## Hide setup, show result
 
@@ -167,7 +179,7 @@ cat /tmp/demo-project/package.json | python3 -m json.tool
 
 ## Remove noise from output
 
-Strip specific lines that clutter the output — warnings, empty lines, or headers you don't want. Unlike `truncate`, removed lines disappear entirely with no placeholder.
+Strip specific lines that clutter the output: warnings, empty lines, or headers you don't want. Unlike `truncate`, removed lines disappear entirely with no placeholder.
 
 ````markdown
 ```{term}
@@ -188,10 +200,41 @@ echo "second"
 echo ""
 echo "third"
 ```
+
+## Record a session for playback
+
+Record the terminal session to an asciicast (`.cast`) or termshow (`.termshow`) file alongside the rendered document. This is useful for embedding animated replays on a webpage or sharing a demo without requiring the reader to re-run anything.
+
+````markdown
+---
+extensions:
+  term:
+    record: "demo.cast"
+    typing: true
+---
+
+```{term}
+echo "This session is being recorded"
+```
+````
+
+The `record` option accepts a single path or a list for multiple formats:
+
+```yaml
+extensions:
+  term:
+    record:
+      - "demo.cast"
+      - "demo.termshow"
+```
+
+The `.cast` format is playable with [asciinema](https://asciinema.org/). The `.termshow` format works with the [termshow](https://github.com/posit-dev/great-docs) player. Combine with `typing: true` to make the recording look natural.
 
 ## Simulate realistic typing
 
-Add human-like typing cadence for screencasts or demos. Typing simulation adds random per-character delays so commands appear one keystroke at a time.
+Add human-like typing cadence so commands appear one keystroke at a time. This is primarily useful when [recording](#record-a-session-for-playback) sessions for playback; the rendered HTML output is identical whether typing is enabled or not.
+
+Set `typing: true` for defaults, or configure `speed` (characters per minute) and `error-rate` (probability of a typo per character, corrected with backspace):
 
 ````markdown
 ```{term}
@@ -203,11 +246,21 @@ echo "This looks like a human typed it"
 ```{term}
 #| typing: true
 echo "This looks like a human typed it"
+```
+
+At the document level, you can configure both parameters:
+
+```yaml
+extensions:
+  term:
+    typing:
+      speed: 100
+      error-rate: 0.02
 ```
 
 ## Control arrow keys and navigation
 
-Use `literal: false` to send special keys — arrows, tab, escape sequences. Space-separated words on one line are sent as individual keystrokes.
+Use `literal: false` to send special keys like arrows, tab, and escape sequences. Space-separated words on one line are sent as individual keystrokes.
 
 ````markdown
 ```{term}
