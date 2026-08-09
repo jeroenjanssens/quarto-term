@@ -1,4 +1,5 @@
 mod color;
+mod docker;
 mod error;
 mod keymap;
 mod latex;
