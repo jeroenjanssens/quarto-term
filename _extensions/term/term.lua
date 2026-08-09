@@ -115,7 +115,6 @@ local function parse_cell_options(text, line_marker)
   local cell_opts = {}
   local code_lines = {}
   local in_options = true
-  local nested_key = nil
 
   local nest_stack = {}
 
@@ -923,6 +922,7 @@ function Pandoc(doc)
   -- These fields are only used in Lua; remove before sending to Rust
   local _marker = config.marker
   local _chrome = config._chrome
+  local _cache = config._cache
   config.marker = nil
   config._cache = nil
   config._chrome = nil
@@ -1032,8 +1032,7 @@ function Pandoc(doc)
   local input_json = pandoc.json.encode(request)
 
   local results
-  local use_cache = config._cache ~= false
-  local cache_hit = false
+  local use_cache = _cache ~= false
 
   if use_cache then
     local cache_key = pandoc.utils.sha1(input_json)
@@ -1044,7 +1043,6 @@ function Pandoc(doc)
       local cached = cf:read("*a")
       cf:close()
       results = pandoc.json.decode(cached)
-      cache_hit = true
       if config.verbose then
         io.stderr:write("quarto-term: cache hit (" .. cache_key:sub(1, 8) .. ")\n")
       end
