@@ -5,7 +5,6 @@ use std::time::{Duration, Instant};
 
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use rand::Rng;
-use regex::Regex;
 
 use crate::docker;
 use crate::error::TermError;
@@ -13,6 +12,7 @@ use crate::keymap;
 use crate::latex;
 use crate::markdown;
 use crate::output_transform;
+use crate::prompt::PromptMatcher;
 use crate::protocol::{
     CellResult, Config, EchoMode, HighlightSpec, InputCell,
     OutputFormat, RecordedAssertion,
@@ -33,10 +33,7 @@ pub struct PtySession {
     writer: Box<dyn Write + Send>,
     rx: Receiver<Vec<u8>>,
     vt: avt::Vt,
-    prompt_re: Regex,
-    prompt_prefix_re: Regex,
-    ps2_re: Option<Regex>,
-    ps2_prefix_re: Option<Regex>,
+    prompt: PromptMatcher,
     config: Config,
     recorders: Vec<Recorder>,
     output_since_cell_start: Vec<u8>,
@@ -46,43 +43,7 @@ pub struct PtySession {
 
 impl PtySession {
     pub fn new(config: &Config) -> Result<Self, TermError> {
-        let prompt_pattern = match &config.prompt_regex {
-            Some(re) => re.clone(),
-            None => format!("{}\\s*$", regex::escape(&config.prompt)),
-        };
-        let prompt_re = Regex::new(&prompt_pattern)
-            .map_err(|e| TermError::RegexCompile(e.to_string()))?;
-        let prompt_prefix_pattern = match &config.prompt_regex {
-            Some(re) => format!("^(?:{})", re.trim_end_matches('$')),
-            None => format!("^{}\\s?", regex::escape(&config.prompt)),
-        };
-        let prompt_prefix_re = Regex::new(&prompt_prefix_pattern).unwrap_or_else(|_| {
-            Regex::new(&format!("^{}\\s?", regex::escape(&config.prompt))).unwrap()
-        });
-        let ps2_re = if let Some(ref re) = config.ps2_regex {
-            Some(Regex::new(re).map_err(|e| TermError::RegexCompile(e.to_string()))?)
-        } else {
-            config
-                .ps2
-                .as_ref()
-                .map(|s| {
-                    let escaped = regex::escape(s.trim_end());
-                    Regex::new(&format!("^{}\\s*$", escaped))
-                })
-                .transpose()
-                .map_err(|e| TermError::RegexCompile(e.to_string()))?
-        };
-        let ps2_prefix_re = if let Some(ref re) = config.ps2_regex {
-            Regex::new(&format!("^(?:{})", re.trim_end_matches('$'))).ok()
-        } else {
-            config
-                .ps2
-                .as_ref()
-                .and_then(|s| {
-                    let escaped = regex::escape(s.trim_end());
-                    Regex::new(&format!("^{}\\s?", escaped)).ok()
-                })
-        };
+        let prompt = PromptMatcher::new(config)?;
 
         let pty_system = native_pty_system();
         let pair = pty_system
@@ -162,10 +123,7 @@ impl PtySession {
             writer,
             rx,
             vt,
-            prompt_re,
-            prompt_prefix_re,
-            ps2_re,
-            ps2_prefix_re,
+            prompt,
             config: config.clone(),
             recorders,
             output_since_cell_start: Vec::new(),
@@ -348,7 +306,7 @@ impl PtySession {
             }
         }
 
-        if error.is_none() && last_enter && self.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
+        if error.is_none() && last_enter && self.prompt.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
             for attempt in 0..3 {
                 if attempt < 2 {
                     self.writer.write_all(b"\r").ok();
@@ -624,7 +582,7 @@ impl PtySession {
         for line in view_lines.iter().rev() {
             let text = line_text(line);
             if !text.is_empty() {
-                return self.prompt_re.is_match(&text);
+                return self.prompt.is_primary_prompt(&text);
             }
         }
         false
@@ -633,63 +591,30 @@ impl PtySession {
     fn last_line_matches_prompt(&self) -> bool {
         let cursor_col = self.vt.cursor().col;
         let view_lines: Vec<_> = self.vt.view().collect();
-        if let Some(ref ps2) = self.ps2_re {
-            if cursor_col > 0 {
-                let cursor_row = self.vt.cursor().row;
-                if let Some(cursor_line) = view_lines.get(cursor_row) {
-                    let cursor_text = line_text(cursor_line);
-                    if ps2.is_match(&cursor_text) {
-                        return true;
-                    }
+        if self.prompt.ps2_re.is_some() && cursor_col > 0 {
+            let cursor_row = self.vt.cursor().row;
+            if let Some(cursor_line) = view_lines.get(cursor_row) {
+                let cursor_text = line_text(cursor_line);
+                if self.prompt.matches_ps2(&cursor_text) {
+                    return true;
                 }
             }
         }
         for line in view_lines.iter().rev() {
             let text = line_text(line);
             if !text.is_empty() {
-                if self.prompt_re.is_match(&text) {
-                    return true;
-                }
-                if let Some(ref ps2) = self.ps2_re {
-                    return ps2.is_match(&text);
-                }
-                return false;
+                return self.prompt.matches_any_prompt(&text);
             }
         }
         false
     }
 
     fn is_only_prompt(&self, text: &str) -> bool {
-        if let Some(m) = self.prompt_re.find(text) {
-            if m.end() >= text.len() {
-                return true;
-            }
-        }
-        false
+        self.prompt.is_only_prompt(text)
     }
 
     fn mark_prompts(&self, lines: &mut [RenderedLine]) {
-        for line in lines.iter_mut() {
-            let prompt_len = if let Some(m) = self.prompt_prefix_re.find(&line.text) {
-                m.end()
-            } else if let Some(ref ps2) = self.ps2_prefix_re {
-                if let Some(m) = ps2.find(&line.text) {
-                    m.end()
-                } else {
-                    0
-                }
-            } else {
-                0
-            };
-
-            if prompt_len > 0 {
-                let prompt_text = &line.text[..prompt_len];
-                let char_len = prompt_text.chars().count();
-                line.html = renderer::wrap_prompt_span(&line.html, char_len, prompt_text);
-            } else {
-                line.html = format!("<span class=\"term-output\">{}</span>", line.html);
-            }
-        }
+        self.prompt.mark_prompts(lines);
     }
 
     fn save_position(&mut self) {

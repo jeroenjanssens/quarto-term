@@ -5,6 +5,7 @@ mod keymap;
 mod latex;
 mod markdown;
 mod output_transform;
+mod prompt;
 mod protocol;
 mod render_backend;
 mod recorder;
