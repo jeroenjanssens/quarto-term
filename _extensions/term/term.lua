@@ -1,4 +1,5 @@
 local FILTER_DIR = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+local VERSION = "0.4.4"
 
 local chrome = dofile(FILTER_DIR .. "chrome.lua")
 local engine = dofile(FILTER_DIR .. "engine.lua")
@@ -815,13 +816,13 @@ function Pandoc(doc)
   config._colorscheme_dark = nil
 
   if _colorscheme then
-    local theme_bg, theme_fg = theme.read_colors(_colorscheme)
-    if theme_bg then config.theme_bg = theme_bg end
-    if theme_fg then config.theme_fg = theme_fg end
+    local colorscheme_bg, colorscheme_fg = theme.read_colors(_colorscheme)
+    if colorscheme_bg then config.colorscheme_bg = colorscheme_bg end
+    if colorscheme_fg then config.colorscheme_fg = colorscheme_fg end
   elseif _colorscheme_light then
-    local theme_bg, theme_fg = theme.read_colors(_colorscheme_light)
-    if theme_bg then config.theme_bg = theme_bg end
-    if theme_fg then config.theme_fg = theme_fg end
+    local colorscheme_bg, colorscheme_fg = theme.read_colors(_colorscheme_light)
+    if colorscheme_bg then config.colorscheme_bg = colorscheme_bg end
+    if colorscheme_fg then config.colorscheme_fg = colorscheme_fg end
   end
 
   -- These fields are only used in Lua; remove before sending to Rust
@@ -857,8 +858,8 @@ function Pandoc(doc)
       -- For non-HTML formats, resolve cell colorscheme to bg/fg colors
       if cell_colorscheme and config.format ~= "html" then
         local bg, fg = theme.read_colors(cell_colorscheme)
-        if bg then cell.options.theme_bg = bg end
-        if fg then cell.options.theme_fg = fg end
+        if bg then cell.options.colorscheme_bg = bg end
+        if fg then cell.options.colorscheme_fg = fg end
       end
       if cell_eval then
         local cell_id = #cells + 1
@@ -1080,11 +1081,11 @@ function Pandoc(doc)
       if config.font_family then
         preamble = preamble .. "\\usepackage{fontspec}\n"
       end
-      if config.theme_bg then
-        preamble = preamble .. "\\definecolor{termbg}{HTML}{" .. config.theme_bg .. "}\n"
+      if config.colorscheme_bg then
+        preamble = preamble .. "\\definecolor{termbg}{HTML}{" .. config.colorscheme_bg .. "}\n"
       end
-      if config.theme_fg then
-        preamble = preamble .. "\\definecolor{termfg}{HTML}{" .. config.theme_fg .. "}\n"
+      if config.colorscheme_fg then
+        preamble = preamble .. "\\definecolor{termfg}{HTML}{" .. config.colorscheme_fg .. "}\n"
       end
       quarto.doc.include_text("in-header", preamble)
     end
@@ -1120,7 +1121,7 @@ function Pandoc(doc)
     elseif quarto and quarto.doc and quarto.doc.add_html_dependency then
       quarto.doc.add_html_dependency({
         name = "quarto-term",
-        version = "0.2.0",
+        version = VERSION,
         stylesheets = { "term.css" },
       })
 
@@ -1140,7 +1141,7 @@ function Pandoc(doc)
       elseif _colorscheme then
         quarto.doc.add_html_dependency({
           name = "quarto-term-theme",
-          version = "0.2.0",
+          version = VERSION,
           stylesheets = { "themes/" .. _colorscheme .. ".css" },
         })
       end

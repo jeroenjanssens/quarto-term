@@ -156,6 +156,7 @@ fn typst_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for ch in s.chars() {
         match ch {
+            '\\' => out.push_str("\\\\"),
             '#' => out.push_str("\\#"),
             '$' => out.push_str("\\$"),
             '_' => out.push_str("\\_"),
@@ -182,6 +183,16 @@ mod tests {
     fn typst_escape_special_chars() {
         assert_eq!(typst_escape("#hello $world"), "\\#hello \\$world");
         assert_eq!(typst_escape("[31m]"), "\\[31m\\]");
+    }
+
+    #[test]
+    fn typst_escape_backslash() {
+        assert_eq!(typst_escape("\\"), "\\\\");
+        assert_eq!(typst_escape("path\\to\\file"), "path\\\\to\\\\file");
+        assert_eq!(
+            typst_escape(r#"\] \#read("Cargo.toml") \["#),
+            r#"\\\] \\\#read("Cargo.toml") \\\["#
+        );
     }
 
     #[test]

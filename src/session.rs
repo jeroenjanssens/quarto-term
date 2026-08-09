@@ -710,14 +710,14 @@ impl PtySession {
             output_transform::apply_truncate(&mut lines, &cell.options.truncate, format);
             output_transform::apply_callouts(&mut lines, &cell.options.callouts);
 
-            let theme_bg = cell.options.theme_bg.as_deref().or(self.config.theme_bg.as_deref());
-            let theme_fg = cell.options.theme_fg.as_deref().or(self.config.theme_fg.as_deref());
+            let colorscheme_bg = cell.options.colorscheme_bg.as_deref().or(self.config.colorscheme_bg.as_deref());
+            let colorscheme_fg = cell.options.colorscheme_fg.as_deref().or(self.config.colorscheme_fg.as_deref());
 
             match format {
                 OutputFormat::Latex => {
                     let theme = latex::LatexTheme {
-                        bg: theme_bg,
-                        fg: theme_fg,
+                        bg: colorscheme_bg,
+                        fg: colorscheme_fg,
                         font_size,
                         font_family,
                         line_height,
@@ -730,8 +730,8 @@ impl PtySession {
                 }
                 OutputFormat::Typst => {
                     let theme = typst::TypstTheme {
-                        bg: theme_bg,
-                        fg: theme_fg,
+                        bg: colorscheme_bg,
+                        fg: colorscheme_fg,
                         font_size,
                         font_family,
                         line_height,

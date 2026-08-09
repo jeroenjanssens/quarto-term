@@ -53,9 +53,9 @@ pub struct Config {
     #[serde(default)]
     pub line_height: Option<String>,
     #[serde(default)]
-    pub theme_bg: Option<String>,
+    pub colorscheme_bg: Option<String>,
     #[serde(default)]
-    pub theme_fg: Option<String>,
+    pub colorscheme_fg: Option<String>,
     #[serde(default = "default_format")]
     pub format: OutputFormat,
     #[serde(default)]
@@ -149,9 +149,9 @@ pub struct CellOptions {
     #[serde(default)]
     pub line_height: Option<String>,
     #[serde(default)]
-    pub theme_bg: Option<String>,
+    pub colorscheme_bg: Option<String>,
     #[serde(default)]
-    pub theme_fg: Option<String>,
+    pub colorscheme_fg: Option<String>,
     #[serde(default)]
     pub callouts: Vec<LineSpec>,
     #[serde(default)]
