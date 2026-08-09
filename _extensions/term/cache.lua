@@ -7,7 +7,13 @@ function M.run(input_json, opts)
   local version = opts.version
 
   if use_cache then
-    local cache_key = pandoc.utils.sha1(version .. "\n" .. input_json)
+    local engine_size = ""
+    local ef = io.open(engine, "r")
+    if ef then
+      engine_size = tostring(ef:seek("end"))
+      ef:close()
+    end
+    local cache_key = pandoc.utils.sha1(version .. "\n" .. engine_size .. "\n" .. input_json)
     local cache_dir = pandoc.system.get_working_directory() .. "/.quarto-term-cache"
     local cache_file = cache_dir .. "/" .. cache_key .. ".json"
     local cf = io.open(cache_file, "r")
