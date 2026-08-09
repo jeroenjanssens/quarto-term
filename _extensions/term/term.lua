@@ -16,6 +16,7 @@ local as_list = cell_mod.as_list
 
 local parse_cell_options = cell_mod.parse_cell_options
 
+local cache = dofile(FILTER_DIR .. "cache.lua")
 local config_mod = dofile(FILTER_DIR .. "config.lua")
 
 local extract_config = config_mod.extract_config
@@ -208,46 +209,13 @@ function Pandoc(doc)
 
   local input_json = pandoc.json.encode(request)
 
-  local results
-  local use_cache = _cache ~= false
-
-  if use_cache then
-    local cache_key = pandoc.utils.sha1(VERSION .. "\n" .. input_json)
-    local cache_dir = pandoc.system.get_working_directory() .. "/.quarto-term-cache"
-    local cache_file = cache_dir .. "/" .. cache_key .. ".json"
-    local cf = io.open(cache_file, "r")
-    if cf then
-      local cached = cf:read("*a")
-      cf:close()
-      results = pandoc.json.decode(cached)
-      if config.verbose then
-        io.stderr:write("quarto-term: cache hit (" .. cache_key:sub(1, 8) .. ")\n")
-      end
-    else
-      local ok, output = pcall(pandoc.pipe, ENGINE, {}, input_json)
-      if not ok then
-        io.stderr:write("quarto-term: engine error: " .. tostring(output) .. "\n")
-        return nil
-      end
-      results = pandoc.json.decode(output)
-      os.execute('mkdir -p "' .. cache_dir .. '"')
-      local wf = io.open(cache_file, "w")
-      if wf then
-        wf:write(output)
-        wf:close()
-      end
-      if config.verbose then
-        io.stderr:write("quarto-term: cache miss, stored (" .. cache_key:sub(1, 8) .. ")\n")
-      end
-    end
-  else
-    local ok, output = pcall(pandoc.pipe, ENGINE, {}, input_json)
-    if not ok then
-      io.stderr:write("quarto-term: engine error: " .. tostring(output) .. "\n")
-      return nil
-    end
-    results = pandoc.json.decode(output)
-  end
+  local results = cache.run(input_json, {
+    cache = _cache,
+    engine = ENGINE,
+    verbose = config.verbose,
+    version = VERSION,
+  })
+  if not results then return nil end
 
   local raw_format = "html"
   if config.format == "latex" then
