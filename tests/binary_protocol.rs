@@ -1,3 +1,4 @@
+use serde_json::{json, Value};
 use std::process::Command;
 
 fn binary_path() -> String {
@@ -5,7 +6,11 @@ fn binary_path() -> String {
     format!("{}/target/debug/quarto-term", manifest_dir)
 }
 
-fn run_binary(json: &str) -> serde_json::Value {
+fn run_binary(input: &Value) -> Value {
+    run_binary_raw(&input.to_string())
+}
+
+fn run_binary_raw(json: &str) -> Value {
     let output = Command::new(binary_path())
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
@@ -22,114 +27,141 @@ fn run_binary(json: &str) -> serde_json::Value {
         .unwrap_or_else(|_| panic!("invalid JSON output: {}", String::from_utf8_lossy(&output.stdout)))
 }
 
-fn minimal_config() -> &'static str {
-    r#""config":{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0}"#
+fn request(cells: Vec<Value>) -> Value {
+    json!({
+        "config": {
+            "shell": "bash",
+            "shell_args": ["--norc", "--noprofile"],
+            "prompt": "$",
+            "timeout": 5.0
+        },
+        "cells": cells
+    })
 }
 
-fn make_request(cells_json: &str) -> String {
-    format!("{{{},{}}}", minimal_config(), cells_json)
+fn request_with_config(config: Value, cells: Vec<Value>) -> Value {
+    json!({
+        "config": config,
+        "cells": cells
+    })
 }
 
-fn cell(id: u32, code: &str, extra_opts: &str) -> String {
-    let opts = if extra_opts.is_empty() {
-        "{}".to_string()
-    } else {
-        format!("{{{}}}", extra_opts)
-    };
-    format!(
-        r#"{{"id":{},"code":"{}","options":{},"line_options":[],"source_lines":[]}}"#,
-        id, code, opts
-    )
+fn cell(id: u32, code: &str) -> Value {
+    json!({
+        "id": id,
+        "code": code,
+        "options": {},
+        "line_options": [],
+        "source_lines": []
+    })
+}
+
+fn cell_with_opts(id: u32, code: &str, opts: Value) -> Value {
+    json!({
+        "id": id,
+        "code": code,
+        "options": opts,
+        "line_options": [],
+        "source_lines": []
+    })
+}
+
+fn cell_with_line_opts(id: u32, code: &str, opts: Value, line_opts: Value) -> Value {
+    json!({
+        "id": id,
+        "code": code,
+        "options": opts,
+        "line_options": line_opts,
+        "source_lines": []
+    })
+}
+
+fn get_html(result: &Value, index: usize) -> &str {
+    result[index]["html"].as_str().unwrap()
 }
 
 #[test]
 fn minimal_request_echo_hello() {
-    let json = make_request(&format!(r#""cells":[{}]"#, cell(1, "echo hello", "")));
-    let result = run_binary(&json);
+    let result = run_binary(&request(vec![cell(1, "echo hello")]));
     let arr = result.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["id"], 1);
     assert!(arr[0]["error"].is_null());
-    let html = arr[0]["html"].as_str().unwrap();
+    let html = get_html(&result, 0);
     assert!(html.contains("echo hello"), "html should contain command: {}", html);
     assert!(html.contains("hello"), "html should contain output");
 }
 
 #[test]
 fn state_persistence_between_cells() {
-    let cells = format!(
-        r#""cells":[{},{}]"#,
-        cell(1, "export MY_TEST_VAR=persistent42", ""),
-        cell(2, "echo $MY_TEST_VAR", "")
-    );
-    let json = make_request(&cells);
-    let result = run_binary(&json);
+    let result = run_binary(&request(vec![
+        cell(1, "export MY_TEST_VAR=persistent42"),
+        cell(2, "echo $MY_TEST_VAR"),
+    ]));
     let arr = result.as_array().unwrap();
     assert_eq!(arr.len(), 2);
-    let html2 = arr[1]["html"].as_str().unwrap();
+    let html2 = get_html(&result, 1);
     assert!(html2.contains("persistent42"), "cell 2 should show var value: {}", html2);
 }
 
 #[test]
 fn html_escaping_in_output() {
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, r#"echo '<b>&foo</b>'"#, "")
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![cell(1, "echo '<b>&foo</b>'")]));
+    let html = get_html(&result, 0);
     assert!(html.contains("&lt;b&gt;"), "should escape <: {}", html);
     assert!(html.contains("&amp;foo"), "should escape &: {}", html);
 }
 
 #[test]
 fn echo_false_produces_empty() {
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, "echo hidden", r#""echo":false,"output":false"#)
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo hidden", json!({"echo": false, "output": false})),
+    ]));
+    let html = get_html(&result, 0);
     assert_eq!(html, "");
 }
 
 #[test]
 fn echo_source_mode() {
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, "echo hi", r#""echo":"source","output":false"#)
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo hi", json!({"echo": "source", "output": false})),
+    ]));
+    let html = get_html(&result, 0);
     assert!(html.contains("term-source"), "should have source class: {}", html);
     assert!(html.contains("echo hi"), "should contain source code: {}", html);
 }
 
 #[test]
 fn format_latex() {
-    let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0,"format":"latex"}},"cells":[{}]}}"#,
-        cell(1, "echo tex", "")
-    );
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 5.0,
+        "format": "latex"
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "echo tex")]));
+    let html = get_html(&result, 0);
     assert!(html.contains("\\begin{tcolorbox}"), "should have latex wrapper: {}", html);
 }
 
 #[test]
 fn format_markdown() {
-    let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0,"format":"markdown"}},"cells":[{}]}}"#,
-        cell(1, "echo md", "")
-    );
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 5.0,
+        "format": "markdown"
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "echo md")]));
+    let html = get_html(&result, 0);
     assert!(html.contains("```console"), "should have markdown wrapper: {}", html);
 }
 
 #[test]
 fn invalid_json_returns_error() {
-    let result = run_binary("not valid json");
+    let result = run_binary_raw("not valid json");
     let arr = result.as_array().unwrap();
     assert_eq!(arr[0]["id"], 0);
     assert!(arr[0]["error"].as_str().unwrap().contains("failed to parse"));
@@ -137,11 +169,13 @@ fn invalid_json_returns_error() {
 
 #[test]
 fn timeout_error_on_missing_prompt() {
-    let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"NEVER_MATCH_THIS_PROMPT_XYZ","timeout":1.0}},"cells":[{}]}}"#,
-        cell(1, "echo x", "")
-    );
-    let result = run_binary(&json);
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "NEVER_MATCH_THIS_PROMPT_XYZ",
+        "timeout": 1.0
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "echo x")]));
     let arr = result.as_array().unwrap();
     let error = arr[0]["error"].as_str().unwrap_or("");
     assert!(
@@ -152,34 +186,34 @@ fn timeout_error_on_missing_prompt() {
 
 #[test]
 fn callouts_by_index() {
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"echo line1\necho line2\necho line3","options":{{"callouts":[1,-1]}},"line_options":[],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo line1\necho line2\necho line3", json!({"callouts": [1, -1]})),
+    ]));
+    let html = get_html(&result, 0);
     assert!(html.contains("term-callout"), "should have callout: {}", html);
 }
 
 #[test]
 fn remove_by_pattern() {
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"echo KEEP_THIS\necho REMOVE_THIS\necho KEEP_ALSO","options":{{"remove":["REMOVE_THIS"]}},"line_options":[],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo KEEP_THIS\necho REMOVE_THIS\necho KEEP_ALSO", json!({"remove": ["REMOVE_THIS"]})),
+    ]));
+    let html = get_html(&result, 0);
     assert!(!html.contains("REMOVE_THIS"), "removed line should not appear: {}", html);
     assert!(html.contains("KEEP_THIS"), "kept lines should appear: {}", html);
 }
 
 #[test]
 fn spacing_inserts_blank_lines() {
-    let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0,"spacing":true}},"cells":[{}]}}"#,
-        cell(1, "echo a\necho b", "")
-    );
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
-    // With spacing, there should be a blank line between the two command blocks
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 5.0,
+        "spacing": true
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "echo a\necho b")]));
+    let html = get_html(&result, 0);
     let lines: Vec<&str> = html.split('\n').collect();
     let has_empty = lines.iter().any(|l| l.trim().is_empty());
     assert!(has_empty, "spacing should insert blank lines: {:?}", lines);
@@ -187,198 +221,200 @@ fn spacing_inserts_blank_lines() {
 
 #[test]
 fn ansi_color_in_output() {
-    // Use echo with $'...' syntax to embed literal escape byte
-    let json = r#"{"config":{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0},"cells":[{"id":1,"code":"echo $'\\e[31mRED\\e[0m'","options":{},"line_options":[],"source_lines":[]}]}"#;
-    let result = run_binary(json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell(1, "echo $'\\e[31mRED\\e[0m'"),
+    ]));
+    let html = get_html(&result, 0);
     assert!(html.contains("var(--term-1)") || html.contains("color:"), "should have color styling: {}", html);
 }
 
 #[test]
 fn ansi_disabled() {
-    let json = r#"{"config":{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0},"cells":[{"id":1,"code":"echo $'\\e[31mRED\\e[0m'","options":{"ansi":false},"line_options":[],"source_lines":[]}]}"#;
-    let result = run_binary(json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo $'\\e[31mRED\\e[0m'", json!({"ansi": false})),
+    ]));
+    let html = get_html(&result, 0);
     assert!(!html.contains("style="), "should have no style spans with ansi:false: {}", html);
 }
 
 #[test]
 fn keep_last_prompt() {
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, "echo hi", r#""keep_last_prompt":true"#)
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
-    // The trailing prompt $ should appear at the end (bash-3.2$ or $)
-    assert!(html.contains("$\n") || html.contains("$</span>\n") || html.contains("$</code></pre>\n") || html.contains("$</span></code></pre>\n"),
-        "should have trailing prompt: {}", html);
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo hi", json!({"keep_last_prompt": true})),
+    ]));
+    let html = get_html(&result, 0);
+    assert!(
+        html.contains("$\n") || html.contains("$</span>\n") || html.contains("$</code></pre>\n") || html.contains("$</span></code></pre>\n"),
+        "should have trailing prompt: {}", html
+    );
 }
 
 #[test]
 fn line_options_expect_prompt_false() {
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"sleep 0.1","options":{{}},"line_options":[{{"line_index":0,"expect_prompt":false}}],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
+    let result = run_binary(&request(vec![
+        cell_with_line_opts(1, "sleep 0.1", json!({}), json!([{"line_index": 0, "expect_prompt": false}])),
+    ]));
     assert!(result[0]["error"].is_null(), "should not error with expect_prompt:false");
 }
 
 #[test]
 fn line_options_literal_false_sends_keycode() {
-    // ctrl-c as literal:false should send interrupt (0x03), not the text "ctrl-c"
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"sleep 100\nctrl-c","options":{{}},"line_options":[{{"line_index":0,"expect_prompt":false,"hold":0.3}},{{"line_index":1,"literal":false,"delay":0.3}}],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
-    // Should not contain the literal text "ctrl-c" in the output
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_line_opts(
+            1, "sleep 100\nctrl-c", json!({}),
+            json!([
+                {"line_index": 0, "expect_prompt": false, "hold": 0.3},
+                {"line_index": 1, "literal": false, "delay": 0.3}
+            ]),
+        ),
+    ]));
+    let html = get_html(&result, 0);
     assert!(!html.contains("ctrl-c"), "literal:false should send keycode, not text: {}", html);
 }
 
 #[test]
 fn line_options_enter_false() {
-    // With enter:false, the text is sent but no CR follows — so the command doesn't execute
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"echo NO_EXEC","options":{{}},"line_options":[{{"line_index":0,"enter":false,"expect_prompt":false,"hold":0.3}}],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
-    // The command shouldn't produce output since enter was never pressed
+    let result = run_binary(&request(vec![
+        cell_with_line_opts(
+            1, "echo NO_EXEC", json!({}),
+            json!([{"line_index": 0, "enter": false, "expect_prompt": false, "hold": 0.3}]),
+        ),
+    ]));
+    let html = get_html(&result, 0);
     assert!(!html.contains("\nNO_EXEC\n"), "enter:false should not execute command");
 }
 
 #[test]
 fn line_options_hold() {
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"echo fast","options":{{}},"line_options":[{{"line_index":0,"hold":0.5}}],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
+    let result = run_binary(&request(vec![
+        cell_with_line_opts(1, "echo fast", json!({}), json!([{"line_index": 0, "hold": 0.5}])),
+    ]));
     assert!(result[0]["error"].is_null(), "hold should not cause error");
-    let html = result[0]["html"].as_str().unwrap();
+    let html = get_html(&result, 0);
     assert!(html.contains("fast"), "output should appear: {}", html);
 }
 
 #[test]
 fn cell_literal_false_multikey() {
-    // Cell-level literal:false splits space-separated tokens as keycodes
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"echo hello","options":{{"literal":false}},"line_options":[],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
-    // "echo" and "hello" sent as separate keycodes; since they're not named keys,
-    // they just send their text bytes. The command still executes.
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo hello", json!({"literal": false})),
+    ]));
     assert!(result[0]["error"].is_null());
 }
 
 #[test]
 fn cell_delay() {
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"echo d1\necho d2","options":{{"delay":0.2}},"line_options":[],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo d1\necho d2", json!({"delay": 0.2})),
+    ]));
     assert!(result[0]["error"].is_null());
-    let html = result[0]["html"].as_str().unwrap();
+    let html = get_html(&result, 0);
     assert!(html.contains("d1"), "first command output: {}", html);
     assert!(html.contains("d2"), "second command output: {}", html);
 }
 
 #[test]
 fn cell_hold() {
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, "echo held", r#""hold":0.3"#)
-    ));
-    let result = run_binary(&json);
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo held", json!({"hold": 0.3})),
+    ]));
     assert!(result[0]["error"].is_null());
-    let html = result[0]["html"].as_str().unwrap();
+    let html = get_html(&result, 0);
     assert!(html.contains("held"), "output should appear: {}", html);
 }
 
 #[test]
 fn cell_fullscreen() {
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, "echo screen", r#""fullscreen":true"#)
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo screen", json!({"fullscreen": true})),
+    ]));
+    let html = get_html(&result, 0);
     assert!(html.contains("term-screen"), "fullscreen uses term-screen class: {}", html);
 }
 
 #[test]
 fn cell_trailing_spaces_true() {
-    // printf with trailing spaces should preserve them with trailing_spaces:true
-    let json = make_request(&format!(
-        r#""cells":[{{"id":1,"code":"printf 'hi   \\n'","options":{{"trailing_spaces":true}},"line_options":[],"source_lines":[]}}]"#
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "printf 'hi   \\n'", json!({"trailing_spaces": true})),
+    ]));
+    let html = get_html(&result, 0);
     assert!(html.contains("hi   "), "trailing spaces should be preserved: {}", html);
 }
 
 #[test]
 fn cell_highlight_language() {
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, "print('hi')", r#""echo":"source","output":false,"highlight":"python""#)
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "print('hi')", json!({"echo": "source", "output": false, "highlight": "python"})),
+    ]));
+    let html = get_html(&result, 0);
     assert!(html.contains("language-python"), "highlight language: {}", html);
 }
 
 #[test]
 fn cell_include_false_equivalent() {
-    // echo:false + output:false is equivalent to include:false
-    let json = make_request(&format!(
-        r#""cells":[{}]"#,
-        cell(1, "echo hidden_setup", r#""echo":"false","output":false"#)
-    ));
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let result = run_binary(&request(vec![
+        cell_with_opts(1, "echo hidden_setup", json!({"echo": "false", "output": false})),
+    ]));
+    let html = get_html(&result, 0);
     assert_eq!(html, "", "include:false should produce empty: {}", html);
 }
 
 #[test]
 fn config_trailing_spaces() {
-    let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0,"trailing_spaces":true}},"cells":[{{"id":1,"code":"printf 'end   \\n'","options":{{}},"line_options":[],"source_lines":[]}}]}}"#
-    );
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 5.0,
+        "trailing_spaces": true
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "printf 'end   \\n'")]));
+    let html = get_html(&result, 0);
     assert!(html.contains("end   "), "doc-level trailing_spaces: {}", html);
 }
 
 #[test]
 fn config_font_size() {
-    let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0,"font_size":"0.8em"}},"cells":[{}]}}"#,
-        cell(1, "echo fs", "")
-    );
-    let result = run_binary(&json);
-    let html = result[0]["html"].as_str().unwrap();
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 5.0,
+        "font_size": "0.8em"
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "echo fs")]));
+    let html = get_html(&result, 0);
     assert!(html.contains("font-size:0.8em"), "font_size in output: {}", html);
 }
 
 #[test]
 fn config_prompt_regex() {
-    let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","prompt_regex":"\\$\\s*$","timeout":5.0}},"cells":[{}]}}"#,
-        cell(1, "echo regex", "")
-    );
-    let result = run_binary(&json);
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "prompt_regex": "\\$\\s*$",
+        "timeout": 5.0
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "echo regex")]));
     assert!(result[0]["error"].is_null(), "prompt_regex should work");
-    let html = result[0]["html"].as_str().unwrap();
+    let html = get_html(&result, 0);
     assert!(html.contains("regex"), "output with custom regex: {}", html);
 }
 
 #[test]
 fn docker_config_error_propagates() {
-    // Use a non-existent image with pull:never so it always fails
-    // regardless of whether Docker is installed or not
-    let json = r#"{"config":{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":3.0,"docker":{"image":"quarto-term-nonexistent-test-image-zzz999","pull":"never"}},"cells":[{"id":1,"code":"echo hi","options":{},"line_options":[],"source_lines":[]}]}"#;
-    let result = run_binary(json);
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 3.0,
+        "docker": {
+            "image": "quarto-term-nonexistent-test-image-zzz999",
+            "pull": "never"
+        }
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, "echo hi")]));
     let error = result[0]["error"].as_str().unwrap_or("");
     assert!(!error.is_empty(), "docker error should propagate: {:?}", result[0]);
 }
