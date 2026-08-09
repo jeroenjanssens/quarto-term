@@ -33,8 +33,6 @@ website:
         text: Reference
       - href: styling.qmd
         text: Styling
-      - href: examples.qmd
-        text: Examples
       - href: recipes.qmd
         text: Recipes
       - text: Shells

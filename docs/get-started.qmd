@@ -81,6 +81,32 @@ The `engine: markdown` line tells Quarto to skip its built-in execution engines.
 
 Because the shell session persists, variables, the working directory, and all other state carry over between cells.
 
+## What it captures
+
+Multi-line constructs like loops work automatically — the shell's PS2 continuation prompt (`>`) is detected and lines are grouped together:
+
+```{term}
+for planet in Mercury Venus Earth Mars; do
+  echo "- $planet"
+done
+```
+
+ANSI colors render faithfully, so colored output from compilers, linters, and CLI tools looks just like it does in your terminal:
+
+```{term}
+printf '\033[1;31mError:\033[0m file not found\n'
+printf '\033[1;33mWarning:\033[0m deprecated API\n'
+printf '\033[1;32mSuccess:\033[0m all tests passed\n'
+```
+
+Multi-line pipes work naturally:
+
+```{term}
+seq 1 5 |
+paste -sd+ |
+bc
+```
+
 ## Configuration
 
 All configuration goes under `extensions: term:` in your YAML front matter:
@@ -95,7 +121,7 @@ extensions:
       colorscheme: solarized-dark
 ```
 
-See the [Reference](reference.qmd) for the full list of options, [Styling](styling.qmd) for colorschemes and fonts, and [Examples](examples.qmd) for worked examples.
+See the [Reference](reference.qmd) for the full list of options, [Styling](styling.qmd) for colorschemes and fonts, and [Recipes](recipes.qmd) for common patterns.
 
 ## Using in a website or book
 

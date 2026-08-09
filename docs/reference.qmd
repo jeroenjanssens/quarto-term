@@ -151,7 +151,7 @@ Note: `include: false` is a shortcut that sets both `echo: false` and `output: f
 
 ## Line Options
 
-Each line in a `{term}` cell is sent to the shell individually. Line options control *how* each line is delivered: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, and timing. See [Examples](examples.qmd#line-options) for worked examples.
+Each line in a `{term}` cell is sent to the shell individually. Line options control *how* each line is delivered: whether it's typed as literal characters or interpreted as a key name, whether Enter is pressed, and timing. See [Recipes](recipes.qmd) for worked examples.
 
 Append options to any line using the marker (default `#!`):
 

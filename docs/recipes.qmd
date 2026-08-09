@@ -223,6 +223,46 @@ echo "second command"
 up up enter #! literal: false, delay: 0.3
 ```
 
+## Set cell-level defaults
+
+When multiple lines in a cell share the same options (e.g., all non-literal), set them once at the cell level with `#|` instead of repeating `#!` on every line. Individual lines can still override.
+
+````markdown
+```{term}
+#| literal: false
+#| delay: 0.2
+echo "typed normally" #! literal: true
+up
+enter
+```
+````
+
+```{term}
+#| literal: false
+#| delay: 0.2
+echo "typed normally" #! literal: true
+up
+enter
+```
+
+## Override timeout for a slow command
+
+A single slow command doesn't require raising the document-wide timeout. Set it per-line with `#!` to handle just that one command.
+
+````markdown
+```{term}
+echo "fast"
+sleep 2 && echo "done" #! timeout: 5.0
+echo "back to normal"
+```
+````
+
+```{term}
+echo "fast"
+sleep 2 && echo "done" #! timeout: 5.0
+echo "back to normal"
+```
+
 ```{term}
 #| include: false
 rm -rf /tmp/demo-project /tmp/my-app
