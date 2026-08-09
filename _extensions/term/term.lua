@@ -1106,6 +1106,26 @@ function Pandoc(doc)
                 cell_theme_css[pos.colorscheme] = rescope_theme_css(css, "." .. scope_class)
               end
             end
+          elseif pos.colorscheme_light and raw_format == "html" then
+            local scope_class = "term-theme-cell-" .. pos.cell_i
+            content = "<div class=\"" .. scope_class .. "\">\n" .. content .. "</div>\n"
+            local key = (pos.colorscheme_light or "") .. "|" .. (pos.colorscheme_dark or "")
+            if not cell_theme_css[key] then
+              local scoped = ""
+              local light_css = read_theme_file(pos.colorscheme_light)
+              if light_css then
+                scoped = scoped .. rescope_theme_css(light_css, "body.quarto-light ." .. scope_class)
+              end
+              if pos.colorscheme_dark then
+                local dark_css = read_theme_file(pos.colorscheme_dark)
+                if dark_css then
+                  scoped = scoped .. "\n" .. rescope_theme_css(dark_css, "body.quarto-dark ." .. scope_class)
+                end
+              end
+              if scoped ~= "" then
+                cell_theme_css[key] = scoped
+              end
+            end
           end
           if pos.chrome and raw_format == "html" then
             local chrome_cfg = normalize_chrome(pos.chrome)

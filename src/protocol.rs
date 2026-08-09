@@ -186,11 +186,10 @@ impl fmt::Display for CellOptions {
         if let Some(s) = self.spacing { parts.push(format!("spacing: {}", s)); }
         if let Some(ref t) = self.typing {
             match t {
-                TypingConfig::Disabled(false) => parts.push("typing: false".to_string()),
+                TypingConfig::Disabled => parts.push("typing: false".to_string()),
                 TypingConfig::Enabled { speed, error_rate } => {
                     parts.push(format!("typing: human, speed: {}, error-rate: {}", speed, error_rate));
                 }
-                _ => {}
             }
         }
         if let Some(t) = self.timeout { parts.push(format!("timeout: {}", t)); }
@@ -228,21 +227,18 @@ pub enum HighlightSpec {
     Language(String),
 }
 
-#[derive(Debug, Deserialize, Clone)]
-#[serde(untagged)]
+#[derive(Debug, Clone)]
 pub enum TypingConfig {
-    Disabled(bool),
+    Disabled,
     Enabled {
-        #[serde(default = "default_speed")]
         speed: f64,
-        #[serde(default)]
         error_rate: f64,
     },
 }
 
 impl Default for TypingConfig {
     fn default() -> Self {
-        TypingConfig::Disabled(false)
+        TypingConfig::Disabled
     }
 }
 
@@ -263,6 +259,54 @@ impl TypingConfig {
             TypingConfig::Enabled { error_rate, .. } => *error_rate,
             _ => 0.0,
         }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for TypingConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de;
+
+        struct TypingVisitor;
+
+        impl<'de> de::Visitor<'de> for TypingVisitor {
+            type Value = TypingConfig;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a boolean or an object with speed/error_rate")
+            }
+
+            fn visit_bool<E: de::Error>(self, v: bool) -> Result<TypingConfig, E> {
+                if v {
+                    Ok(TypingConfig::Enabled {
+                        speed: default_speed(),
+                        error_rate: 0.0,
+                    })
+                } else {
+                    Ok(TypingConfig::Disabled)
+                }
+            }
+
+            fn visit_map<A: de::MapAccess<'de>>(self, mut map: A) -> Result<TypingConfig, A::Error> {
+                let mut speed: Option<f64> = None;
+                let mut error_rate: Option<f64> = None;
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "speed" => speed = Some(map.next_value()?),
+                        "error_rate" => error_rate = Some(map.next_value()?),
+                        _ => { let _ = map.next_value::<serde::de::IgnoredAny>()?; }
+                    }
+                }
+                Ok(TypingConfig::Enabled {
+                    speed: speed.unwrap_or_else(default_speed),
+                    error_rate: error_rate.unwrap_or(0.0),
+                })
+            }
+        }
+
+        deserializer.deserialize_any(TypingVisitor)
     }
 }
 
@@ -448,6 +492,14 @@ mod tests {
     fn typing_config_disabled() {
         let v: TypingConfig = serde_json::from_str("false").unwrap();
         assert!(!v.is_enabled());
+    }
+
+    #[test]
+    fn typing_config_true_enables_defaults() {
+        let v: TypingConfig = serde_json::from_str("true").unwrap();
+        assert!(v.is_enabled());
+        assert_eq!(v.speed(), default_speed());
+        assert_eq!(v.error_rate(), 0.0);
     }
 
     #[test]

@@ -1,5 +1,4 @@
 use std::fmt;
-use std::io;
 
 #[derive(Debug)]
 pub enum TermError {
@@ -7,7 +6,6 @@ pub enum TermError {
     PromptTimeout { elapsed_secs: f64, last_output: String },
     ShellExited,
     RegexCompile(String),
-    Io(io::Error),
 }
 
 impl fmt::Display for TermError {
@@ -23,18 +21,11 @@ impl fmt::Display for TermError {
             }
             Self::ShellExited => write!(f, "shell process exited unexpectedly"),
             Self::RegexCompile(msg) => write!(f, "invalid prompt regex: {msg}"),
-            Self::Io(e) => write!(f, "I/O error: {e}"),
         }
     }
 }
 
 impl std::error::Error for TermError {}
-
-impl From<io::Error> for TermError {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
-    }
-}
 
 fn truncate_end(s: &str, max: usize) -> &str {
     if s.len() <= max {
