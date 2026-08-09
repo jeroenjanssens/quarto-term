@@ -19,15 +19,17 @@ Available profiles:
 
 | Profile | Shell | Prompt | PS2 |
 |---------|-------|--------|-----|
-| `python` | `python3 -q` | `>>>` | `...` |
-| `node` | `node` | `>` | `...` |
-| `r` | `R --no-save --no-restore --quiet` | `>` | `+` |
-| `ruby` | `irb --noecho --nomultiline` | `irb>` | `irb*` |
-| `sqlite` | `sqlite3` | `sqlite>` | `   ...>` |
+| `bash` | `bash --norc --noprofile` | `$` | `>` |
 | `duckdb` | `duckdb` | `D` | `>` |
 | `fish` | `fish --no-config` | `>` | (empty) |
+| `node` | `node` | `>` | `...` |
 | `nushell` | `nu --no-config-file` | `>` | `:::` |
+| `python` | `python3 -q` | `>>>` | `...` |
+| `r` | `R --no-save --no-restore --quiet` | `>` | `+` |
+| `ruby` | `irb --noecho --nomultiline` | `irb>` | `irb*` |
 | `sh` | `sh` | `$` | `>` |
+| `sqlite` | `sqlite3` | `sqlite>` | `   ...>` |
+| `zsh` | `zsh --no-rcs` | `$` | `>` |
 
 Profiles set defaults that you can override individually:
 
@@ -44,17 +46,17 @@ Each shell below is a live demonstration rendered by quarto-term:
 
 | Shell | Config needed |
 |-------|---------------|
-| [Zsh](zsh.qmd) | None (default) |
-| [Bash](bash.qmd) | `shell: bash` |
-| [Fish](fish.qmd) | `shell: fish` + init for prompt function |
-| [Nushell](nushell.qmd) | `shell: nu` + inline config via `-e` |
-| [POSIX sh](sh.qmd) | `shell: sh` |
-| [Python](python.qmd) | `shell: python3` + `prompt: ">>>"` |
-| [Node.js](node.qmd) | `shell: node` + `prompt: ">"` |
-| [Ruby](ruby.qmd) | `shell: irb` + `prompt-regex` |
-| [R](r.qmd) | `shell: R` + `prompt: ">"` |
-| [SQLite](sqlite.qmd) | `shell: sqlite3` + `prompt: "sqlite>"` |
-| [DuckDB](duckdb.qmd) | `shell: duckdb` + `prompt: "D"` |
+| [Bash](bash.qmd) | `profile: bash` |
+| [DuckDB](duckdb.qmd) | `profile: duckdb` |
+| [Fish](fish.qmd) | `profile: fish` + init for prompt function |
+| [Node.js](node.qmd) | `profile: node` |
+| [Nushell](nushell.qmd) | `profile: nushell` + inline config via `-e` |
+| [POSIX sh](sh.qmd) | `profile: sh` |
+| [Python](python.qmd) | `profile: python` |
+| [R](r.qmd) | `profile: r` |
+| [Ruby](ruby.qmd) | `profile: ruby` + `prompt-regex` |
+| [SQLite](sqlite.qmd) | `profile: sqlite` |
+| [Zsh](zsh.qmd) | `profile: zsh` (default) |
 
 ## How It Works
 
@@ -93,14 +95,17 @@ quarto-term captures whatever the shell renders, including ANSI colors. Shells t
 
 | Shell | Syntax highlighting |
 |-------|-------------------|
-| Zsh | [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) via `init` |
-| Fish | Built-in — configure `fish_color_*` variables |
-| Nushell | Built-in (enabled by default) |
-| Python | Built-in via PyREPL (3.13+) — use `strip-auto-indent: true` |
-| Node.js | Built-in (colored output values) |
-| Ruby | Built-in via reline (Ruby 3.x+) — use `strip-auto-indent: true` |
+| Bash | Not available |
 | DuckDB | Built-in (colored SQL and tables) |
-| Bash / R / SQLite / sh | Not available |
+| Fish | Built-in; configure `fish_color_*` variables |
+| Node.js | Built-in (colored output values) |
+| Nushell | Built-in (enabled by default) |
+| POSIX sh | Not available |
+| Python | Built-in via PyREPL (3.13+); use `strip-auto-indent: true` |
+| R | Not available |
+| Ruby | Built-in via reline (Ruby 3.x+); use `strip-auto-indent: true` |
+| SQLite | Not available |
+| Zsh | [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) via `init` |
 
 ### Zsh
 

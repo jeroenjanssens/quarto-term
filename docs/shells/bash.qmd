@@ -9,13 +9,15 @@ extensions:
     spacing: false
 ---
 
-Bash is widely available and well-supported. quarto-term auto-detects the right `shell-args` (`--norc --noprofile`) when you set `shell: bash`.
+Bash is widely available and well-supported. Use the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: bash
+    profile: bash
 ```
+
+This sets `shell: bash`, `shell-args: ["--norc", "--noprofile"]`, `prompt: "$"`, and `ps2: ">"`. No additional configuration is typically needed.
 
 ## Basic Usage
 

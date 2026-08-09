@@ -6,6 +6,12 @@ engine: markdown
 
 **quarto-term** is a [Quarto](https://quarto.org) extension that runs commands in a real, persistent shell session. State carries across cells, colors render faithfully, and you can drive fullscreen TUI apps, all from your `.qmd` file.
 
+quarto-term is great for:
+
+- **Documentation and tutorials**: CLI tools, shell concepts, installation guides, git workflows, and API exploration with real output and persistent state
+- **Technical books and courses**: faithful terminal rendering for any "type this, see that" sequence, including TUI walkthroughs, database demos, and data pipeline chains
+- **DevOps and security**: runbooks, CTF writeups, and environment setup guides where colored tool output and multi-step sessions matter
+
 ```{term}
 export NAME="quarto-term"
 ```
@@ -59,6 +65,6 @@ quarto-term solves all of these by running a single persistent shell session tha
 quarto add jeroenjanssens/quarto-term
 ```
 
-Pre-built binaries for macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows are included. No additional setup needed.
+On first render, the correct binary for your platform is automatically downloaded from GitHub Releases and cached locally. Supported platforms: macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
 
 See [Get Started](get-started.qmd) for a complete walkthrough.

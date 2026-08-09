@@ -14,12 +14,20 @@ extensions:
     spacing: false
 ---
 
-Fish doesn't use `PS1` — it uses a `fish_prompt` function. Use fish's `-C` flag to define a simple prompt, enable syntax highlighting colors, and `ps2-regex` to detect the continuation prompt (fish uses whitespace indentation):
+Fish doesn't use `PS1`; it uses a `fish_prompt` function. The built-in profile provides a starting point:
 
 ```yaml
 extensions:
   term:
-    shell: fish
+    profile: fish
+```
+
+This sets `shell: fish`, `shell-args: ["--no-config"]`, `prompt: ">"`, and `ps2: ""`. Since fish needs a custom prompt function and `ps2-regex` for continuation detection, you'll typically override these:
+
+```yaml
+extensions:
+  term:
+    profile: fish
     shell-args:
       - "--no-config"
       - "-C"

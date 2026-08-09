@@ -29,6 +29,8 @@ local function resolve_init_path(path)
 end
 
 local SHELL_PRESETS = {
+  zsh = { shell = "zsh", shell_args = {"--no-rcs"}, prompt = "$", ps2 = ">" },
+  bash = { shell = "bash", shell_args = {"--norc", "--noprofile"}, prompt = "$", ps2 = ">" },
   python = { shell = "python3", shell_args = {"-q"}, prompt = ">>>", ps2 = "..." },
   node = { shell = "node", shell_args = {}, prompt = ">", ps2 = "..." },
   r = { shell = "R", shell_args = {"--no-save", "--no-restore", "--quiet"}, prompt = ">", ps2 = "+" },

@@ -11,18 +11,24 @@ extensions:
     spacing: false
 ---
 
-R can be used as a shell by pointing to the `R` binary. Use `--quiet` to suppress the startup message:
+R can be used as a shell by pointing to the `R` binary. The quickest way is with the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: R
-    shell-args: ["--no-save", "--no-restore", "--quiet"]
-    prompt: "`>`"
-    ps2: "`+`"
+    profile: r
 ```
 
-Note: wrap `>` and `+` in backticks since pandoc interprets bare `>` as a blockquote marker and `+` as a list item.
+This sets `shell: R`, `shell-args: ["--no-save", "--no-restore", "--quiet"]`, `prompt: ">"`, and `ps2: "+"`. You can override any of these, for example to load a library at startup:
+
+```yaml
+extensions:
+  term:
+    profile: r
+    init: "library(dplyr)"
+```
+
+Note: wrap `>` and `+` in backticks in YAML since pandoc interprets bare `>` as a blockquote marker and `+` as a list item.
 
 ## Basic Usage
 

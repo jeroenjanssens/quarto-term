@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::protocol::{LineSpec, OutputFormat};
+use crate::protocol::{CalloutValues, LineSpec, OutputFormat};
 use crate::renderer::RenderedLine;
 
 pub fn apply_spacing(lines: &mut Vec<RenderedLine>, prompt: &str) {
@@ -63,20 +63,41 @@ pub fn apply_truncate(lines: &mut Vec<RenderedLine>, specs: &[LineSpec], format:
     }
 }
 
-pub fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
+fn get_callout_value(values: &CalloutValues, index: usize) -> Option<String> {
+    match values {
+        CalloutValues::Str(s) => s.chars().nth(index).map(|c| c.to_string()),
+        CalloutValues::List(v) => v.get(index).cloned(),
+    }
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+pub fn apply_callouts(
+    lines: &mut Vec<RenderedLine>,
+    specs: &[LineSpec],
+    values: &CalloutValues,
+    format_str: &str,
+) {
     if specs.is_empty() {
         return;
     }
 
     for (n, spec) in specs.iter().enumerate() {
-        let annotation_num = n + 1;
+        let val = match get_callout_value(values, n) {
+            Some(v) => v,
+            None => continue,
+        };
+        let marker = html_escape(&format_str.replace("{}", &val));
+
         match spec {
             LineSpec::Index(i) => {
                 if let Some(idx) = resolve_single_index(*i, lines.len()) {
                     if let Some(line) = lines.get_mut(idx) {
                         line.markup = format!(
-                            "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
-                            line.markup, annotation_num
+                            "{} <span class=\"term-callout\">{}</span>",
+                            line.markup, marker
                         );
                     }
                 }
@@ -87,8 +108,8 @@ pub fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
                     if let Some(&idx) = indices.first() {
                         if let Some(line) = lines.get_mut(idx) {
                             line.markup = format!(
-                                "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
-                                line.markup, annotation_num
+                                "{} <span class=\"term-callout\">{}</span>",
+                                line.markup, marker
                             );
                         }
                     }
@@ -96,8 +117,8 @@ pub fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
                     for line in lines.iter_mut() {
                         if re.is_match(&line.text) {
                             line.markup = format!(
-                                "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
-                                line.markup, annotation_num
+                                "{} <span class=\"term-callout\">{}</span>",
+                                line.markup, marker
                             );
                             break;
                         }
@@ -337,17 +358,21 @@ mod tests {
 
     // --- apply_callouts ---
 
+    fn default_callout_values() -> CalloutValues {
+        CalloutValues::Str("123456789".to_string())
+    }
+
     #[test]
     fn apply_callouts_empty_specs() {
         let mut lines = vec![make_rendered("a")];
-        apply_callouts(&mut lines, &[]);
+        apply_callouts(&mut lines, &[], &default_callout_values(), "<{}>");
         assert_eq!(lines[0].markup, "a");
     }
 
     #[test]
     fn apply_callouts_positive_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b")];
-        apply_callouts(&mut lines, &[LineSpec::Index(1)]);
+        apply_callouts(&mut lines, &[LineSpec::Index(1)], &default_callout_values(), "<{}>");
         assert!(lines[0].markup.contains("term-callout"));
         assert!(lines[0].markup.contains("&lt;1&gt;"));
         assert!(!lines[1].markup.contains("term-callout"));
@@ -356,7 +381,7 @@ mod tests {
     #[test]
     fn apply_callouts_negative_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_callouts(&mut lines, &[LineSpec::Index(-1)]);
+        apply_callouts(&mut lines, &[LineSpec::Index(-1)], &default_callout_values(), "<{}>");
         assert!(lines[2].markup.contains("term-callout"));
         assert!(lines[2].markup.contains("&lt;1&gt;"));
     }
@@ -368,7 +393,7 @@ mod tests {
             make_rendered("target line"),
             make_rendered("another"),
         ];
-        apply_callouts(&mut lines, &[LineSpec::Expr("target".to_string())]);
+        apply_callouts(&mut lines, &[LineSpec::Expr("target".to_string())], &default_callout_values(), "<{}>");
         assert!(lines[1].markup.contains("term-callout"));
         assert!(!lines[2].markup.contains("term-callout"));
     }
@@ -376,9 +401,27 @@ mod tests {
     #[test]
     fn apply_callouts_sequential_numbering() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(3)]);
+        apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(3)], &default_callout_values(), "<{}>");
         assert!(lines[0].markup.contains("&lt;1&gt;"));
         assert!(lines[2].markup.contains("&lt;2&gt;"));
+    }
+
+    #[test]
+    fn apply_callouts_custom_values_and_format() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        let values = CalloutValues::List(vec!["one".to_string(), "two".to_string()]);
+        apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(2)], &values, "[{}]");
+        assert!(lines[0].markup.contains("[one]"));
+        assert!(lines[1].markup.contains("[two]"));
+    }
+
+    #[test]
+    fn apply_callouts_string_values() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
+        let values = CalloutValues::Str("abc".to_string());
+        apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(3)], &values, "({})");
+        assert!(lines[0].markup.contains("(a)"));
+        assert!(lines[2].markup.contains("(b)"));
     }
 
     // --- parse_range_spec ---

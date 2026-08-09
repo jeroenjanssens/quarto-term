@@ -31,36 +31,36 @@ website:
         text: Get Started
       - href: reference.qmd
         text: Reference
-      - href: styling.qmd
-        text: Styling
       - href: recipes.qmd
         text: Recipes
+      - href: styling.qmd
+        text: Styling
       - text: Shells
         menu:
           - href: shells/index.qmd
             text: Overview
-          - href: shells/zsh.qmd
-            text: Zsh
           - href: shells/bash.qmd
             text: Bash
+          - href: shells/duckdb.qmd
+            text: DuckDB
           - href: shells/fish.qmd
             text: Fish
+          - href: shells/node.qmd
+            text: Node.js
           - href: shells/nushell.qmd
             text: Nushell
           - href: shells/sh.qmd
             text: POSIX sh
           - href: shells/python.qmd
             text: Python
-          - href: shells/node.qmd
-            text: Node.js
-          - href: shells/ruby.qmd
-            text: Ruby
           - href: shells/r.qmd
             text: R
+          - href: shells/ruby.qmd
+            text: Ruby
           - href: shells/sqlite.qmd
             text: SQLite
-          - href: shells/duckdb.qmd
-            text: DuckDB
+          - href: shells/zsh.qmd
+            text: Zsh
       - href: docker.qmd
         text: Docker
       - href: debugging.qmd

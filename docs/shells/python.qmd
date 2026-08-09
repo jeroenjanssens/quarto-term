@@ -12,19 +12,24 @@ extensions:
     spacing: false
 ---
 
-Any REPL can be used as a "shell". For Python, set the prompt to match `>>>` and configure `ps2` for multi-line block detection:
+Any REPL can be used as a "shell". The quickest way to use Python is with the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: python3
-    shell-args: ["-q"]
-    prompt: "`>>>`"
-    ps2: "`...`"
+    profile: python
+```
+
+This sets `shell: python3`, `shell-args: ["-q"]`, `prompt: ">>>"`, and `ps2: "..."`. You can override any of these individually, for example to add `strip-auto-indent: true` for Python 3.13+ (PyREPL):
+
+```yaml
+extensions:
+  term:
+    profile: python
     strip-auto-indent: true
 ```
 
-Python 3.13+ includes PyREPL with syntax highlighting. The `strip-auto-indent` option tells quarto-term to counteract PyREPL's automatic indentation of continuation lines. Wrap `>>>` and `...` in backticks since pandoc interprets bare `>` as a blockquote marker.
+Python 3.13+ includes PyREPL with syntax highlighting. The `strip-auto-indent` option counteracts PyREPL's automatic indentation of continuation lines. Wrap `>>>` and `...` in backticks since pandoc interprets bare `>` as a blockquote marker.
 
 ::: {.callout-note}
 To use the basic REPL instead (no colors, no auto-indent), set `env: {PYTHON_BASIC_REPL: "1"}` and remove `strip-auto-indent`.

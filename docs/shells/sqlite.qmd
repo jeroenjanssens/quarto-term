@@ -12,13 +12,20 @@ extensions:
     spacing: false
 ---
 
-SQLite's command-line shell works out of the box with a simple prompt:
+SQLite's command-line shell works out of the box. The quickest way is with the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: sqlite3
-    prompt: "sqlite>"
+    profile: sqlite
+```
+
+This sets `shell: sqlite3`, `prompt: "sqlite>"`, and `ps2: "   ...>"`. You'll likely want to configure output formatting via `init`:
+
+```yaml
+extensions:
+  term:
+    profile: sqlite
     init:
       - ".mode column"
       - ".headers on"

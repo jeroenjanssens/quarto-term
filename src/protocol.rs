@@ -153,7 +153,11 @@ pub struct CellOptions {
     #[serde(default)]
     pub colorscheme_fg: Option<String>,
     #[serde(default)]
-    pub callouts: Vec<LineSpec>,
+    pub callout: Vec<LineSpec>,
+    #[serde(default)]
+    pub callout_values: Option<CalloutValues>,
+    #[serde(default)]
+    pub callout_format: Option<String>,
     #[serde(default)]
     pub remove: Vec<LineSpec>,
     #[serde(default)]
@@ -217,6 +221,13 @@ pub enum EchoMode {
 pub enum LineSpec {
     Index(i32),
     Expr(String),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum CalloutValues {
+    Str(String),
+    List(Vec<String>),
 }
 
 

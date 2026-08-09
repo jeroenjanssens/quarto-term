@@ -181,7 +181,7 @@ function M.build_cell(block, cell_id, config)
   local options = {
     output = true,
     fullscreen = false,
-    callouts = pandoc.List({}),
+    callout = pandoc.List({}),
     remove = pandoc.List({}),
     truncate = pandoc.List({}),
   }
@@ -211,7 +211,9 @@ function M.build_cell(block, cell_id, config)
   end
   if cell_opts["timeout"] ~= nil then options.timeout = cell_opts["timeout"] end
   if cell_opts["hold"] ~= nil then options.hold = cell_opts["hold"] end
-  if cell_opts["callouts"] ~= nil then options.callouts = as_list(cell_opts["callouts"]) end
+  if cell_opts["callout"] ~= nil then options.callout = as_list(cell_opts["callout"]) end
+  if cell_opts["callout-values"] ~= nil then options.callout_values = cell_opts["callout-values"] end
+  if cell_opts["callout-format"] ~= nil then options.callout_format = cell_opts["callout-format"] end
   if cell_opts["remove"] ~= nil then options.remove = as_list(cell_opts["remove"]) end
   if cell_opts["truncate"] ~= nil then options.truncate = as_list(cell_opts["truncate"]) end
   if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end

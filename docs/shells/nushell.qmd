@@ -13,20 +13,27 @@ extensions:
     spacing: false
 ---
 
-Nushell uses `$env.PROMPT_COMMAND` for prompt configuration. Use `--no-config-file` and `-e` to set up a minimal environment:
+Nushell uses `$env.PROMPT_COMMAND` for prompt configuration. The built-in profile provides a starting point:
 
 ```yaml
 extensions:
   term:
-    shell: nu
+    profile: nushell
+```
+
+This sets `shell: nu`, `shell-args: ["--no-config-file"]`, `prompt: ">"`, and `ps2: ":::"`. Since nushell needs additional configuration to disable its banner and shell integration, you'll typically override `shell-args` with a `-e` flag:
+
+```yaml
+extensions:
+  term:
+    profile: nushell
     shell-args:
       - "--no-config-file"
       - "-e"
       - "`$env.config.show_banner = false; ...`"
-    prompt: "`>`"
 ```
 
-The `-e` argument configures nushell inline — disabling the banner, shell integration, and bracket paste, then setting a simple prompt. Wrap it in backticks to prevent pandoc from altering the content.
+Wrap the `-e` argument in backticks to prevent pandoc from altering the content.
 
 ## Basic Usage
 

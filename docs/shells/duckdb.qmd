@@ -11,14 +11,21 @@ extensions:
     spacing: false
 ---
 
-DuckDB's CLI has colorful output with box-drawing tables:
+DuckDB's CLI has colorful output with box-drawing tables. The quickest way to use it is with the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: duckdb
+    profile: duckdb
+```
+
+This sets `shell: duckdb`, `prompt: "D"`, and `ps2: ">"`. You may want to add `-no-init` to skip loading `~/.duckdbrc`:
+
+```yaml
+extensions:
+  term:
+    profile: duckdb
     shell-args: ["-no-init"]
-    prompt: "D"
 ```
 
 ## Basic Queries

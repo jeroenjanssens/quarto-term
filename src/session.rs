@@ -14,7 +14,7 @@ use crate::markdown;
 use crate::output_transform;
 use crate::prompt::PromptMatcher;
 use crate::protocol::{
-    CellResult, Config, EchoMode, HighlightSpec, InputCell,
+    CalloutValues, CellResult, Config, EchoMode, HighlightSpec, InputCell,
     OutputFormat, RecordedAssertion,
 };
 use crate::recorder::Recorder;
@@ -706,7 +706,13 @@ impl PtySession {
 
             output_transform::apply_remove(&mut lines, &cell.options.remove);
             output_transform::apply_truncate(&mut lines, &cell.options.truncate, format);
-            output_transform::apply_callouts(&mut lines, &cell.options.callouts);
+            let callout_values = cell.options.callout_values.clone()
+                .unwrap_or(CalloutValues::Str("123456789".into()));
+            let callout_format = cell.options.callout_format.as_deref()
+                .unwrap_or("<{}>");
+            output_transform::apply_callouts(
+                &mut lines, &cell.options.callout, &callout_values, callout_format,
+            );
 
             let colorscheme_bg = cell.options.colorscheme_bg.as_deref().or(self.config.colorscheme_bg.as_deref());
             let colorscheme_fg = cell.options.colorscheme_fg.as_deref().or(self.config.colorscheme_fg.as_deref());

@@ -125,11 +125,11 @@ The range `3:-3` keeps the first two and last two lines, replacing everything be
 
 Add numbered markers to specific lines. This is particularly useful for technical books (e.g., O'Reilly style) where you reference lines by number in the surrounding prose.
 
-The `callouts` option takes line indices (1-based, referring to the rendered output which includes both commands and their output). Use it to highlight specific parts of a script:
+The `callout` option takes line indices (1-based, referring to the rendered output which includes both commands and their output). Use it to highlight specific parts of a script:
 
 ````markdown
 ```{term}
-#| callouts: [1, 2, 3]
+#| callout: [1, 2, 3]
 for planet in Mercury Venus Earth Mars; do
   echo "- $planet"
 done
@@ -137,7 +137,7 @@ done
 ````
 
 ```{term}
-#| callouts: [1, 2, 3]
+#| callout: [1, 2, 3]
 for planet in Mercury Venus Earth Mars; do
   echo "- $planet"
 done

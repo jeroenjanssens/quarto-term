@@ -187,7 +187,7 @@ fn timeout_error_on_missing_prompt() {
 #[test]
 fn callouts_by_index() {
     let result = run_binary(&request(vec![
-        cell_with_opts(1, "echo line1\necho line2\necho line3", json!({"callouts": [1, -1]})),
+        cell_with_opts(1, "echo line1\necho line2\necho line3", json!({"callout": [1, -1]})),
     ]));
     let html = get_markup(&result, 0);
     assert!(html.contains("term-callout"), "should have callout: {}", html);

@@ -8,15 +8,15 @@ extensions:
     spacing: false
 ---
 
-Zsh is the default shell for quarto-term. No special configuration is needed.
+Zsh is the default shell for quarto-term. Use the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: zsh
+    profile: zsh
 ```
 
-For syntax highlighting, add [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) to `init`:
+This sets `shell: zsh`, `shell-args: ["--no-rcs"]`, `prompt: "$"`, and `ps2: ">"`. For syntax highlighting, add [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) to `init`:
 
 ```yaml
 extensions:

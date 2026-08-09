@@ -13,14 +13,21 @@ extensions:
     spacing: false
 ---
 
-Ruby's `irb` (Interactive Ruby) has syntax highlighting since Ruby 3.x. It uses a numbered prompt with `*` for continuation lines:
+Ruby's `irb` (Interactive Ruby) has syntax highlighting since Ruby 3.x. The quickest way to use it is with the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: irb
+    profile: ruby
+```
+
+This sets `shell: irb`, `shell-args: ["--noecho", "--nomultiline"]`, `prompt: "irb>"`, and `ps2: "irb*"`. For modern irb with numbered prompts, you'll want to override with regex-based prompt detection and add `strip-auto-indent`:
+
+```yaml
+extensions:
+  term:
+    profile: ruby
     shell-args: ["--noautocomplete"]
-    prompt: "irb"
     prompt-regex: "`irb\\(main\\):\\d+>\\s*$`"
     ps2-regex: "`irb\\(main\\):\\d+[*|]\\s*$`"
     strip-auto-indent: true

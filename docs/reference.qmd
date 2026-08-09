@@ -12,7 +12,9 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `assert` | | | x | x | (none) | Regex/substring pattern to validate in output |
 | `cache` | x | x | | | `true` | Cache results to skip re-execution on unchanged inputs |
 | `strip-auto-indent` | x | x | | | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
-| `callouts` | | | x | | `[]` | Line specs to annotate with callout markers |
+| `callout` | | | x | | `[]` | Line specs to annotate with callout markers |
+| `callout-values` | | | x | | `"123456789"` | Characters or list of strings for callout labels |
+| `callout-format` | | | x | | `"<{}>"` | Format template; `{}` is replaced with the value |
 | `delay` | x | x | x | x | `0.1` | Seconds to wait before executing a line |
 | `docker` | x | x | | | (none) | Run commands in a Docker container (see [Docker](docker.qmd)) |
 | `echo` | x | x | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
@@ -30,7 +32,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `literal` | | | x | x | `true` | Send text as typed characters; `false` for key names |
 | `marker` | x | x | x | | `#!` | Prefix for line option annotations |
 | `output` | | | x | | `true` | Show terminal output |
-| `profile` | x | x | | | (none) | Shell preset: `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh` |
+| `profile` | x | x | | | (none) | Shell preset: `zsh`, `bash`, `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh` |
 | `prompt` | x | x | | | `$` | Literal prompt string (auto-sets `PS1`). Alias: `ps1` |
 | `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection. Alias: `ps1-regex` |
 | `ps2` | x | x | | | (derived) | Literal continuation prompt string |
@@ -72,7 +74,7 @@ Set these under `extensions: term:` in your YAML front matter:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `profile` | (none) | Shell preset: `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh` (see [Shells](shells/index.qmd#quick-start-with-profiles)) |
+| `profile` | (none) | Shell preset: `zsh`, `bash`, `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh` (see [Shells](shells/index.qmd#quick-start-with-profiles)) |
 | `strip-auto-indent` | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
 | `shell` | `zsh` | Shell to use |
 | `shell-args` | auto | Shell arguments (defaults: `--no-rcs` for zsh, `--norc --noprofile` for bash) |
@@ -123,7 +125,9 @@ Set these with `#|` at the top of a cell:
 | `remove` | `[]` | Line specs to remove from output |
 | `source` | (none) | Import cell code from an external file path |
 | `truncate` | `[]` | Line specs to truncate (replaced with "[N lines truncated]" message) |
-| `callouts` | `[]` | Line specs for callout annotations |
+| `callout` | `[]` | Line specs for callout annotations |
+| `callout-values` | `"123456789"` | Characters or list of strings for callout labels |
+| `callout-format` | `"<{}>"` | Format template; `{}` is replaced with the value |
 | `style` | (from config) | Override style options for this cell (see [Styling](styling.qmd#per-cell-style)) |
 
 ### Display Controls
@@ -173,7 +177,7 @@ ctrl-c #! literal: false, delay: 0.5
 
 ## Line Specs
 
-The `remove`, `truncate`, and `callouts` options accept a list of **line specs** that identify lines in the rendered output (input + output combined). Line numbers refer to the original output before any removals or truncations.
+The `remove`, `truncate`, and `callout` options accept a list of **line specs** that identify lines in the rendered output (input + output combined). Line numbers refer to the original output before any removals or truncations.
 
 | Format | Example | Description |
 |--------|---------|-------------|
@@ -190,7 +194,7 @@ Values are comma-separated:
 ```yaml
 #| truncate: 3:7
 #| remove: :2, -1
-#| callouts: 1, -1
+#| callout: 1, -1
 ```
 
 Use bracket syntax when a regex contains a comma: `#| remove: ["foo,bar"]`.

@@ -11,13 +11,20 @@ extensions:
     spacing: false
 ---
 
-Node.js has a built-in REPL with syntax highlighting. Its continuation prompt is `|`:
+Node.js has a built-in REPL with syntax highlighting. The quickest way to use it is with the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: node
-    prompt: "`>`"
+    profile: node
+```
+
+This sets `shell: node`, `prompt: ">"`, and `ps2: "..."`. You may want to override `ps2` to match Node's actual continuation character:
+
+```yaml
+extensions:
+  term:
+    profile: node
     ps2: "|"
 ```
 

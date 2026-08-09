@@ -186,8 +186,8 @@ function Pandoc(doc)
     if #cell.source_lines == 0 then
       cell.source_lines = pandoc.List({})
     end
-    if #cell.options.callouts == 0 then
-      cell.options.callouts = pandoc.List({})
+    if #cell.options.callout == 0 then
+      cell.options.callout = pandoc.List({})
     end
     if #cell.options.remove == 0 then
       cell.options.remove = pandoc.List({})

@@ -8,13 +8,15 @@ extensions:
     spacing: false
 ---
 
-The POSIX shell is available on every Unix system. quarto-term works with it using standard `PS1` prompt detection.
+The POSIX shell is available on every Unix system. The quickest way to use it is with the built-in profile:
 
 ```yaml
 extensions:
   term:
-    shell: sh
+    profile: sh
 ```
+
+This sets `shell: sh`, `prompt: "$"`, and `ps2: ">"`. No additional configuration is typically needed.
 
 ## Basic Usage
 
