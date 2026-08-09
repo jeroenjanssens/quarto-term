@@ -4,6 +4,7 @@ mod error;
 mod keymap;
 mod latex;
 mod markdown;
+mod output_transform;
 mod protocol;
 mod recorder;
 mod renderer;

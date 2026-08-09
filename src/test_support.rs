@@ -22,6 +22,3 @@ pub fn rendered_html(html: &str, text: &str) -> RenderedLine {
     }
 }
 
-pub fn rendered_lines(texts: &[&str]) -> Vec<RenderedLine> {
-    texts.iter().map(|t| rendered(t)).collect()
-}
