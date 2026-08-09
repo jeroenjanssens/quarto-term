@@ -228,7 +228,7 @@ impl PtySession {
 
             let output_before = self.output_since_cell_start.len();
 
-            let use_paste = self.config.disable_auto_indent && literal && idx > 0
+            let use_paste = self.config.strip_auto_indent && literal && idx > 0
                 && !self.last_line_is_primary_prompt();
 
             if !literal && line_text.contains(' ') {

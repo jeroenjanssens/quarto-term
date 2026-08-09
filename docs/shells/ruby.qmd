@@ -8,7 +8,7 @@ extensions:
     prompt: "irb"
     prompt-regex: "`irb\\(main\\):\\d+>\\s*$`"
     ps2-regex: "`irb\\(main\\):\\d+[*|]\\s*$`"
-    disable-auto-indent: true
+    strip-auto-indent: true
     init: false
     spacing: false
 ---
@@ -23,10 +23,10 @@ extensions:
     prompt: "irb"
     prompt-regex: "`irb\\(main\\):\\d+>\\s*$`"
     ps2-regex: "`irb\\(main\\):\\d+[*|]\\s*$`"
-    disable-auto-indent: true
+    strip-auto-indent: true
 ```
 
-The `disable-auto-indent` option counteracts irb's automatic indentation of continuation lines.
+The `strip-auto-indent` option counteracts irb's automatic indentation of continuation lines.
 
 ## Basic Usage
 

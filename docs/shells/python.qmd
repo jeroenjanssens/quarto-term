@@ -7,7 +7,7 @@ extensions:
     shell-args: ["-q"]
     prompt: "`>>>`"
     ps2: "`...`"
-    disable-auto-indent: true
+    strip-auto-indent: true
     init: false
     spacing: false
 ---
@@ -21,13 +21,13 @@ extensions:
     shell-args: ["-q"]
     prompt: "`>>>`"
     ps2: "`...`"
-    disable-auto-indent: true
+    strip-auto-indent: true
 ```
 
-Python 3.13+ includes PyREPL with syntax highlighting. The `disable-auto-indent` option tells quarto-term to counteract PyREPL's automatic indentation of continuation lines. Wrap `>>>` and `...` in backticks since pandoc interprets bare `>` as a blockquote marker.
+Python 3.13+ includes PyREPL with syntax highlighting. The `strip-auto-indent` option tells quarto-term to counteract PyREPL's automatic indentation of continuation lines. Wrap `>>>` and `...` in backticks since pandoc interprets bare `>` as a blockquote marker.
 
 ::: {.callout-note}
-To use the basic REPL instead (no colors, no auto-indent), set `env: {PYTHON_BASIC_REPL: "1"}` and remove `disable-auto-indent`.
+To use the basic REPL instead (no colors, no auto-indent), set `env: {PYTHON_BASIC_REPL: "1"}` and remove `strip-auto-indent`.
 :::
 
 ## Basic Usage

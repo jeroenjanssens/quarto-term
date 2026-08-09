@@ -366,7 +366,7 @@ local function extract_config(meta)
   end
   if term_meta["cache"] ~= nil then config._cache = meta_bool(term_meta["cache"]) end
   if term_meta["verbose"] ~= nil then config.verbose = meta_bool(term_meta["verbose"]) end
-  if term_meta["disable-auto-indent"] ~= nil then config.disable_auto_indent = meta_bool(term_meta["disable-auto-indent"]) end
+  if term_meta["strip-auto-indent"] ~= nil then config.strip_auto_indent = meta_bool(term_meta["strip-auto-indent"]) end
   if term_meta["spacing"] ~= nil then config.spacing = meta_bool(term_meta["spacing"]) end
   if term_meta["delay"] ~= nil then config.delay = meta_num(term_meta["delay"]) end
   if term_meta["hold"] ~= nil then config.hold = meta_num(term_meta["hold"]) end

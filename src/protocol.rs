@@ -67,7 +67,7 @@ pub struct Config {
     #[serde(default)]
     pub trailing_spaces: bool,
     #[serde(default)]
-    pub disable_auto_indent: bool,
+    pub strip_auto_indent: bool,
     #[serde(default)]
     pub docker: Option<DockerConfig>,
 }
@@ -76,7 +76,7 @@ pub struct Config {
 pub struct DockerConfig {
     pub image: String,
     #[serde(default = "default_pull_policy")]
-    pub pull: String,
+    pub pull: PullPolicy,
     #[serde(default)]
     pub platform: Option<String>,
     #[serde(default)]
@@ -417,8 +417,16 @@ fn default_speed() -> f64 {
     60.0
 }
 
-fn default_pull_policy() -> String {
-    "missing".to_string()
+fn default_pull_policy() -> PullPolicy {
+    PullPolicy::Missing
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PullPolicy {
+    Always,
+    Missing,
+    Never,
 }
 
 #[cfg(test)]
@@ -580,7 +588,7 @@ mod tests {
         let req: BatchRequest = serde_json::from_str(json).unwrap();
         let docker = req.config.docker.unwrap();
         assert_eq!(docker.image, "python:3.12");
-        assert_eq!(docker.pull, "missing");
+        assert_eq!(docker.pull, PullPolicy::Missing);
         assert!(docker.volumes.is_empty());
         assert!(docker.ports.is_empty());
         assert!(docker.args.is_empty());
@@ -600,7 +608,7 @@ mod tests {
         let docker = req.config.docker.unwrap();
         assert_eq!(docker.image, "ubuntu:22.04");
         assert_eq!(docker.platform.as_deref(), Some("linux/amd64"));
-        assert_eq!(docker.pull, "always");
+        assert_eq!(docker.pull, PullPolicy::Always);
         assert_eq!(docker.workdir.as_deref(), Some("/app"));
         assert_eq!(docker.user.as_deref(), Some("1000:1000"));
         assert_eq!(docker.network.as_deref(), Some("none"));
@@ -624,6 +632,13 @@ mod tests {
     fn docker_config_pull_default() {
         let json = r#"{"config":{"docker":{"image":"alpine"}},"cells":[]}"#;
         let req: BatchRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.config.docker.unwrap().pull, "missing");
+        assert_eq!(req.config.docker.unwrap().pull, PullPolicy::Missing);
+    }
+
+    #[test]
+    fn docker_config_invalid_pull_rejected() {
+        let json = r#"{"config":{"docker":{"image":"alpine","pull":"invalid"}},"cells":[]}"#;
+        let result: Result<BatchRequest, _> = serde_json::from_str(json);
+        assert!(result.is_err());
     }
 }

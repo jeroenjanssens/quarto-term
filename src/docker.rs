@@ -1,7 +1,7 @@
 use portable_pty::CommandBuilder;
 
 use crate::error::TermError;
-use crate::protocol::{Config, DockerConfig};
+use crate::protocol::{Config, DockerConfig, PullPolicy};
 
 pub fn check_docker_available() -> Result<(), TermError> {
     let out = std::process::Command::new("docker")
@@ -24,10 +24,10 @@ pub fn check_docker_available() -> Result<(), TermError> {
 }
 
 pub fn maybe_pull_image(docker: &DockerConfig, verbose: bool) -> Result<(), TermError> {
-    match docker.pull.as_str() {
-        "never" => return Ok(()),
-        "always" => {}
-        _ => {
+    match docker.pull {
+        PullPolicy::Never => return Ok(()),
+        PullPolicy::Always => {}
+        PullPolicy::Missing => {
             let mut check = std::process::Command::new("docker");
             check.args(["image", "inspect", &docker.image]);
             check.stdout(std::process::Stdio::null());
