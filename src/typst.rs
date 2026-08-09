@@ -196,7 +196,7 @@ fn typst_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::RenderedLine;
+    use crate::test_support::{rendered, rendered_html};
 
     #[test]
     fn typst_escape_special_chars() {
@@ -232,22 +232,16 @@ mod tests {
 
     #[test]
     fn render_lines_to_typst_basic() {
-        let lines = vec![
-            RenderedLine { html: "hello".to_string(), text: "hello".to_string() },
-        ];
         let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
-        let result = render_lines_to_typst(&lines, &theme);
+        let result = render_lines_to_typst(&[rendered("hello")], &theme);
         assert!(result.contains("#block("));
         assert!(result.contains("hello"));
     }
 
     #[test]
     fn render_lines_to_typst_with_theme() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let theme = TypstTheme { bg: Some("1a1b26"), fg: Some("c0caf5"), font_size: Some("0.8em"), font_family: Some("Fira Code"), line_height: Some("1.3") };
-        let result = render_lines_to_typst(&lines, &theme);
+        let result = render_lines_to_typst(&[rendered("x")], &theme);
         assert!(result.contains("fill: rgb(\"#1a1b26\")"));
         assert!(result.contains("font: \"Fira Code\""));
         assert!(result.contains("size: 0.80em"));
@@ -257,9 +251,7 @@ mod tests {
 
     #[test]
     fn render_lines_to_typst_with_ansi_markup() {
-        let lines = vec![
-            RenderedLine { html: "#text(fill: rgb(\"#CD3131\"))[red]".to_string(), text: "red".to_string() },
-        ];
+        let lines = vec![rendered_html("#text(fill: rgb(\"#CD3131\"))[red]", "red")];
         let theme = TypstTheme { bg: Some("1a1b26"), fg: None, font_size: None, font_family: None, line_height: None };
         let result = render_lines_to_typst(&lines, &theme);
         assert!(result.contains("#text(fill: rgb(\"#CD3131\"))[red]"));
@@ -268,38 +260,23 @@ mod tests {
 
     #[test]
     fn render_lines_to_typst_plain_uses_raw() {
-        let lines = vec![
-            RenderedLine { html: "hello".to_string(), text: "hello".to_string() },
-        ];
         let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
-        let result = render_lines_to_typst(&lines, &theme);
+        let result = render_lines_to_typst(&[rendered("hello")], &theme);
         assert!(result.contains("```"));
     }
 
     #[test]
     fn render_lines_to_typst_backtick_injection() {
-        let lines = vec![
-            RenderedLine {
-                html: "``` #read(\"/etc/passwd\")".to_string(),
-                text: "``` #read(\"/etc/passwd\")".to_string(),
-            },
-        ];
+        let lines = vec![rendered("``` #read(\"/etc/passwd\")")];
         let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
         let result = render_lines_to_typst(&lines, &theme);
-        // The backticks in content must not close the raw fence
         assert!(result.contains("````"));
-        // Content should appear literally inside the fence
         assert!(result.contains("``` #read"));
     }
 
     #[test]
     fn render_lines_to_typst_long_backtick_run() {
-        let lines = vec![
-            RenderedLine {
-                html: "`````test`````".to_string(),
-                text: "`````test`````".to_string(),
-            },
-        ];
+        let lines = vec![rendered("`````test`````")];
         let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
         let result = render_lines_to_typst(&lines, &theme);
         assert!(result.contains("``````"));

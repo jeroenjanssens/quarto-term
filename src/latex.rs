@@ -192,14 +192,7 @@ fn latex_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::RenderedLine;
-
-    fn make_line(ansi_str: &str, cols: usize) -> Line {
-        let mut vt = avt::Vt::builder().size(cols, 1).build();
-        vt.feed_str(ansi_str);
-        let line = vt.view().next().unwrap().clone();
-        line
-    }
+    use crate::test_support::{make_line, rendered};
 
     #[test]
     fn latex_escape_backslash() {
@@ -284,11 +277,8 @@ mod tests {
 
     #[test]
     fn render_lines_to_latex_wraps_tcolorbox() {
-        let lines = vec![
-            RenderedLine { html: "hello".to_string(), text: "hello".to_string() },
-        ];
         let theme = LatexTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
-        let result = render_lines_to_latex(&lines, &theme);
+        let result = render_lines_to_latex(&[rendered("hello")], &theme);
         assert!(result.contains("\\begin{tcolorbox}"));
         assert!(result.contains("\\begin{Verbatim}"));
         assert!(result.contains("hello"));
@@ -298,11 +288,8 @@ mod tests {
 
     #[test]
     fn render_lines_to_latex_with_theme() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let theme = LatexTheme { bg: Some("#1a1b26"), fg: Some("#c0caf5"), font_size: Some("0.8em"), font_family: None, line_height: None };
-        let result = render_lines_to_latex(&lines, &theme);
+        let result = render_lines_to_latex(&[rendered("x")], &theme);
         assert!(result.contains("colback=termbg"));
         assert!(result.contains("colupper=termfg"));
         assert!(result.contains("\\small"));
@@ -310,21 +297,15 @@ mod tests {
 
     #[test]
     fn render_lines_to_latex_with_font_family() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let theme = LatexTheme { bg: None, fg: None, font_size: None, font_family: Some("Fira Code, monospace"), line_height: None };
-        let result = render_lines_to_latex(&lines, &theme);
+        let result = render_lines_to_latex(&[rendered("x")], &theme);
         assert!(result.contains("\\setmonofont{Fira Code}"));
     }
 
     #[test]
     fn render_lines_to_latex_with_line_height() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let theme = LatexTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: Some("1.4") };
-        let result = render_lines_to_latex(&lines, &theme);
+        let result = render_lines_to_latex(&[rendered("x")], &theme);
         assert!(result.contains("\\linespread{1.4}\\selectfont"));
     }
 

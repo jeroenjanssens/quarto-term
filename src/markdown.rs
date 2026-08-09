@@ -50,9 +50,10 @@ fn fence_for_content(content: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::rendered_html;
 
-    fn make_line(text: &str) -> RenderedLine {
-        RenderedLine { html: format!("<b>{}</b>", text), text: text.to_string() }
+    fn md_line(text: &str) -> RenderedLine {
+        rendered_html(&format!("<b>{}</b>", text), text)
     }
 
     #[test]
@@ -62,7 +63,7 @@ mod tests {
 
     #[test]
     fn render_lines_to_markdown_uses_text() {
-        let lines = vec![make_line("$ echo hi"), make_line("hi")];
+        let lines = vec![md_line("$ echo hi"), md_line("hi")];
         let result = render_lines_to_markdown(&lines);
         assert_eq!(result, "```console\n$ echo hi\nhi\n```\n");
         assert!(!result.contains("<b>"));
@@ -75,7 +76,7 @@ mod tests {
 
     #[test]
     fn render_fullscreen_to_markdown_uses_text_fence() {
-        let lines = vec![make_line("screen")];
+        let lines = vec![md_line("screen")];
         let result = render_fullscreen_to_markdown(&lines);
         assert!(result.starts_with("```text\n"));
     }
@@ -97,7 +98,7 @@ mod tests {
 
     #[test]
     fn render_lines_with_backticks_in_content() {
-        let lines = vec![make_line("echo ```hello```")];
+        let lines = vec![md_line("echo ```hello```")];
         let result = render_lines_to_markdown(&lines);
         assert!(result.starts_with("````console\n"));
         assert!(result.ends_with("\n````\n"));

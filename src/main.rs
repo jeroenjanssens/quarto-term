@@ -8,6 +8,8 @@ mod recorder;
 mod renderer;
 mod session;
 mod terminal_line;
+#[cfg(test)]
+mod test_support;
 mod typst;
 
 use std::io::{self, Read};

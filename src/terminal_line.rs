@@ -67,13 +67,7 @@ pub fn styled_runs(line: &Line) -> (Vec<StyledRun>, Vec<Pen>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn make_line(ansi_str: &str, cols: usize) -> Line {
-        let mut vt = avt::Vt::builder().size(cols, 1).build();
-        vt.feed_str(ansi_str);
-        let lines: Vec<Line> = vt.view().cloned().collect();
-        lines.into_iter().next().unwrap()
-    }
+    use crate::test_support::make_line;
 
     #[test]
     fn line_to_text_trims_trailing() {

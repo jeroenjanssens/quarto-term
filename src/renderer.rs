@@ -243,13 +243,7 @@ fn trim_trailing_spaces_html(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn make_line(ansi_str: &str, cols: usize) -> Line {
-        let mut vt = avt::Vt::builder().size(cols, 1).build();
-        vt.feed_str(ansi_str);
-        let line = vt.view().next().unwrap().clone();
-        line
-    }
+    use crate::test_support::{make_line, rendered};
 
     #[test]
     fn html_escape_ampersand() {
@@ -403,10 +397,7 @@ mod tests {
 
     #[test]
     fn render_lines_to_html_wraps_correctly() {
-        let lines = vec![
-            RenderedLine { html: "line1".to_string(), text: "line1".to_string() },
-            RenderedLine { html: "line2".to_string(), text: "line2".to_string() },
-        ];
+        let lines = vec![rendered("line1"), rendered("line2")];
         let style = HtmlStyle { font_size: None, font_family: None, line_height: None };
         let result = render_lines_to_html(&lines, "term-output", &style);
         assert!(result.contains("<pre class=\"term-output\">"));
@@ -416,41 +407,29 @@ mod tests {
 
     #[test]
     fn render_lines_to_html_with_font_size() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let style = HtmlStyle { font_size: Some("0.8em"), font_family: None, line_height: None };
-        let result = render_lines_to_html(&lines, "term-output", &style);
+        let result = render_lines_to_html(&[rendered("x")], "term-output", &style);
         assert!(result.contains("style=\"font-size:0.8em\""));
     }
 
     #[test]
     fn render_lines_to_html_with_font_family() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let style = HtmlStyle { font_size: None, font_family: Some("Fira Code"), line_height: None };
-        let result = render_lines_to_html(&lines, "term-output", &style);
+        let result = render_lines_to_html(&[rendered("x")], "term-output", &style);
         assert!(result.contains("style=\"font-family:Fira Code\""));
     }
 
     #[test]
     fn render_lines_to_html_with_line_height() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let style = HtmlStyle { font_size: None, font_family: None, line_height: Some("1.5") };
-        let result = render_lines_to_html(&lines, "term-output", &style);
+        let result = render_lines_to_html(&[rendered("x")], "term-output", &style);
         assert!(result.contains("style=\"line-height:1.5\""));
     }
 
     #[test]
     fn render_lines_to_html_with_all_style_fields() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let style = HtmlStyle { font_size: Some("0.8em"), font_family: Some("Fira Code"), line_height: Some("1.4") };
-        let result = render_lines_to_html(&lines, "term-output", &style);
+        let result = render_lines_to_html(&[rendered("x")], "term-output", &style);
         assert!(result.contains("font-size:0.8em"));
         assert!(result.contains("font-family:Fira Code"));
         assert!(result.contains("line-height:1.4"));
@@ -458,11 +437,8 @@ mod tests {
 
     #[test]
     fn render_fullscreen_to_html_uses_screen_class() {
-        let lines = vec![
-            RenderedLine { html: "x".to_string(), text: "x".to_string() },
-        ];
         let style = HtmlStyle { font_size: None, font_family: None, line_height: None };
-        let result = render_fullscreen_to_html(&lines, &style);
+        let result = render_fullscreen_to_html(&[rendered("x")], &style);
         assert!(result.contains("<pre class=\"term-screen\">"));
     }
 
