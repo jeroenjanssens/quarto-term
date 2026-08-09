@@ -118,7 +118,7 @@ function M.parse_cell_options(text, line_marker)
     ::continue::
   end
 
-  if #code_lines > 0 and code_lines[#code_lines] == "" then
+  while #code_lines > 0 and code_lines[#code_lines] == "" do
     table.remove(code_lines)
   end
 
