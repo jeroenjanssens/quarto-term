@@ -46,9 +46,9 @@ pub struct Config {
     pub keep_last_prompt: bool,
     #[serde(default = "default_highlight")]
     pub highlight: HighlightSpec,
-    #[serde(default, alias = "font")]
+    #[serde(default)]
     pub font_family: Option<String>,
-    #[serde(default, alias = "fontsize")]
+    #[serde(default)]
     pub font_size: Option<String>,
     #[serde(default)]
     pub line_height: Option<String>,
@@ -142,7 +142,7 @@ pub struct CellOptions {
     pub literal: Option<bool>,
     #[serde(default)]
     pub delay: Option<f64>,
-    #[serde(default, alias = "font")]
+    #[serde(default)]
     pub font_family: Option<String>,
     #[serde(default)]
     pub font_size: Option<String>,

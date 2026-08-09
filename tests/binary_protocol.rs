@@ -351,14 +351,14 @@ fn config_trailing_spaces() {
 }
 
 #[test]
-fn config_fontsize() {
+fn config_font_size() {
     let json = format!(
-        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0,"fontsize":"0.8em"}},"cells":[{}]}}"#,
+        r#"{{"config":{{"shell":"bash","shell_args":["--norc","--noprofile"],"prompt":"$","timeout":5.0,"font_size":"0.8em"}},"cells":[{}]}}"#,
         cell(1, "echo fs", "")
     );
     let result = run_binary(&json);
     let html = result[0]["html"].as_str().unwrap();
-    assert!(html.contains("font-size:0.8em"), "fontsize in output: {}", html);
+    assert!(html.contains("font-size:0.8em"), "font_size in output: {}", html);
 }
 
 #[test]

@@ -53,9 +53,9 @@ Style options live under `style:` and control visual appearance. They support fo
 | Option | Project | Document | Cell | Default | Description |
 |--------|:-------:|:--------:|:----:|---------|-------------|
 | `chrome` | x | x | x | `false` | macOS-style window chrome (traffic light dots); string value becomes title |
-| `colorscheme` | x | x | x | (none) | Color theme name |
-| `colorscheme-light` | x | x | x | (none) | Theme for light mode |
-| `colorscheme-dark` | x | x | x | (none) | Theme for dark mode |
+| `colorscheme` | x | x | x | (none) | Colorscheme name |
+| `colorscheme-light` | x | x | x | (none) | Colorscheme for light mode |
+| `colorscheme-dark` | x | x | x | (none) | Colorscheme for dark mode |
 | `font-family` | x | x | x | (none) | Font family for terminal output |
 | `font-size` | x | x | x | (none) | Font size (e.g., `0.85em`) |
 | `line-height` | x | x | x | (none) | Line height (e.g., `1.2`) |
