@@ -226,13 +226,7 @@ fn is_range_syntax(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn make_rendered(text: &str) -> RenderedLine {
-        RenderedLine {
-            markup: text.to_string(),
-            text: text.to_string(),
-        }
-    }
+    use crate::test_support::rendered as make_rendered;
 
     // --- apply_spacing ---
 
