@@ -185,15 +185,15 @@ local function resolve_init_path(path)
 end
 
 local SHELL_PRESETS = {
-  python = { shell = "python3", shell_args = {"-q"}, prompt = ">>>", ps2 = "...", quit = "exit()" },
-  node = { shell = "node", shell_args = {}, prompt = ">", ps2 = "...", quit = ".exit" },
-  r = { shell = "R", shell_args = {"--no-save", "--no-restore", "--quiet"}, prompt = ">", ps2 = "+", quit = "q()" },
-  ruby = { shell = "irb", shell_args = {"--noecho", "--nomultiline"}, prompt = "irb>", ps2 = "irb*", quit = "exit" },
-  sqlite = { shell = "sqlite3", shell_args = {}, prompt = "sqlite>", ps2 = "   ...>", quit = ".quit" },
-  duckdb = { shell = "duckdb", shell_args = {}, prompt = "D", ps2 = ">", quit = ".quit" },
-  fish = { shell = "fish", shell_args = {"--no-config"}, prompt = ">", ps2 = "", quit = "exit" },
-  nushell = { shell = "nu", shell_args = {"--no-config-file"}, prompt = ">", ps2 = ":::", quit = "exit" },
-  sh = { shell = "sh", shell_args = {}, prompt = "$", ps2 = ">", quit = "exit" },
+  python = { shell = "python3", shell_args = {"-q"}, prompt = ">>>", ps2 = "..." },
+  node = { shell = "node", shell_args = {}, prompt = ">", ps2 = "..." },
+  r = { shell = "R", shell_args = {"--no-save", "--no-restore", "--quiet"}, prompt = ">", ps2 = "+" },
+  ruby = { shell = "irb", shell_args = {"--noecho", "--nomultiline"}, prompt = "irb>", ps2 = "irb*" },
+  sqlite = { shell = "sqlite3", shell_args = {}, prompt = "sqlite>", ps2 = "   ...>" },
+  duckdb = { shell = "duckdb", shell_args = {}, prompt = "D", ps2 = ">" },
+  fish = { shell = "fish", shell_args = {"--no-config"}, prompt = ">", ps2 = "" },
+  nushell = { shell = "nu", shell_args = {"--no-config-file"}, prompt = ">", ps2 = ":::" },
+  sh = { shell = "sh", shell_args = {}, prompt = "$", ps2 = ">" },
 }
 
 local function extract_config(meta)
@@ -225,7 +225,6 @@ local function extract_config(meta)
       config.shell_args = preset.shell_args
       config.prompt = preset.prompt
       if preset.ps2 then config._ps2_explicit = preset.ps2 end
-      if preset.quit then config.quit = preset.quit end
     end
   end
 
@@ -467,7 +466,6 @@ local function extract_config(meta)
       config.typing = false
     elseif type(typing_val) == "table" and typing_val.t == nil then
       config.typing = {}
-      if typing_val["mode"] then config.typing.mode = meta_str(typing_val["mode"]) end
       if typing_val["speed"] then config.typing.speed = meta_num(typing_val["speed"]) end
       -- Accept both kebab-case and snake_case for error-rate
       local error_rate_val = typing_val["error-rate"] or typing_val["error_rate"]
