@@ -15,10 +15,14 @@ pub fn rendered(text: &str) -> RenderedLine {
     }
 }
 
-pub fn rendered_html(markup: &str, text: &str) -> RenderedLine {
+pub fn rendered_markup(markup: &str, text: &str) -> RenderedLine {
     RenderedLine {
         markup: markup.to_string(),
         text: text.to_string(),
     }
+}
+
+pub fn rendered_lines(texts: &[&str]) -> Vec<RenderedLine> {
+    texts.iter().map(|t| rendered(t)).collect()
 }
 

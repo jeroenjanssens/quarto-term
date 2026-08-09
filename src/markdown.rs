@@ -50,10 +50,10 @@ fn fence_for_content(content: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_support::rendered_html;
+    use crate::test_support::rendered_markup;
 
     fn md_line(text: &str) -> RenderedLine {
-        rendered_html(&format!("<b>{}</b>", text), text)
+        rendered_markup(&format!("<b>{}</b>", text), text)
     }
 
     #[test]

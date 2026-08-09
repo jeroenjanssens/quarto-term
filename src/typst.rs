@@ -177,7 +177,7 @@ fn typst_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_support::{rendered, rendered_html};
+    use crate::test_support::{rendered, rendered_markup};
 
     #[test]
     fn typst_escape_special_chars() {
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn render_lines_to_typst_with_ansi_markup() {
-        let lines = vec![rendered_html("#text(fill: rgb(\"#CD3131\"))[red]", "red")];
+        let lines = vec![rendered_markup("#text(fill: rgb(\"#CD3131\"))[red]", "red")];
         let theme = TypstTheme { bg: Some("1a1b26"), fg: None, font_size: None, font_family: None, line_height: None };
         let result = render_lines_to_typst(&lines, &theme);
         assert!(result.contains("#text(fill: rgb(\"#CD3131\"))[red]"));
