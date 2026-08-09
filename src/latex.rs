@@ -1,43 +1,23 @@
 use avt::{Color, Line, Pen};
 
 use crate::color;
+use crate::render_backend::{self, RenderBackend};
 use crate::renderer::{self, RenderedLine};
-use crate::terminal_line;
+
+struct LatexBackend;
+
+impl RenderBackend for LatexBackend {
+    fn escape(&self, text: &str) -> String {
+        latex_escape(text)
+    }
+
+    fn wrap_styled(&self, escaped_text: &str, pen: &Pen) -> String {
+        wrap_with_pen(escaped_text, pen)
+    }
+}
 
 pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
-    let text = terminal_line::line_to_text(line);
-
-    if !ansi {
-        let src = if trailing_spaces { terminal_line::line_to_text_raw(line) } else { text.clone() };
-        return RenderedLine {
-            html: latex_escape(&src),
-            text,
-        };
-    }
-
-    let (runs, pens) = terminal_line::styled_runs(line);
-    if runs.is_empty() {
-        return RenderedLine {
-            html: String::new(),
-            text,
-        };
-    }
-
-    let mut latex = String::new();
-
-    for run in &runs {
-        let escaped = latex_escape(&run.text);
-        if run.is_default {
-            latex.push_str(&escaped);
-        } else {
-            let wrapped = wrap_with_pen(&escaped, &pens[run.pen_idx]);
-            latex.push_str(&wrapped);
-        }
-    }
-
-    let latex = if trailing_spaces { latex } else { latex.trim_end().to_string() };
-
-    RenderedLine { html: latex, text }
+    render_backend::render_line_generic(&LatexBackend, line, ansi, trailing_spaces)
 }
 
 pub struct LatexTheme<'a> {

@@ -1,43 +1,23 @@
 use avt::{Color, Line, Pen};
 
 use crate::color;
+use crate::render_backend::{self, RenderBackend};
 use crate::renderer::{self, RenderedLine};
-use crate::terminal_line;
+
+struct TypstBackend;
+
+impl RenderBackend for TypstBackend {
+    fn escape(&self, text: &str) -> String {
+        typst_escape(text)
+    }
+
+    fn wrap_styled(&self, escaped_text: &str, pen: &Pen) -> String {
+        wrap_with_pen(escaped_text, pen)
+    }
+}
 
 pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
-    let text = terminal_line::line_to_text(line);
-
-    if !ansi {
-        let src = if trailing_spaces { terminal_line::line_to_text_raw(line) } else { text.clone() };
-        return RenderedLine {
-            html: typst_escape(&src),
-            text,
-        };
-    }
-
-    let (runs, pens) = terminal_line::styled_runs(line);
-    if runs.is_empty() {
-        return RenderedLine {
-            html: String::new(),
-            text,
-        };
-    }
-
-    let mut markup = String::new();
-
-    for run in &runs {
-        let escaped = typst_escape(&run.text);
-        if run.is_default {
-            markup.push_str(&escaped);
-        } else {
-            let wrapped = wrap_with_pen(&escaped, &pens[run.pen_idx]);
-            markup.push_str(&wrapped);
-        }
-    }
-
-    let markup = if trailing_spaces { markup } else { markup.trim_end().to_string() };
-
-    RenderedLine { html: markup, text }
+    render_backend::render_line_generic(&TypstBackend, line, ansi, trailing_spaces)
 }
 
 pub struct TypstTheme<'a> {

@@ -1,55 +1,32 @@
 use avt::{Color, Line, Pen};
 
 use crate::color;
-use crate::terminal_line;
+use crate::render_backend::{self, RenderBackend};
 
 pub struct RenderedLine {
     pub html: String,
     pub text: String,
 }
 
-pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
-    let text = terminal_line::line_to_text(line);
+struct HtmlBackend;
 
-    if !ansi {
-        let html = if trailing_spaces {
-            html_escape(&terminal_line::line_to_text_raw(line))
-        } else {
-            html_escape(&text)
-        };
-        return RenderedLine { html, text };
+impl RenderBackend for HtmlBackend {
+    fn escape(&self, text: &str) -> String {
+        html_escape(text)
     }
 
-    let (runs, pens) = terminal_line::styled_runs(line);
-    if runs.is_empty() {
-        return RenderedLine {
-            html: String::new(),
-            text,
-        };
-    }
-
-    let mut html = String::new();
-
-    for run in &runs {
-        if run.is_default {
-            html.push_str(&html_escape(&run.text));
+    fn wrap_styled(&self, escaped_text: &str, pen: &Pen) -> String {
+        let style = pen_to_style(pen);
+        if style.is_empty() {
+            escaped_text.to_string()
         } else {
-            let style = pen_to_style(&pens[run.pen_idx]);
-            if style.is_empty() {
-                html.push_str(&html_escape(&run.text));
-            } else {
-                html.push_str("<span style=\"");
-                html.push_str(&style);
-                html.push_str("\">");
-                html.push_str(&html_escape(&run.text));
-                html.push_str("</span>");
-            }
+            format!("<span style=\"{style}\">{escaped_text}</span>")
         }
     }
+}
 
-    let html = if trailing_spaces { html } else { trim_trailing_spaces_html(&html) };
-
-    RenderedLine { html, text }
+pub fn render_line(line: &Line, ansi: bool, trailing_spaces: bool) -> RenderedLine {
+    render_backend::render_line_generic(&HtmlBackend, line, ansi, trailing_spaces)
 }
 
 pub struct HtmlStyle<'a> {
@@ -236,10 +213,6 @@ fn html_escape(s: &str) -> String {
     out
 }
 
-fn trim_trailing_spaces_html(s: &str) -> String {
-    s.trim_end().to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,21 +241,6 @@ mod tests {
     #[test]
     fn html_escape_empty() {
         assert_eq!(html_escape(""), "");
-    }
-
-    #[test]
-    fn trim_trailing_spaces_removes_trailing() {
-        assert_eq!(trim_trailing_spaces_html("hello   "), "hello");
-    }
-
-    #[test]
-    fn trim_trailing_spaces_preserves_leading() {
-        assert_eq!(trim_trailing_spaces_html("  hello"), "  hello");
-    }
-
-    #[test]
-    fn trim_trailing_spaces_noop() {
-        assert_eq!(trim_trailing_spaces_html("hello"), "hello");
     }
 
     #[test]

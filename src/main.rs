@@ -6,6 +6,7 @@ mod latex;
 mod markdown;
 mod output_transform;
 mod protocol;
+mod render_backend;
 mod recorder;
 mod renderer;
 mod session;
