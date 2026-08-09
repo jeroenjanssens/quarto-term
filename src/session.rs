@@ -152,8 +152,9 @@ impl PtySession {
         let recorders: Vec<Recorder> = config
             .record
             .iter()
-            .filter_map(|path| Recorder::new(path, config.cols, config.rows).ok())
-            .collect();
+            .map(|path| Recorder::new(path, config.cols, config.rows))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| TermError::SpawnFailed(format!("recorder: {e}")))?;
 
         let mut session = Self {
             writer,
