@@ -3,7 +3,8 @@ local h = dofile(debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") .. "help
 
 local source = h.read_term_source()
 
--- Extract needed functions (extract_config uses a multi-end pattern)
+-- Extract needed functions and data
+local shell_presets_src = source:match("(local SHELL_PRESETS = %{.-\n%})")
 local resolve_init_src = source:match("(local function resolve_init_path.-\nend)")
 local extract_config_src = source:match("(local function extract_config.-\n  return config\nend)")
 
@@ -41,7 +42,7 @@ local function meta_num(val)
   if type(val) == "number" then return val end
   return tonumber(meta_str(val))
 end
-]] .. resolve_init_src .. "\n" .. extract_config_src .. "\nreturn extract_config"
+]] .. shell_presets_src .. "\n" .. resolve_init_src .. "\n" .. extract_config_src .. "\nreturn extract_config"
 
 local extract_config = load(chunk)()
 
@@ -276,6 +277,41 @@ do
   local meta = { extensions = { term = { style = { ["trailing_spaces"] = true } } } }
   local config = extract_config(meta)
   h.assert_eq(config.trailing_spaces, true, "style.trailing_spaces snake_case")
+end
+
+-- Test: profile: python sets shell, prompt, ps2
+do
+  local meta = { extensions = { term = { profile = "python" } } }
+  local config = extract_config(meta)
+  h.assert_eq(config.shell, "python3", "profile python: shell")
+  h.assert_eq(config.shell_args[1], "-q", "profile python: shell_args")
+  h.assert_eq(config.prompt, ">>>", "profile python: prompt")
+  h.assert_eq(config.env["PS2"], "... ", "profile python: PS2 env (with trailing space)")
+  h.assert_eq(config.quit, "exit()", "profile python: quit")
+end
+
+-- Test: profile with explicit override
+do
+  local meta = { extensions = { term = { profile = "python", prompt = "py>" } } }
+  local config = extract_config(meta)
+  h.assert_eq(config.shell, "python3", "profile+override: shell from preset")
+  h.assert_eq(config.prompt, "py>", "profile+override: prompt from user")
+end
+
+-- Test: profile: node
+do
+  local meta = { extensions = { term = { profile = "node" } } }
+  local config = extract_config(meta)
+  h.assert_eq(config.shell, "node", "profile node: shell")
+  h.assert_eq(config.prompt, ">", "profile node: prompt")
+  h.assert_eq(config.quit, ".exit", "profile node: quit")
+end
+
+-- Test: unknown profile is ignored
+do
+  local meta = { extensions = { term = { profile = "nonexistent" } } }
+  local config = extract_config(meta)
+  h.assert_eq(config.shell, "zsh", "unknown profile: defaults remain")
 end
 
 -- Test: docker config with image

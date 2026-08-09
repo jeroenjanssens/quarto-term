@@ -258,6 +258,18 @@ local function resolve_init_path(path)
   return nil
 end
 
+local SHELL_PRESETS = {
+  python = { shell = "python3", shell_args = {"-q"}, prompt = ">>>", ps2 = "...", quit = "exit()" },
+  node = { shell = "node", shell_args = {}, prompt = ">", ps2 = "...", quit = ".exit" },
+  r = { shell = "R", shell_args = {"--no-save", "--no-restore", "--quiet"}, prompt = ">", ps2 = "+", quit = "q()" },
+  ruby = { shell = "irb", shell_args = {"--noecho", "--nomultiline"}, prompt = "irb>", ps2 = "irb*", quit = "exit" },
+  sqlite = { shell = "sqlite3", shell_args = {}, prompt = "sqlite>", ps2 = "   ...>", quit = ".quit" },
+  duckdb = { shell = "duckdb", shell_args = {}, prompt = "D", ps2 = ">", quit = ".quit" },
+  fish = { shell = "fish", shell_args = {"--no-config"}, prompt = ">", ps2 = "", quit = "exit" },
+  nushell = { shell = "nu", shell_args = {"--no-config-file"}, prompt = ">", ps2 = ":::", quit = "exit" },
+  sh = { shell = "sh", shell_args = {}, prompt = "$", ps2 = ">", quit = "exit" },
+}
+
 local function extract_config(meta)
   local config = {
     shell = "zsh",
@@ -275,6 +287,20 @@ local function extract_config(meta)
   local term_meta = meta and meta["extensions"] and meta["extensions"]["term"]
   if not term_meta then
     return config
+  end
+
+  -- Apply shell preset as defaults (user-specified values override)
+  if term_meta["profile"] then
+    local profile_name = type(term_meta["profile"]) == "string"
+      and term_meta["profile"] or pandoc.utils.stringify(term_meta["profile"])
+    local preset = SHELL_PRESETS[profile_name]
+    if preset then
+      config.shell = preset.shell
+      config.shell_args = preset.shell_args
+      config.prompt = preset.prompt
+      if preset.ps2 then config._ps2_explicit = preset.ps2 end
+      if preset.quit then config.quit = preset.quit end
+    end
   end
 
   local function meta_str(val)
@@ -550,14 +576,6 @@ local function extract_config(meta)
     config.env["PS1"] = config.prompt .. " "
   end
 
-  -- Pandoc strips trailing spaces from YAML values; restore for prompt vars
-  for _, key in ipairs({"PS1", "PS2", "PROMPT"}) do
-    local val = config.env[key]
-    if val and not val:match("%s$") then
-      config.env[key] = val .. " "
-    end
-  end
-
   -- Set a known PS2 so we can detect continuation prompts
   if config._ps2_explicit then
     config.ps2 = config._ps2_explicit
@@ -571,6 +589,14 @@ local function extract_config(meta)
     config.ps2 = config.env["PS2"]
   end
   config._ps2_explicit = nil
+
+  -- Pandoc strips trailing spaces from YAML values; restore for prompt vars
+  for _, key in ipairs({"PS1", "PS2", "PROMPT"}) do
+    local val = config.env[key]
+    if val and not val:match("%s$") then
+      config.env[key] = val .. " "
+    end
+  end
 
   -- Docker config block
   if term_meta["docker"] then

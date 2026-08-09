@@ -30,6 +30,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `literal` | | | x | x | `true` | Send text as typed characters; `false` for key names |
 | `marker` | x | x | x | | `#!` | Prefix for line option annotations |
 | `output` | | | x | | `true` | Show terminal output |
+| `profile` | x | x | | | (none) | Shell preset: `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh` |
 | `prompt` | x | x | | | `$` | Literal prompt string (auto-sets `PS1`). Alias: `ps1` |
 | `prompt-regex` | x | x | | | (derived) | Raw regex override for prompt detection. Alias: `ps1-regex` |
 | `ps2` | x | x | | | (derived) | Literal continuation prompt string |
