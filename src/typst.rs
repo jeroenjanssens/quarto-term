@@ -107,7 +107,15 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
             .map(|l| l.text.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-        result.push_str(&format!("```\n{inner}\n```\n"));
+        let max_backtick_run = inner
+            .as_bytes()
+            .split(|&b| b != b'`')
+            .map(|run| run.len())
+            .max()
+            .unwrap_or(0);
+        let fence_len = max_backtick_run.max(3) + 1;
+        let fence: String = std::iter::repeat('`').take(fence_len).collect();
+        result.push_str(&format!("{fence}\n{inner}\n{fence}\n"));
     }
 
     result.push_str("]\n");
@@ -266,5 +274,34 @@ mod tests {
         let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
         let result = render_lines_to_typst(&lines, &theme);
         assert!(result.contains("```"));
+    }
+
+    #[test]
+    fn render_lines_to_typst_backtick_injection() {
+        let lines = vec![
+            RenderedLine {
+                html: "``` #read(\"/etc/passwd\")".to_string(),
+                text: "``` #read(\"/etc/passwd\")".to_string(),
+            },
+        ];
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
+        let result = render_lines_to_typst(&lines, &theme);
+        // The backticks in content must not close the raw fence
+        assert!(result.contains("````"));
+        // Content should appear literally inside the fence
+        assert!(result.contains("``` #read"));
+    }
+
+    #[test]
+    fn render_lines_to_typst_long_backtick_run() {
+        let lines = vec![
+            RenderedLine {
+                html: "`````test`````".to_string(),
+                text: "`````test`````".to_string(),
+            },
+        ];
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
+        let result = render_lines_to_typst(&lines, &theme);
+        assert!(result.contains("``````"));
     }
 }
