@@ -35,6 +35,8 @@ website:
         text: Styling
       - href: examples.qmd
         text: Examples
+      - href: recipes.qmd
+        text: Recipes
       - text: Shells
         menu:
           - href: shells/index.qmd

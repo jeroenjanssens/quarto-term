@@ -1,0 +1,229 @@
+---
+title: "Recipes"
+engine: markdown
+---
+
+Common patterns for documenting terminal workflows. Each recipe is self-contained — copy the fenced block into your own `.qmd` file.
+
+## Interrupt a long-running process
+
+Send Ctrl-C to cancel a command that doesn't terminate on its own. The key is `expect-prompt: false` on the blocking command (since it won't return a prompt) and `literal: false` on the control key (so it's interpreted as a keystroke, not typed literally).
+
+````markdown
+```{term}
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5
+```
+````
+
+```{term}
+sleep 100 #! expect-prompt: false
+ctrl-c #! literal: false, delay: 0.5
+```
+
+## Capture a fullscreen TUI
+
+Render the full terminal screen (not just scrollback output). Set `fullscreen: true` on the cell and use `scroll: false` to discard scrollback. End with `expect-prompt: false` so the screen is captured while the app is still displayed.
+
+````markdown
+```{term}
+#| fullscreen: true
+#| scroll: false
+cal -y 2026
+```
+````
+
+```{term}
+#| fullscreen: true
+#| scroll: false
+cal -y 2026
+```
+
+For interactive TUIs like `htop` or `less`, end the last command with `expect-prompt: false` and `hold` to capture while still running:
+
+````markdown
+```{term}
+#| fullscreen: true
+#| scroll: false
+htop #! expect-prompt: false, hold: 1.0
+```
+````
+
+## Drive an interactive prompt
+
+Respond to a program that asks questions. Use `expect-prompt: false` on lines that produce a question (not a shell prompt), and provide the answer on the next line.
+
+````markdown
+```{term}
+read "name?What is your name? " #! expect-prompt: false
+World #! expect-prompt: true
+echo "Hello, $name!"
+```
+````
+
+```{term}
+read "name?What is your name? " #! expect-prompt: false
+World #! expect-prompt: true
+echo "Hello, $name!"
+```
+
+## Persist state across cells
+
+Each cell runs in the same shell session. Variables, the working directory, and shell state carry over from one cell to the next. This is the key difference from static code blocks.
+
+````markdown
+```{term}
+PROJECT="my-app"
+mkdir -p /tmp/$PROJECT && cd /tmp/$PROJECT
+echo "version: 1.0" > config.yml
+```
+
+```{term}
+pwd
+cat config.yml
+```
+````
+
+```{term}
+PROJECT="my-app"
+mkdir -p /tmp/$PROJECT && cd /tmp/$PROJECT
+echo "version: 1.0" > config.yml
+```
+
+```{term}
+pwd
+cat config.yml
+```
+
+## Truncate verbose output
+
+When a command produces many lines but only the shape matters, use `truncate` to collapse a range into a summary. Readers see that output existed without scrolling past it.
+
+````markdown
+```{term}
+#| truncate: [3:-3]
+seq 1 20
+```
+````
+
+```{term}
+#| truncate: [3:-3]
+seq 1 20
+```
+
+The range `3:-3` keeps the first two and last two lines, replacing everything between with a "[N lines truncated]" message. You can also use regex patterns or multiple ranges.
+
+## Annotate output with callouts
+
+Draw attention to specific lines with numbered callout markers. Use line indices (1-based), negative indices (from end), or regex patterns.
+
+````markdown
+```{term}
+#| callouts: [2, -1]
+echo "start"
+echo "important result"
+echo "another line"
+echo "final output"
+```
+````
+
+```{term}
+#| callouts: [2, -1]
+echo "start"
+echo "important result"
+echo "another line"
+echo "final output"
+```
+
+## Hide setup, show result
+
+Use `include: false` to run commands that prepare state without showing them in the document. Readers only see the interesting part.
+
+````markdown
+```{term}
+#| include: false
+mkdir -p /tmp/demo-project
+echo '{"name": "my-app", "version": "2.1.0"}' > /tmp/demo-project/package.json
+echo 'console.log("hello")' > /tmp/demo-project/index.js
+```
+
+```{term}
+ls /tmp/demo-project/
+cat /tmp/demo-project/package.json | python3 -m json.tool
+```
+````
+
+```{term}
+#| include: false
+mkdir -p /tmp/demo-project
+echo '{"name": "my-app", "version": "2.1.0"}' > /tmp/demo-project/package.json
+echo 'console.log("hello")' > /tmp/demo-project/index.js
+```
+
+```{term}
+ls /tmp/demo-project/
+cat /tmp/demo-project/package.json | python3 -m json.tool
+```
+
+## Remove noise from output
+
+Strip specific lines that clutter the output — warnings, empty lines, or headers you don't want. Unlike `truncate`, removed lines disappear entirely with no placeholder.
+
+````markdown
+```{term}
+#| remove: ["^$"]
+echo "first"
+echo ""
+echo "second"
+echo ""
+echo "third"
+```
+````
+
+```{term}
+#| remove: ["^$"]
+echo "first"
+echo ""
+echo "second"
+echo ""
+echo "third"
+```
+
+## Simulate realistic typing
+
+Add human-like typing cadence for screencasts or demos. Typing simulation adds random per-character delays so commands appear one keystroke at a time.
+
+````markdown
+```{term}
+#| typing: true
+echo "This looks like a human typed it"
+```
+````
+
+```{term}
+#| typing: true
+echo "This looks like a human typed it"
+```
+
+## Control arrow keys and navigation
+
+Use `literal: false` to send special keys — arrows, tab, escape sequences. Space-separated words on one line are sent as individual keystrokes.
+
+````markdown
+```{term}
+echo "first command"
+echo "second command"
+up up enter #! literal: false, delay: 0.3
+```
+````
+
+```{term}
+echo "first command"
+echo "second command"
+up up enter #! literal: false, delay: 0.3
+```
+
+```{term}
+#| include: false
+rm -rf /tmp/demo-project /tmp/my-app
+```
