@@ -1,13 +1,7 @@
 -- Test extract_config function from config.lua
 local h = dofile(debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") .. "helpers.lua")
 
-pandoc = {
-  system = { get_working_directory = function() return "/tmp" end },
-  utils = { stringify = function(v) return tostring(v) end },
-}
-
-local root = h.project_root()
-local config_mod = dofile(root .. "_extensions/term/config.lua")
+local config_mod = h.load_module("config")
 local extract_config = config_mod.extract_config
 
 -- Test: nil meta returns defaults

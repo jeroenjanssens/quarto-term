@@ -46,82 +46,22 @@ function M.project_root()
   return filter_dir:match("(.*/?)tests/lua/") or "./"
 end
 
-function M.read_term_source()
+function M.setup_pandoc_stubs()
+  pandoc = {
+    List = function(t) return t or {} end,
+    system = { get_working_directory = function() return "/tmp" end },
+    utils = { stringify = function(v) return tostring(v) end },
+  }
+end
+
+function M.load_module(name)
+  M.setup_pandoc_stubs()
   local root = M.project_root()
-  local term_lua = root .. "_extensions/term/term.lua"
-  local f = io.open(term_lua, "r")
-  if not f then
-    io.stderr:write("ERROR: cannot open " .. term_lua .. "\n")
-    os.exit(1)
-  end
-  local source = f:read("*a")
-  f:close()
-  return source
-end
-
-function M.load_term_functions(names, opts)
-  opts = opts or {}
-  local source = M.read_term_source()
-  local prelude = opts.prelude or 'local pandoc = { List = function(t) return t or {} end }'
-
-  local parts = { prelude }
-  for _, name in ipairs(names) do
-    local pattern = "(local function " .. name .. ".-\nend)"
-    local src = source:match(pattern)
-    if not src then
-      io.stderr:write("ERROR: cannot extract function '" .. name .. "' from term.lua\n")
-      os.exit(1)
-    end
-    table.insert(parts, src)
-  end
-
-  local last_name = names[#names]
-  table.insert(parts, "return " .. last_name)
-  local chunk = table.concat(parts, "\n")
-  local fn = load(chunk)
-  if not fn then
-    io.stderr:write("ERROR: failed to load extracted chunk\n")
-    os.exit(1)
-  end
-  return fn()
-end
-
-function M.load_multiple_functions(names, opts)
-  opts = opts or {}
-  local source = M.read_term_source()
-  local prelude = opts.prelude or 'local pandoc = { List = function(t) return t or {} end }'
-
-  local parts = { prelude }
-  for _, name in ipairs(names) do
-    local pattern = "(local function " .. name .. ".-\nend)"
-    local src = source:match(pattern)
-    if not src then
-      io.stderr:write("ERROR: cannot extract function '" .. name .. "' from term.lua\n")
-      os.exit(1)
-    end
-    table.insert(parts, src)
-  end
-
-  local returns = {}
-  for _, name in ipairs(names) do
-    table.insert(returns, name .. " = " .. name)
-  end
-  table.insert(parts, "return { " .. table.concat(returns, ", ") .. " }")
-  local chunk = table.concat(parts, "\n")
-  local fn = load(chunk)
-  if not fn then
-    io.stderr:write("ERROR: failed to load extracted chunk\n")
-    os.exit(1)
-  end
-  return fn()
+  return dofile(root .. "_extensions/term/" .. name .. ".lua")
 end
 
 function M.load_cell_module()
-  local root = M.project_root()
-  local cell_lua = root .. "_extensions/term/cell.lua"
-  pandoc = { List = function(t) return t or {} end, system = { get_working_directory = function() return "/tmp" end } }
-  local mod = dofile(cell_lua)
-  return mod
+  return M.load_module("cell")
 end
 
 function M.mock_block(text, classes)
