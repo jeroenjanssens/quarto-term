@@ -57,7 +57,7 @@ pub struct Config {
     #[serde(default)]
     pub theme_fg: Option<String>,
     #[serde(default = "default_format")]
-    pub format: String,
+    pub format: OutputFormat,
     #[serde(default)]
     pub typing: TypingConfig,
     #[serde(default)]
@@ -386,9 +386,19 @@ fn default_timeout() -> f64 {
     10.0
 }
 
-fn default_format() -> String {
-    "html".to_string()
+fn default_format() -> OutputFormat {
+    OutputFormat::Html
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OutputFormat {
+    Html,
+    Latex,
+    Typst,
+    Markdown,
+}
+
 
 
 fn default_delay() -> f64 {
@@ -426,7 +436,7 @@ mod tests {
         assert_eq!(req.config.cols, 80);
         assert_eq!(req.config.rows, 24);
         assert_eq!(req.config.timeout, 10.0);
-        assert_eq!(req.config.format, "html");
+        assert_eq!(req.config.format, OutputFormat::Html);
         assert!(req.config.record.is_empty());
         assert!(req.config.init.is_empty());
         assert_eq!(req.cells.len(), 1);

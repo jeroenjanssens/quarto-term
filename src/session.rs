@@ -13,7 +13,7 @@ use crate::latex;
 use crate::markdown;
 use crate::protocol::{
     CellResult, Config, DockerConfig, EchoMode, HighlightSpec, InputCell, LineSpec,
-    RecordedAssertion,
+    OutputFormat, RecordedAssertion,
 };
 use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
@@ -711,7 +711,7 @@ impl PtySession {
     ) -> String {
         let trailing_spaces = cell.options.trailing_spaces.unwrap_or(self.config.trailing_spaces);
         let mut out = String::new();
-        let format = self.config.format.as_str();
+        let format = self.config.format;
         let font_size = cell.options.font_size.as_deref().or(self.config.font_size.as_deref());
         let font_family = cell.options.font_family.as_deref().or(self.config.font_family.as_deref());
         let line_height = cell.options.line_height.as_deref().or(self.config.line_height.as_deref());
@@ -724,13 +724,13 @@ impl PtySession {
             EchoMode::Mode(m) if m == "false" => {}
             EchoMode::Mode(m) if m == "source" => {
                 match format {
-                    "latex" => {
+                    OutputFormat::Latex => {
                         out.push_str(&format!(
                             "\\begin{{verbatim}}\n{}\n\\end{{verbatim}}\n",
                             &cell.code
                         ));
                     }
-                    "markdown" => {
+                    OutputFormat::Markdown => {
                         out.push_str(&format!("```bash\n{}\n```\n", &cell.code));
                     }
                     _ => {
@@ -789,7 +789,7 @@ impl PtySession {
             let theme_fg = cell.options.theme_fg.as_deref().or(self.config.theme_fg.as_deref());
 
             match format {
-                "latex" => {
+                OutputFormat::Latex => {
                     let theme = latex::LatexTheme {
                         bg: theme_bg,
                         fg: theme_fg,
@@ -803,7 +803,7 @@ impl PtySession {
                         out.push_str(&latex::render_lines_to_latex(&lines, &theme));
                     }
                 }
-                "typst" => {
+                OutputFormat::Typst => {
                     let theme = typst::TypstTheme {
                         bg: theme_bg,
                         fg: theme_fg,
@@ -817,14 +817,14 @@ impl PtySession {
                         out.push_str(&typst::render_lines_to_typst(&lines, &theme));
                     }
                 }
-                "markdown" => {
+                OutputFormat::Markdown => {
                     if cell.options.fullscreen {
                         out.push_str(&markdown::render_fullscreen_to_markdown(&lines));
                     } else {
                         out.push_str(&markdown::render_lines_to_markdown(&lines));
                     }
                 }
-                _ => {
+                OutputFormat::Html => {
                     if cell.options.fullscreen {
                         out.push_str(&renderer::render_fullscreen_to_html(&lines, &html_style));
                     } else {
@@ -843,7 +843,7 @@ impl PtySession {
         before_cursor_row: usize,
         before_scrollback: usize,
         ansi: bool,
-        format: &str,
+        format: OutputFormat,
         trailing_spaces: bool,
     ) -> Vec<RenderedLine> {
         let current_scrollback = self.scrollback_count();
@@ -874,7 +874,7 @@ impl PtySession {
             .collect()
     }
 
-    fn capture_fullscreen(&self, ansi: bool, format: &str, trailing_spaces: bool) -> Vec<RenderedLine> {
+    fn capture_fullscreen(&self, ansi: bool, format: OutputFormat, trailing_spaces: bool) -> Vec<RenderedLine> {
         self.vt
             .view()
             .map(|line| render_line_for_format(line, ansi, trailing_spaces, format))
@@ -1012,10 +1012,10 @@ fn build_docker_command(docker: &DockerConfig, config: &Config) -> CommandBuilde
     cmd
 }
 
-fn render_line_for_format(line: &avt::Line, ansi: bool, trailing_spaces: bool, format: &str) -> RenderedLine {
+fn render_line_for_format(line: &avt::Line, ansi: bool, trailing_spaces: bool, format: OutputFormat) -> RenderedLine {
     match format {
-        "latex" => latex::render_line(line, ansi, trailing_spaces),
-        "typst" => typst::render_line(line, ansi, trailing_spaces),
+        OutputFormat::Latex => latex::render_line(line, ansi, trailing_spaces),
+        OutputFormat::Typst => typst::render_line(line, ansi, trailing_spaces),
         _ => renderer::render_line(line, ansi, trailing_spaces),
     }
 }
@@ -1149,7 +1149,7 @@ fn apply_remove(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
     }
 }
 
-fn apply_truncate(lines: &mut Vec<RenderedLine>, specs: &[LineSpec], format: &str) {
+fn apply_truncate(lines: &mut Vec<RenderedLine>, specs: &[LineSpec], format: OutputFormat) {
     if specs.is_empty() {
         return;
     }
@@ -1187,14 +1187,14 @@ fn apply_truncate(lines: &mut Vec<RenderedLine>, specs: &[LineSpec], format: &st
     }
 }
 
-fn format_truncation_message(count: usize, format: &str) -> RenderedLine {
+fn format_truncation_message(count: usize, format: OutputFormat) -> RenderedLine {
     let word = if count == 1 { "line" } else { "lines" };
     let text = format!("[{} {} truncated]", count, word);
     let html = match format {
-        "latex" => format!("\\textit{{{}}}", text),
-        "typst" => format!("_{}_", text),
-        "markdown" => format!("*{}*", text),
-        _ => format!("<span class=\"term-truncated\">{}</span>", text),
+        OutputFormat::Latex => format!("\\textit{{{}}}", text),
+        OutputFormat::Typst => format!("_{}_", text),
+        OutputFormat::Markdown => format!("*{}*", text),
+        OutputFormat::Html => format!("<span class=\"term-truncated\">{}</span>", text),
     };
     RenderedLine { html, text }
 }
@@ -1572,14 +1572,14 @@ mod tests {
     #[test]
     fn apply_truncate_empty_specs() {
         let mut lines = vec![make_rendered("a"), make_rendered("b")];
-        apply_truncate(&mut lines, &[], "html");
+        apply_truncate(&mut lines, &[], OutputFormat::Html);
         assert_eq!(lines.len(), 2);
     }
 
     #[test]
     fn apply_truncate_single_run() {
         let mut lines: Vec<_> = (1..=10).map(|i| make_rendered(&format!("line {}", i))).collect();
-        apply_truncate(&mut lines, &[LineSpec::Expr("3:7".to_string())], "html");
+        apply_truncate(&mut lines, &[LineSpec::Expr("3:7".to_string())], OutputFormat::Html);
         assert_eq!(lines.len(), 6);
         assert_eq!(lines[0].text, "line 1");
         assert_eq!(lines[1].text, "line 2");
@@ -1593,7 +1593,7 @@ mod tests {
     #[test]
     fn apply_truncate_two_runs() {
         let mut lines: Vec<_> = (1..=10).map(|i| make_rendered(&format!("line {}", i))).collect();
-        apply_truncate(&mut lines, &[LineSpec::Expr(":2".to_string()), LineSpec::Expr("-2:".to_string())], "html");
+        apply_truncate(&mut lines, &[LineSpec::Expr(":2".to_string()), LineSpec::Expr("-2:".to_string())], OutputFormat::Html);
         assert_eq!(lines.len(), 8);
         assert!(lines[0].text.contains("2 lines truncated"));
         assert_eq!(lines[1].text, "line 3");
@@ -1604,7 +1604,7 @@ mod tests {
     #[test]
     fn apply_truncate_adjacent_merge() {
         let mut lines: Vec<_> = (1..=10).map(|i| make_rendered(&format!("line {}", i))).collect();
-        apply_truncate(&mut lines, &[LineSpec::Expr("2:4".to_string()), LineSpec::Expr("5:6".to_string())], "html");
+        apply_truncate(&mut lines, &[LineSpec::Expr("2:4".to_string()), LineSpec::Expr("5:6".to_string())], OutputFormat::Html);
         assert_eq!(lines.len(), 6);
         assert_eq!(lines[0].text, "line 1");
         assert!(lines[1].text.contains("5 lines truncated"));
@@ -1614,7 +1614,7 @@ mod tests {
     #[test]
     fn apply_truncate_single_line() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_truncate(&mut lines, &[LineSpec::Index(2)], "html");
+        apply_truncate(&mut lines, &[LineSpec::Index(2)], OutputFormat::Html);
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0].text, "a");
         assert!(lines[1].text.contains("1 line truncated"));
@@ -1624,14 +1624,14 @@ mod tests {
     #[test]
     fn apply_truncate_latex_format() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_truncate(&mut lines, &[LineSpec::Index(2)], "latex");
+        apply_truncate(&mut lines, &[LineSpec::Index(2)], OutputFormat::Latex);
         assert!(lines[1].html.contains("\\textit"));
     }
 
     #[test]
     fn apply_truncate_markdown_format() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
-        apply_truncate(&mut lines, &[LineSpec::Index(2)], "markdown");
+        apply_truncate(&mut lines, &[LineSpec::Index(2)], OutputFormat::Markdown);
         assert_eq!(lines[1].html, "*[1 line truncated]*");
     }
 
