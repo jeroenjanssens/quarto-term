@@ -12,6 +12,7 @@ mod session;
 mod terminal_line;
 #[cfg(test)]
 mod test_support;
+mod typing;
 mod typst;
 
 use std::io::{self, Read};
