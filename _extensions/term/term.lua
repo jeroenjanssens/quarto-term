@@ -1,6 +1,8 @@
 local FILTER_DIR = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
 
 local chrome = dofile(FILTER_DIR .. "chrome.lua")
+local theme = dofile(FILTER_DIR .. "theme.lua")
+theme.init(FILTER_DIR)
 
 local function detect_platform()
   local os_name = pandoc.system.os
@@ -63,28 +65,6 @@ end
 
 local ENGINE = find_engine()
 
-local function read_theme_file(theme_name)
-  if not theme_name then return nil end
-  local path = FILTER_DIR .. "themes/" .. theme_name .. ".css"
-  local f = io.open(path, "r")
-  if not f then return nil end
-  local content = f:read("*a")
-  f:close()
-  return content
-end
-
-local function read_theme_colors(theme_name)
-  local content = read_theme_file(theme_name)
-  if not content then return nil, nil end
-  local bg = content:match("%-%-term%-bg:%s*#(%x+)")
-  local fg = content:match("%-%-term%-fg:%s*#(%x+)")
-  return bg, fg
-end
-
-local function rescope_theme_css(css_content, selector)
-  -- Replace `:root {` with `selector {`
-  return css_content:gsub(":root%s*{", selector .. " {")
-end
 
 local function escape_pattern(s)
   return s:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
@@ -893,11 +873,11 @@ function Pandoc(doc)
   config._colorscheme_dark = nil
 
   if _colorscheme then
-    local theme_bg, theme_fg = read_theme_colors(_colorscheme)
+    local theme_bg, theme_fg = theme.read_colors(_colorscheme)
     if theme_bg then config.theme_bg = theme_bg end
     if theme_fg then config.theme_fg = theme_fg end
   elseif _colorscheme_light then
-    local theme_bg, theme_fg = read_theme_colors(_colorscheme_light)
+    local theme_bg, theme_fg = theme.read_colors(_colorscheme_light)
     if theme_bg then config.theme_bg = theme_bg end
     if theme_fg then config.theme_fg = theme_fg end
   end
@@ -934,7 +914,7 @@ function Pandoc(doc)
       cell._chrome = nil
       -- For non-HTML formats, resolve cell colorscheme to bg/fg colors
       if cell_colorscheme and config.format ~= "html" then
-        local bg, fg = read_theme_colors(cell_colorscheme)
+        local bg, fg = theme.read_colors(cell_colorscheme)
         if bg then cell.options.theme_bg = bg end
         if fg then cell.options.theme_fg = fg end
       end
@@ -1084,9 +1064,9 @@ function Pandoc(doc)
             local scope_class = "term-theme-" .. pos.colorscheme
             content = "<div class=\"" .. scope_class .. "\">\n" .. content .. "</div>\n"
             if not cell_theme_css[pos.colorscheme] then
-              local css = read_theme_file(pos.colorscheme)
+              local css = theme.read_file(pos.colorscheme)
               if css then
-                cell_theme_css[pos.colorscheme] = rescope_theme_css(css, "." .. scope_class)
+                cell_theme_css[pos.colorscheme] = theme.rescope_css(css, "." .. scope_class)
               end
             end
           elseif pos.colorscheme_light and raw_format == "html" then
@@ -1095,14 +1075,14 @@ function Pandoc(doc)
             local key = (pos.colorscheme_light or "") .. "|" .. (pos.colorscheme_dark or "")
             if not cell_theme_css[key] then
               local scoped = ""
-              local light_css = read_theme_file(pos.colorscheme_light)
+              local light_css = theme.read_file(pos.colorscheme_light)
               if light_css then
-                scoped = scoped .. rescope_theme_css(light_css, "body.quarto-light ." .. scope_class)
+                scoped = scoped .. theme.rescope_css(light_css, "body.quarto-light ." .. scope_class)
               end
               if pos.colorscheme_dark then
-                local dark_css = read_theme_file(pos.colorscheme_dark)
+                local dark_css = theme.read_file(pos.colorscheme_dark)
                 if dark_css then
-                  scoped = scoped .. "\n" .. rescope_theme_css(dark_css, "body.quarto-dark ." .. scope_class)
+                  scoped = scoped .. "\n" .. theme.rescope_css(dark_css, "body.quarto-dark ." .. scope_class)
                 end
               end
               if scoped ~= "" then
@@ -1181,10 +1161,10 @@ function Pandoc(doc)
         f:close()
       end
       if _colorscheme then
-        local theme_css = read_theme_file(_colorscheme)
+        local theme_css = theme.read_file(_colorscheme)
         if theme_css then table.insert(css_parts, theme_css) end
       elseif _colorscheme_light then
-        local light_css = read_theme_file(_colorscheme_light)
+        local light_css = theme.read_file(_colorscheme_light)
         if light_css then table.insert(css_parts, light_css) end
       end
       for _, css in pairs(cell_theme_css) do
@@ -1203,14 +1183,14 @@ function Pandoc(doc)
       })
 
       if _colorscheme_light and _colorscheme_dark then
-        local light_css = read_theme_file(_colorscheme_light)
-        local dark_css = read_theme_file(_colorscheme_dark)
+        local light_css = theme.read_file(_colorscheme_light)
+        local dark_css = theme.read_file(_colorscheme_dark)
         local scoped = ""
         if light_css then
-          scoped = scoped .. rescope_theme_css(light_css, "body.quarto-light")
+          scoped = scoped .. theme.rescope_css(light_css, "body.quarto-light")
         end
         if dark_css then
-          scoped = scoped .. "\n" .. rescope_theme_css(dark_css, "body.quarto-dark")
+          scoped = scoped .. "\n" .. theme.rescope_css(dark_css, "body.quarto-dark")
         end
         if scoped ~= "" then
           quarto.doc.include_text("in-header", "<style>\n" .. scoped .. "</style>")
