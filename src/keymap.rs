@@ -3,6 +3,46 @@ pub struct KeyTranslation {
     pub is_named: bool,
 }
 
+struct NamedKey {
+    aliases: &'static [&'static str],
+    bytes: &'static [u8],
+    csi_modified: &'static [u8],
+}
+
+static NAMED_KEYS: &[NamedKey] = &[
+    NamedKey { aliases: &["enter", "return", "cr"], bytes: b"\r", csi_modified: b"\x1b[13u" },
+    NamedKey { aliases: &["tab"], bytes: b"\t", csi_modified: b"\x1b[9u" },
+    NamedKey { aliases: &["escape", "esc"], bytes: b"\x1b", csi_modified: b"\x1b[27u" },
+    NamedKey { aliases: &["backspace", "bs"], bytes: b"\x7f", csi_modified: b"\x1b[127u" },
+    NamedKey { aliases: &["delete", "del"], bytes: b"\x1b[3~", csi_modified: b"\x1b[3~" },
+    NamedKey { aliases: &["space"], bytes: b" ", csi_modified: b"\x1b[32u" },
+    NamedKey { aliases: &["up"], bytes: b"\x1b[A", csi_modified: b"\x1b[A" },
+    NamedKey { aliases: &["down"], bytes: b"\x1b[B", csi_modified: b"\x1b[B" },
+    NamedKey { aliases: &["right"], bytes: b"\x1b[C", csi_modified: b"\x1b[C" },
+    NamedKey { aliases: &["left"], bytes: b"\x1b[D", csi_modified: b"\x1b[D" },
+    NamedKey { aliases: &["home"], bytes: b"\x1b[H", csi_modified: b"\x1b[H" },
+    NamedKey { aliases: &["end"], bytes: b"\x1b[F", csi_modified: b"\x1b[F" },
+    NamedKey { aliases: &["pageup", "page-up", "page_up"], bytes: b"\x1b[5~", csi_modified: b"\x1b[5~" },
+    NamedKey { aliases: &["pagedown", "page-down", "page_down"], bytes: b"\x1b[6~", csi_modified: b"\x1b[6~" },
+    NamedKey { aliases: &["insert"], bytes: b"\x1b[2~", csi_modified: b"\x1b[2~" },
+    NamedKey { aliases: &["f1"], bytes: b"\x1bOP", csi_modified: b"\x1bOP" },
+    NamedKey { aliases: &["f2"], bytes: b"\x1bOQ", csi_modified: b"\x1bOQ" },
+    NamedKey { aliases: &["f3"], bytes: b"\x1bOR", csi_modified: b"\x1bOR" },
+    NamedKey { aliases: &["f4"], bytes: b"\x1bOS", csi_modified: b"\x1bOS" },
+    NamedKey { aliases: &["f5"], bytes: b"\x1b[15~", csi_modified: b"\x1b[15~" },
+    NamedKey { aliases: &["f6"], bytes: b"\x1b[17~", csi_modified: b"\x1b[17~" },
+    NamedKey { aliases: &["f7"], bytes: b"\x1b[18~", csi_modified: b"\x1b[18~" },
+    NamedKey { aliases: &["f8"], bytes: b"\x1b[19~", csi_modified: b"\x1b[19~" },
+    NamedKey { aliases: &["f9"], bytes: b"\x1b[20~", csi_modified: b"\x1b[20~" },
+    NamedKey { aliases: &["f10"], bytes: b"\x1b[21~", csi_modified: b"\x1b[21~" },
+    NamedKey { aliases: &["f11"], bytes: b"\x1b[23~", csi_modified: b"\x1b[23~" },
+    NamedKey { aliases: &["f12"], bytes: b"\x1b[24~", csi_modified: b"\x1b[24~" },
+];
+
+fn find_named_key(name: &str) -> Option<&'static NamedKey> {
+    NAMED_KEYS.iter().find(|k| k.aliases.contains(&name))
+}
+
 pub fn translate(name: &str) -> KeyTranslation {
     let lower = name.to_lowercase();
     let lower = lower.trim();
@@ -11,39 +51,11 @@ pub fn translate(name: &str) -> KeyTranslation {
         return KeyTranslation { bytes, is_named: true };
     }
 
-    match lower {
-        "enter" | "return" | "cr" => KeyTranslation { bytes: vec![b'\r'], is_named: true },
-        "tab" => KeyTranslation { bytes: vec![b'\t'], is_named: true },
-        "escape" | "esc" => KeyTranslation { bytes: vec![0x1b], is_named: true },
-        "backspace" | "bs" => KeyTranslation { bytes: vec![0x7f], is_named: true },
-        "delete" | "del" => KeyTranslation { bytes: b"\x1b[3~".to_vec(), is_named: true },
-        "space" => KeyTranslation { bytes: vec![b' '], is_named: true },
-
-        "up" => KeyTranslation { bytes: b"\x1b[A".to_vec(), is_named: true },
-        "down" => KeyTranslation { bytes: b"\x1b[B".to_vec(), is_named: true },
-        "right" => KeyTranslation { bytes: b"\x1b[C".to_vec(), is_named: true },
-        "left" => KeyTranslation { bytes: b"\x1b[D".to_vec(), is_named: true },
-        "home" => KeyTranslation { bytes: b"\x1b[H".to_vec(), is_named: true },
-        "end" => KeyTranslation { bytes: b"\x1b[F".to_vec(), is_named: true },
-        "pageup" | "page-up" | "page_up" => KeyTranslation { bytes: b"\x1b[5~".to_vec(), is_named: true },
-        "pagedown" | "page-down" | "page_down" => KeyTranslation { bytes: b"\x1b[6~".to_vec(), is_named: true },
-        "insert" => KeyTranslation { bytes: b"\x1b[2~".to_vec(), is_named: true },
-
-        "f1" => KeyTranslation { bytes: b"\x1bOP".to_vec(), is_named: true },
-        "f2" => KeyTranslation { bytes: b"\x1bOQ".to_vec(), is_named: true },
-        "f3" => KeyTranslation { bytes: b"\x1bOR".to_vec(), is_named: true },
-        "f4" => KeyTranslation { bytes: b"\x1bOS".to_vec(), is_named: true },
-        "f5" => KeyTranslation { bytes: b"\x1b[15~".to_vec(), is_named: true },
-        "f6" => KeyTranslation { bytes: b"\x1b[17~".to_vec(), is_named: true },
-        "f7" => KeyTranslation { bytes: b"\x1b[18~".to_vec(), is_named: true },
-        "f8" => KeyTranslation { bytes: b"\x1b[19~".to_vec(), is_named: true },
-        "f9" => KeyTranslation { bytes: b"\x1b[20~".to_vec(), is_named: true },
-        "f10" => KeyTranslation { bytes: b"\x1b[21~".to_vec(), is_named: true },
-        "f11" => KeyTranslation { bytes: b"\x1b[23~".to_vec(), is_named: true },
-        "f12" => KeyTranslation { bytes: b"\x1b[24~".to_vec(), is_named: true },
-
-        _ => KeyTranslation { bytes: name.as_bytes().to_vec(), is_named: false },
+    if let Some(key) = find_named_key(lower) {
+        return KeyTranslation { bytes: key.bytes.to_vec(), is_named: true };
     }
+
+    KeyTranslation { bytes: name.as_bytes().to_vec(), is_named: false }
 }
 
 #[cfg(test)]
@@ -78,13 +90,10 @@ fn parse_modified_key(s: &str) -> Option<Vec<u8>> {
         }
     }
 
-    // CSI u encoding for modifier+key combos (xterm modifyOtherKeys / kitty)
-    // Format: ESC [ <keycode> ; <modifier> u
-    // Modifier bits: shift=1, alt=2, ctrl=4 → parameter = bits + 1
     let modifier_param = modifier_param_value(&modifiers);
 
-    if let Some(csi_seq) = arrow_or_special_csi(key) {
-        return Some(apply_modifier_to_csi(&csi_seq, modifier_param));
+    if let Some(named) = find_named_key(key) {
+        return Some(apply_modifier_to_csi(named.csi_modified, modifier_param));
     }
 
     if key.len() == 1 {
@@ -156,45 +165,12 @@ fn modifier_param_value(mods: &Modifiers) -> u8 {
     bits + 1
 }
 
-fn arrow_or_special_csi(key: &str) -> Option<Vec<u8>> {
-    match key {
-        "up" => Some(b"\x1b[A".to_vec()),
-        "down" => Some(b"\x1b[B".to_vec()),
-        "right" => Some(b"\x1b[C".to_vec()),
-        "left" => Some(b"\x1b[D".to_vec()),
-        "home" => Some(b"\x1b[H".to_vec()),
-        "end" => Some(b"\x1b[F".to_vec()),
-        "insert" => Some(b"\x1b[2~".to_vec()),
-        "delete" | "del" => Some(b"\x1b[3~".to_vec()),
-        "pageup" | "page-up" | "page_up" => Some(b"\x1b[5~".to_vec()),
-        "pagedown" | "page-down" | "page_down" => Some(b"\x1b[6~".to_vec()),
-        "f1" => Some(b"\x1bOP".to_vec()),
-        "f2" => Some(b"\x1bOQ".to_vec()),
-        "f3" => Some(b"\x1bOR".to_vec()),
-        "f4" => Some(b"\x1bOS".to_vec()),
-        "f5" => Some(b"\x1b[15~".to_vec()),
-        "f6" => Some(b"\x1b[17~".to_vec()),
-        "f7" => Some(b"\x1b[18~".to_vec()),
-        "f8" => Some(b"\x1b[19~".to_vec()),
-        "f9" => Some(b"\x1b[20~".to_vec()),
-        "f10" => Some(b"\x1b[21~".to_vec()),
-        "f11" => Some(b"\x1b[23~".to_vec()),
-        "f12" => Some(b"\x1b[24~".to_vec()),
-        "enter" | "return" | "cr" => Some(b"\x1b[13u".to_vec()),
-        "tab" => Some(b"\x1b[9u".to_vec()),
-        "escape" | "esc" => Some(b"\x1b[27u".to_vec()),
-        "backspace" | "bs" => Some(b"\x1b[127u".to_vec()),
-        "space" => Some(b"\x1b[32u".to_vec()),
-        _ => None,
-    }
-}
-
 fn apply_modifier_to_csi(seq: &[u8], modifier: u8) -> Vec<u8> {
     let s = String::from_utf8_lossy(seq);
 
     // CSI u format: ESC [ code u → ESC [ code ; modifier u
     if s.ends_with('u') {
-        let inner = &s[2..s.len() - 1]; // strip ESC[ and u
+        let inner = &s[2..s.len() - 1];
         return format!("\x1b[{};{}u", inner, modifier).into_bytes();
     }
 
@@ -212,7 +188,7 @@ fn apply_modifier_to_csi(seq: &[u8], modifier: u8) -> Vec<u8> {
 
     // CSI number ~ sequences: ESC [ N ~ → ESC [ N ; modifier ~
     if s.ends_with('~') {
-        let inner = &s[2..s.len() - 1]; // strip ESC[ and ~
+        let inner = &s[2..s.len() - 1];
         return format!("\x1b[{};{}~", inner, modifier).into_bytes();
     }
 
@@ -256,43 +232,36 @@ mod tests {
 
     #[test]
     fn test_alt_a() {
-        // alt-a → CSI 97;3u (modifier param: alt=2, +1=3)
         assert_eq!(translate_keycode("alt-a"), b"\x1b[97;3u".to_vec());
     }
 
     #[test]
     fn test_ctrl_shift_a() {
-        // ctrl-shift-a → CSI 97;6u (modifier param: shift=1|ctrl=4, +1=6)
         assert_eq!(translate_keycode("ctrl-shift-a"), b"\x1b[97;6u".to_vec());
     }
 
     #[test]
     fn test_ctrl_alt_a() {
-        // ctrl-alt-a → CSI 97;7u (modifier param: alt=2|ctrl=4, +1=7)
         assert_eq!(translate_keycode("ctrl-alt-a"), b"\x1b[97;7u".to_vec());
     }
 
     #[test]
     fn test_shift_up() {
-        // shift-up → ESC[1;2A
         assert_eq!(translate_keycode("shift-up"), b"\x1b[1;2A".to_vec());
     }
 
     #[test]
     fn test_ctrl_shift_up() {
-        // ctrl-shift-up → ESC[1;6A
         assert_eq!(translate_keycode("ctrl-shift-up"), b"\x1b[1;6A".to_vec());
     }
 
     #[test]
     fn test_alt_f1() {
-        // alt-f1 → ESC[1;3P (SS3 with modifier)
         assert_eq!(translate_keycode("alt-f1"), b"\x1b[1;3P".to_vec());
     }
 
     #[test]
     fn test_shift_delete() {
-        // shift-delete → ESC[3;2~
         assert_eq!(translate_keycode("shift-delete"), b"\x1b[3;2~".to_vec());
     }
 
@@ -304,7 +273,6 @@ mod tests {
 
     #[test]
     fn test_ctrl_alt_shift() {
-        // ctrl-alt-shift-a → CSI 97;8u (all modifiers: 1|2|4 + 1 = 8)
         assert_eq!(translate_keycode("ctrl-alt-shift-a"), b"\x1b[97;8u".to_vec());
     }
 
