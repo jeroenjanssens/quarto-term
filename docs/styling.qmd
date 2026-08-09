@@ -157,13 +157,33 @@ echo "Hello from a terminal window"
 ls -la ~/.zshrc
 ```
 
-Pass a string to show a title in the chrome bar:
+The `chrome` option accepts a map with `os`, `title`, `color`, and `shadow` keys:
 
 ```{term}
-#| style.chrome: "~/projects/quarto-term"
-#| style.colorscheme: dracula
-echo "Window chrome with a custom title"
+#| style:
+#|   chrome:
+#|     os: macos
+#|     title: "~/projects/quarto-term"
+#|   colorscheme: iterm2
+echo "macOS chrome with title"
 date
+```
+
+```{term}
+#| style.chrome.os: windows
+#| style.chrome.title: PowerShell
+#| style.colorscheme: campbell
+#| style.ansi: false
+echo "Windows-style chrome"
+whoami
+```
+
+```{term}
+#| style.chrome.os: linux
+#| style.chrome.title: "jeroen@ubuntu: ~"
+#| style.colorscheme: ubuntu
+echo "Linux-style chrome"
+uname -a
 ```
 
 Set `style.chrome: true` at the document or project level to apply chrome to all cells.
@@ -174,6 +194,19 @@ Set `style.chrome: true` at the document or project level to apply chrome to all
 
 ```{term}
 #| style.colorscheme: ayu-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### campbell
+
+```{term}
+#| style.colorscheme: campbell
 for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
 export APP_ENV="production" COUNT=$(( 10 + 5 ))
 if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
@@ -265,6 +298,19 @@ cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
 
 ```{term}
 #| style.colorscheme: gruvbox-dark
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### iterm2
+
+```{term}
+#| style.colorscheme: iterm2
 for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
 export APP_ENV="production" COUNT=$(( 10 + 5 ))
 if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
@@ -408,6 +454,19 @@ cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
 
 ```{term}
 #| style.colorscheme: tokyo-night
+for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
+export APP_ENV="production" COUNT=$(( 10 + 5 ))
+if [[ -d "$HOME" && -n "$APP_ENV" ]]; then
+  print -P "%F{blue}Environment:%f \e[3m${APP_ENV:-default}\e[0m"
+fi
+echo "User: $(whoami)" | grep -iE 'a|e|i' > /dev/null
+cowsay "quarto-term is udderly amazing" | lolcat -S 1337 -F 0.4 -t
+```
+
+### ubuntu
+
+```{term}
+#| style.colorscheme: ubuntu
 for i ({0..15}) { print -nP "%K{$i} ${(l:2:)i} %k"; ((i%8==7))&&print }
 export APP_ENV="production" COUNT=$(( 10 + 5 ))
 if [[ -d "$HOME" && -n "$APP_ENV" ]]; then

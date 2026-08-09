@@ -465,6 +465,14 @@ local function extract_config(meta)
       local cv = style_meta["chrome"]
       if type(cv) == "boolean" or (type(cv) == "userdata" and (tostring(cv) == "true" or tostring(cv) == "false")) then
         s.chrome = meta_bool(cv)
+      elseif type(cv) == "table" and (cv["os"] ~= nil or cv["color"] ~= nil
+          or cv["title"] ~= nil or cv["shadow"] ~= nil) then
+        s.chrome = {
+          os     = cv["os"] and meta_str(cv["os"]) or nil,
+          color  = cv["color"] and meta_str(cv["color"]) or nil,
+          title  = cv["title"] and meta_str(cv["title"]) or nil,
+          shadow = cv["shadow"] ~= nil and meta_bool(cv["shadow"]) or nil,
+        }
       else
         s.chrome = meta_str(cv)
       end
@@ -653,14 +661,51 @@ local function is_term_block(block)
   return false
 end
 
-local function wrap_chrome(html, title)
-  local bar = '<div class="term-chrome-bar">'
-    .. '<span class="term-chrome-dot term-chrome-close"></span>'
-    .. '<span class="term-chrome-dot term-chrome-minimize"></span>'
-    .. '<span class="term-chrome-dot term-chrome-maximize"></span>'
-    .. (title and ('<span class="term-chrome-title">' .. title .. '</span>') or '')
-    .. '</div>'
-  return '<div class="term-chrome">\n' .. bar .. '\n' .. html .. '</div>\n'
+local function normalize_chrome(val)
+  if val == nil or val == false then return nil end
+  if val == true then
+    return { os = "macos", shadow = true }
+  end
+  if type(val) == "table" then
+    return {
+      os     = val.os or "macos",
+      color  = val.color,
+      title  = val.title,
+      shadow = (val.shadow == nil) and true or val.shadow,
+    }
+  end
+  return nil
+end
+
+local function wrap_chrome(html, cfg)
+  local os_style = cfg.os or "macos"
+  local title = cfg.title
+  local color = cfg.color
+  local shadow = cfg.shadow
+
+  local bar_style = color and (' style="background:' .. color .. '"') or ''
+  local outer_style = (shadow == false) and ' style="box-shadow:none"' or ''
+
+  local title_html = title
+    and ('<span class="term-chrome-title">' .. title .. '</span>')
+    or ''
+
+  local bar_inner
+  if os_style == "windows" then
+    bar_inner = title_html
+      .. '<span class="term-chrome-btn term-chrome-minimize">&#x2500;</span>'
+      .. '<span class="term-chrome-btn term-chrome-maximize">&#x25A1;</span>'
+      .. '<span class="term-chrome-btn term-chrome-close">&#x2715;</span>'
+  else
+    bar_inner = '<span class="term-chrome-dot term-chrome-close"></span>'
+      .. '<span class="term-chrome-dot term-chrome-minimize"></span>'
+      .. '<span class="term-chrome-dot term-chrome-maximize"></span>'
+      .. title_html
+  end
+
+  local bar = '<div class="term-chrome-bar"' .. bar_style .. '>' .. bar_inner .. '</div>'
+  return '<div class="term-chrome term-chrome-' .. os_style .. '"' .. outer_style .. '>\n'
+    .. bar .. '\n' .. html .. '</div>\n'
 end
 
 
@@ -1065,8 +1110,10 @@ function Pandoc(doc)
             end
           end
           if pos.chrome and raw_format == "html" then
-            local title = (type(pos.chrome) == "string") and pos.chrome or nil
-            content = wrap_chrome(content, title)
+            local chrome_cfg = normalize_chrome(pos.chrome)
+            if chrome_cfg then
+              content = wrap_chrome(content, chrome_cfg)
+            end
           end
           doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, content)
         else
