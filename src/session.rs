@@ -288,42 +288,16 @@ impl PtySession {
                     line_index: idx as u32,
                     output: line_output.clone(),
                 });
-                for pattern in assert_spec.patterns() {
-                    let matched = regex::Regex::new(pattern)
-                        .map(|re| re.is_match(&line_output))
-                        .unwrap_or_else(|_| line_output.contains(pattern.as_str()));
-                    if !matched {
-                        error = Some(format!(
-                            "assertion failed on line {}: pattern {:?} not found in output",
-                            idx + 1, pattern
-                        ));
-                        break;
-                    }
-                }
-                if error.is_some() {
+                if let Some(msg) = Self::check_assertion_patterns(&line_output, assert_spec.patterns()) {
+                    error = Some(format!("line {}: {}", idx + 1, msg));
                     break;
                 }
             }
         }
 
         if error.is_none() && last_enter && self.prompt.ps2_re.is_some() && !self.last_line_is_primary_prompt() {
-            for attempt in 0..3 {
-                if attempt < 2 {
-                    self.writer.write_all(b"\r").ok();
-                } else {
-                    self.writer.write_all(b"\x03").ok();
-                }
-                self.writer.flush().ok();
-                thread::sleep(Duration::from_millis(50));
-                self.drain_pty();
-                if self.last_line_is_primary_prompt() {
-                    break;
-                }
-            }
-            if !self.last_line_is_primary_prompt() {
-                if let Err(e) = self.wait_for_prompt() {
-                    error = Some(e.to_string());
-                }
+            if let Err(e) = self.recover_primary_prompt() {
+                error = Some(e.to_string());
             }
         }
 
@@ -340,18 +314,7 @@ impl PtySession {
         if error.is_none() {
             if let Some(ref assert_spec) = cell.options.assert {
                 let cell_output = String::from_utf8_lossy(&self.output_since_cell_start).to_string();
-                for pattern in assert_spec.patterns() {
-                    let matched = regex::Regex::new(pattern)
-                        .map(|re| re.is_match(&cell_output))
-                        .unwrap_or_else(|_| cell_output.contains(pattern.as_str()));
-                    if !matched {
-                        error = Some(format!(
-                            "assertion failed: pattern {:?} not found in cell output",
-                            pattern
-                        ));
-                        break;
-                    }
-                }
+                error = Self::check_assertion_patterns(&cell_output, assert_spec.patterns());
             }
         }
 
@@ -418,6 +381,41 @@ impl PtySession {
         }
 
         Ok(())
+    }
+
+    fn recover_primary_prompt(&mut self) -> Result<(), TermError> {
+        for attempt in 0..3 {
+            if attempt < 2 {
+                self.writer.write_all(b"\r").ok();
+            } else {
+                self.writer.write_all(b"\x03").ok();
+            }
+            self.writer.flush().ok();
+            thread::sleep(Duration::from_millis(50));
+            self.drain_pty();
+            if self.last_line_is_primary_prompt() {
+                return Ok(());
+            }
+        }
+        if !self.last_line_is_primary_prompt() {
+            self.wait_for_prompt()?;
+        }
+        Ok(())
+    }
+
+    fn check_assertion_patterns(output: &str, patterns: &[String]) -> Option<String> {
+        for pattern in patterns {
+            let matched = regex::Regex::new(pattern)
+                .map(|re| re.is_match(output))
+                .unwrap_or_else(|_| output.contains(pattern.as_str()));
+            if !matched {
+                return Some(format!(
+                    "assertion failed: pattern {:?} not found in output",
+                    pattern
+                ));
+            }
+        }
+        None
     }
 
     fn wait_for_prompt(&mut self) -> Result<(), TermError> {
