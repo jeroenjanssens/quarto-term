@@ -10,14 +10,14 @@ pub fn make_line(ansi_str: &str, cols: usize) -> Line {
 
 pub fn rendered(text: &str) -> RenderedLine {
     RenderedLine {
-        html: text.to_string(),
+        markup: text.to_string(),
         text: text.to_string(),
     }
 }
 
-pub fn rendered_html(html: &str, text: &str) -> RenderedLine {
+pub fn rendered_html(markup: &str, text: &str) -> RenderedLine {
     RenderedLine {
-        html: html.to_string(),
+        markup: markup.to_string(),
         text: text.to_string(),
     }
 }

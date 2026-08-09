@@ -76,8 +76,8 @@ fn cell_with_line_opts(id: u32, code: &str, opts: Value, line_opts: Value) -> Va
     })
 }
 
-fn get_html(result: &Value, index: usize) -> &str {
-    result[index]["html"].as_str().unwrap()
+fn get_markup(result: &Value, index: usize) -> &str {
+    result[index]["markup"].as_str().unwrap()
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn minimal_request_echo_hello() {
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["id"], 1);
     assert!(arr[0]["error"].is_null());
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("echo hello"), "html should contain command: {}", html);
     assert!(html.contains("hello"), "html should contain output");
 }
@@ -100,14 +100,14 @@ fn state_persistence_between_cells() {
     ]));
     let arr = result.as_array().unwrap();
     assert_eq!(arr.len(), 2);
-    let html2 = get_html(&result, 1);
+    let html2 = get_markup(&result, 1);
     assert!(html2.contains("persistent42"), "cell 2 should show var value: {}", html2);
 }
 
 #[test]
 fn html_escaping_in_output() {
     let result = run_binary(&request(vec![cell(1, "echo '<b>&foo</b>'")]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("&lt;b&gt;"), "should escape <: {}", html);
     assert!(html.contains("&amp;foo"), "should escape &: {}", html);
 }
@@ -117,7 +117,7 @@ fn echo_false_produces_empty() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo hidden", json!({"echo": false, "output": false})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert_eq!(html, "");
 }
 
@@ -126,7 +126,7 @@ fn echo_source_mode() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo hi", json!({"echo": "source", "output": false})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("term-source"), "should have source class: {}", html);
     assert!(html.contains("echo hi"), "should contain source code: {}", html);
 }
@@ -141,7 +141,7 @@ fn format_latex() {
         "format": "latex"
     });
     let result = run_binary(&request_with_config(config, vec![cell(1, "echo tex")]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("\\begin{tcolorbox}"), "should have latex wrapper: {}", html);
 }
 
@@ -155,7 +155,7 @@ fn format_markdown() {
         "format": "markdown"
     });
     let result = run_binary(&request_with_config(config, vec![cell(1, "echo md")]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("```console"), "should have markdown wrapper: {}", html);
 }
 
@@ -189,7 +189,7 @@ fn callouts_by_index() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo line1\necho line2\necho line3", json!({"callouts": [1, -1]})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("term-callout"), "should have callout: {}", html);
 }
 
@@ -198,7 +198,7 @@ fn remove_by_pattern() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo KEEP_THIS\necho REMOVE_THIS\necho KEEP_ALSO", json!({"remove": ["REMOVE_THIS"]})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(!html.contains("REMOVE_THIS"), "removed line should not appear: {}", html);
     assert!(html.contains("KEEP_THIS"), "kept lines should appear: {}", html);
 }
@@ -213,7 +213,7 @@ fn spacing_inserts_blank_lines() {
         "spacing": true
     });
     let result = run_binary(&request_with_config(config, vec![cell(1, "echo a\necho b")]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     let lines: Vec<&str> = html.split('\n').collect();
     let has_empty = lines.iter().any(|l| l.trim().is_empty());
     assert!(has_empty, "spacing should insert blank lines: {:?}", lines);
@@ -224,7 +224,7 @@ fn ansi_color_in_output() {
     let result = run_binary(&request(vec![
         cell(1, "echo $'\\e[31mRED\\e[0m'"),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("var(--term-1)") || html.contains("color:"), "should have color styling: {}", html);
 }
 
@@ -233,7 +233,7 @@ fn ansi_disabled() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo $'\\e[31mRED\\e[0m'", json!({"ansi": false})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(!html.contains("style="), "should have no style spans with ansi:false: {}", html);
 }
 
@@ -242,7 +242,7 @@ fn keep_last_prompt() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo hi", json!({"keep_last_prompt": true})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(
         html.contains("$\n") || html.contains("$</span>\n") || html.contains("$</code></pre>\n") || html.contains("$</span></code></pre>\n"),
         "should have trailing prompt: {}", html
@@ -268,7 +268,7 @@ fn line_options_literal_false_sends_keycode() {
             ]),
         ),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(!html.contains("ctrl-c"), "literal:false should send keycode, not text: {}", html);
 }
 
@@ -280,7 +280,7 @@ fn line_options_enter_false() {
             json!([{"line_index": 0, "enter": false, "expect_prompt": false, "hold": 0.3}]),
         ),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(!html.contains("\nNO_EXEC\n"), "enter:false should not execute command");
 }
 
@@ -290,7 +290,7 @@ fn line_options_hold() {
         cell_with_line_opts(1, "echo fast", json!({}), json!([{"line_index": 0, "hold": 0.5}])),
     ]));
     assert!(result[0]["error"].is_null(), "hold should not cause error");
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("fast"), "output should appear: {}", html);
 }
 
@@ -308,7 +308,7 @@ fn cell_delay() {
         cell_with_opts(1, "echo d1\necho d2", json!({"delay": 0.2})),
     ]));
     assert!(result[0]["error"].is_null());
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("d1"), "first command output: {}", html);
     assert!(html.contains("d2"), "second command output: {}", html);
 }
@@ -319,7 +319,7 @@ fn cell_hold() {
         cell_with_opts(1, "echo held", json!({"hold": 0.3})),
     ]));
     assert!(result[0]["error"].is_null());
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("held"), "output should appear: {}", html);
 }
 
@@ -328,7 +328,7 @@ fn cell_fullscreen() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo screen", json!({"fullscreen": true})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("term-screen"), "fullscreen uses term-screen class: {}", html);
 }
 
@@ -337,7 +337,7 @@ fn cell_trailing_spaces_true() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "printf 'hi   \\n'", json!({"trailing_spaces": true})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("hi   "), "trailing spaces should be preserved: {}", html);
 }
 
@@ -346,7 +346,7 @@ fn cell_highlight_language() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "print('hi')", json!({"echo": "source", "output": false, "highlight": "python"})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("language-python"), "highlight language: {}", html);
 }
 
@@ -355,7 +355,7 @@ fn cell_include_false_equivalent() {
     let result = run_binary(&request(vec![
         cell_with_opts(1, "echo hidden_setup", json!({"echo": "false", "output": false})),
     ]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert_eq!(html, "", "include:false should produce empty: {}", html);
 }
 
@@ -369,7 +369,7 @@ fn config_trailing_spaces() {
         "trailing_spaces": true
     });
     let result = run_binary(&request_with_config(config, vec![cell(1, "printf 'end   \\n'")]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("end   "), "doc-level trailing_spaces: {}", html);
 }
 
@@ -383,7 +383,7 @@ fn config_font_size() {
         "font_size": "0.8em"
     });
     let result = run_binary(&request_with_config(config, vec![cell(1, "echo fs")]));
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("font-size:0.8em"), "font_size in output: {}", html);
 }
 
@@ -398,7 +398,7 @@ fn config_prompt_regex() {
     });
     let result = run_binary(&request_with_config(config, vec![cell(1, "echo regex")]));
     assert!(result[0]["error"].is_null(), "prompt_regex should work");
-    let html = get_html(&result, 0);
+    let html = get_markup(&result, 0);
     assert!(html.contains("regex"), "output with custom regex: {}", html);
 }
 

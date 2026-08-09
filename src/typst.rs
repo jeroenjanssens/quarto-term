@@ -33,7 +33,7 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
         return String::new();
     }
 
-    let has_markup = lines.iter().any(|l| l.html.contains("#text(") || l.html.contains("#strong[") || l.html.contains("#emph[") || l.html.contains("#underline["));
+    let has_markup = lines.iter().any(|l| l.markup.contains("#text(") || l.markup.contains("#strong[") || l.markup.contains("#emph[") || l.markup.contains("#underline["));
 
     let mut block_params = Vec::new();
     if let Some(bg) = theme.bg {
@@ -76,7 +76,7 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
     if has_markup {
         let inner: String = lines
             .iter()
-            .map(|l| l.html.as_str())
+            .map(|l| l.markup.as_str())
             .collect::<Vec<_>>()
             .join("\\\n");
         result.push_str(&inner);

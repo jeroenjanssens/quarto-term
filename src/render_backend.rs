@@ -26,7 +26,7 @@ pub fn render_line_generic<B: RenderBackend>(
             text.clone()
         };
         return RenderedLine {
-            html: backend.escape(&src),
+            markup: backend.escape(&src),
             text,
         };
     }
@@ -34,7 +34,7 @@ pub fn render_line_generic<B: RenderBackend>(
     let (runs, pens) = terminal_line::styled_runs(line);
     if runs.is_empty() {
         return RenderedLine {
-            html: String::new(),
+            markup: String::new(),
             text,
         };
     }
@@ -57,5 +57,5 @@ pub fn render_line_generic<B: RenderBackend>(
         backend.trim_trailing(output)
     };
 
-    RenderedLine { html: output, text }
+    RenderedLine { markup: output, text }
 }

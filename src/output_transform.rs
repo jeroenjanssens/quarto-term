@@ -13,7 +13,7 @@ pub fn apply_spacing(lines: &mut Vec<RenderedLine>, prompt: &str) {
     }
     for (offset, idx) in insertions.into_iter().enumerate() {
         lines.insert(idx + offset, RenderedLine {
-            html: String::new(),
+            markup: String::new(),
             text: String::new(),
         });
     }
@@ -74,9 +74,9 @@ pub fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
             LineSpec::Index(i) => {
                 if let Some(idx) = resolve_single_index(*i, lines.len()) {
                     if let Some(line) = lines.get_mut(idx) {
-                        line.html = format!(
+                        line.markup = format!(
                             "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
-                            line.html, annotation_num
+                            line.markup, annotation_num
                         );
                     }
                 }
@@ -86,18 +86,18 @@ pub fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
                     let indices = parse_range_spec(s, lines.len());
                     if let Some(&idx) = indices.first() {
                         if let Some(line) = lines.get_mut(idx) {
-                            line.html = format!(
+                            line.markup = format!(
                                 "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
-                                line.html, annotation_num
+                                line.markup, annotation_num
                             );
                         }
                     }
                 } else if let Ok(re) = Regex::new(s) {
                     for line in lines.iter_mut() {
                         if re.is_match(&line.text) {
-                            line.html = format!(
+                            line.markup = format!(
                                 "{} <span class=\"term-callout\">&lt;{}&gt;</span>",
-                                line.html, annotation_num
+                                line.markup, annotation_num
                             );
                             break;
                         }
@@ -111,13 +111,13 @@ pub fn apply_callouts(lines: &mut Vec<RenderedLine>, specs: &[LineSpec]) {
 fn format_truncation_message(count: usize, format: OutputFormat) -> RenderedLine {
     let word = if count == 1 { "line" } else { "lines" };
     let text = format!("[{} {} truncated]", count, word);
-    let html = match format {
+    let markup = match format {
         OutputFormat::Latex => format!("\\textit{{{}}}", text),
         OutputFormat::Typst => format!("_{}_", text),
         OutputFormat::Markdown => format!("*{}*", text),
         OutputFormat::Html => format!("<span class=\"term-truncated\">{}</span>", text),
     };
-    RenderedLine { html, text }
+    RenderedLine { markup, text }
 }
 
 fn resolve_line_specs(specs: &[LineSpec], lines: &[RenderedLine]) -> Vec<usize> {
@@ -229,7 +229,7 @@ mod tests {
 
     fn make_rendered(text: &str) -> RenderedLine {
         RenderedLine {
-            html: text.to_string(),
+            markup: text.to_string(),
             text: text.to_string(),
         }
     }
@@ -347,24 +347,24 @@ mod tests {
     fn apply_callouts_empty_specs() {
         let mut lines = vec![make_rendered("a")];
         apply_callouts(&mut lines, &[]);
-        assert_eq!(lines[0].html, "a");
+        assert_eq!(lines[0].markup, "a");
     }
 
     #[test]
     fn apply_callouts_positive_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b")];
         apply_callouts(&mut lines, &[LineSpec::Index(1)]);
-        assert!(lines[0].html.contains("term-callout"));
-        assert!(lines[0].html.contains("&lt;1&gt;"));
-        assert!(!lines[1].html.contains("term-callout"));
+        assert!(lines[0].markup.contains("term-callout"));
+        assert!(lines[0].markup.contains("&lt;1&gt;"));
+        assert!(!lines[1].markup.contains("term-callout"));
     }
 
     #[test]
     fn apply_callouts_negative_index() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
         apply_callouts(&mut lines, &[LineSpec::Index(-1)]);
-        assert!(lines[2].html.contains("term-callout"));
-        assert!(lines[2].html.contains("&lt;1&gt;"));
+        assert!(lines[2].markup.contains("term-callout"));
+        assert!(lines[2].markup.contains("&lt;1&gt;"));
     }
 
     #[test]
@@ -375,16 +375,16 @@ mod tests {
             make_rendered("another"),
         ];
         apply_callouts(&mut lines, &[LineSpec::Expr("target".to_string())]);
-        assert!(lines[1].html.contains("term-callout"));
-        assert!(!lines[2].html.contains("term-callout"));
+        assert!(lines[1].markup.contains("term-callout"));
+        assert!(!lines[2].markup.contains("term-callout"));
     }
 
     #[test]
     fn apply_callouts_sequential_numbering() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
         apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(3)]);
-        assert!(lines[0].html.contains("&lt;1&gt;"));
-        assert!(lines[2].html.contains("&lt;2&gt;"));
+        assert!(lines[0].markup.contains("&lt;1&gt;"));
+        assert!(lines[2].markup.contains("&lt;2&gt;"));
     }
 
     // --- parse_range_spec ---
@@ -470,7 +470,7 @@ mod tests {
         assert_eq!(lines.len(), 6);
         assert_eq!(lines[0].text, "line 1");
         assert_eq!(lines[1].text, "line 2");
-        assert!(lines[2].html.contains("term-truncated"));
+        assert!(lines[2].markup.contains("term-truncated"));
         assert!(lines[2].text.contains("5 lines truncated"));
         assert_eq!(lines[3].text, "line 8");
         assert_eq!(lines[4].text, "line 9");
@@ -512,14 +512,14 @@ mod tests {
     fn apply_truncate_latex_format() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
         apply_truncate(&mut lines, &[LineSpec::Index(2)], OutputFormat::Latex);
-        assert!(lines[1].html.contains("\\textit"));
+        assert!(lines[1].markup.contains("\\textit"));
     }
 
     #[test]
     fn apply_truncate_markdown_format() {
         let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c")];
         apply_truncate(&mut lines, &[LineSpec::Index(2)], OutputFormat::Markdown);
-        assert_eq!(lines[1].html, "*[1 line truncated]*");
+        assert_eq!(lines[1].markup, "*[1 line truncated]*");
     }
 
     // --- apply_remove with ranges ---

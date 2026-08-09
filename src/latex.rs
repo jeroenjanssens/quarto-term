@@ -35,7 +35,7 @@ pub fn render_lines_to_latex(lines: &[RenderedLine], theme: &LatexTheme) -> Stri
 
     let inner: String = lines
         .iter()
-        .map(|l| l.html.as_str())
+        .map(|l| l.markup.as_str())
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -57,7 +57,7 @@ pub fn render_fullscreen_to_latex(lines: &[RenderedLine], theme: &LatexTheme) ->
 
     let inner: String = lines
         .iter()
-        .map(|l| l.html.as_str())
+        .map(|l| l.markup.as_str())
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -293,7 +293,7 @@ mod tests {
     fn render_line_plain_no_ansi() {
         let line = make_line("hello", 80);
         let result = render_line(&line, false, false);
-        assert_eq!(result.html, "hello");
+        assert_eq!(result.markup, "hello");
         assert_eq!(result.text, "hello");
     }
 
@@ -301,22 +301,22 @@ mod tests {
     fn render_line_escapes_latex() {
         let line = make_line("a\\{b}", 80);
         let result = render_line(&line, false, false);
-        assert!(result.html.contains("\\textbackslash{}"));
-        assert!(result.html.contains("\\{"));
-        assert!(result.html.contains("\\}"));
+        assert!(result.markup.contains("\\textbackslash{}"));
+        assert!(result.markup.contains("\\{"));
+        assert!(result.markup.contains("\\}"));
     }
 
     #[test]
     fn render_line_bold_ansi() {
         let line = make_line("\x1b[1mBOLD\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("\\textbf{BOLD}"));
+        assert!(result.markup.contains("\\textbf{BOLD}"));
     }
 
     #[test]
     fn render_line_colored_ansi() {
         let line = make_line("\x1b[31mred\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("\\textcolor[HTML]{CD3131}{red}"));
+        assert!(result.markup.contains("\\textcolor[HTML]{CD3131}{red}"));
     }
 }

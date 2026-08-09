@@ -999,7 +999,7 @@ function Pandoc(doc)
       if pos.include == false then
         doc.blocks[pos.block_i] = pandoc.RawBlock(raw_format, "")
       else
-        local content = result.html
+        local content = result.markup
         if type(content) == "string" and content ~= "" then
           if pos.colorscheme and raw_format == "html" then
             local scope_class = "term-theme-" .. pos.colorscheme

@@ -4,7 +4,7 @@ use crate::color;
 use crate::render_backend::{self, RenderBackend};
 
 pub struct RenderedLine {
-    pub html: String,
+    pub markup: String,
     pub text: String,
 }
 
@@ -124,7 +124,7 @@ pub fn render_lines_to_html(lines: &[RenderedLine], css_class: &str, style: &Htm
 
     let inner: String = lines
         .iter()
-        .map(|l| l.html.as_str())
+        .map(|l| l.markup.as_str())
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -139,7 +139,7 @@ pub fn render_fullscreen_to_html(lines: &[RenderedLine], style: &HtmlStyle) -> S
 
     let inner: String = lines
         .iter()
-        .map(|l| l.html.as_str())
+        .map(|l| l.markup.as_str())
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -292,58 +292,58 @@ mod tests {
         let line = make_line("hello", 80);
         let result = render_line(&line, false, false);
         assert_eq!(result.text, "hello");
-        assert_eq!(result.html, "hello");
+        assert_eq!(result.markup, "hello");
     }
 
     #[test]
     fn render_line_html_escape_no_ansi() {
         let line = make_line("<b>&</b>", 80);
         let result = render_line(&line, false, false);
-        assert_eq!(result.html, "&lt;b&gt;&amp;&lt;/b&gt;");
+        assert_eq!(result.markup, "&lt;b&gt;&amp;&lt;/b&gt;");
     }
 
     #[test]
     fn render_line_bold_ansi() {
         let line = make_line("\x1b[1mBOLD\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("font-weight:bold"));
-        assert!(result.html.contains("BOLD"));
+        assert!(result.markup.contains("font-weight:bold"));
+        assert!(result.markup.contains("BOLD"));
     }
 
     #[test]
     fn render_line_italic_ansi() {
         let line = make_line("\x1b[3mitalic\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("font-style:italic"));
+        assert!(result.markup.contains("font-style:italic"));
     }
 
     #[test]
     fn render_line_fg_color_indexed() {
         let line = make_line("\x1b[31mred\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("color:var(--term-1)"));
+        assert!(result.markup.contains("color:var(--term-1)"));
     }
 
     #[test]
     fn render_line_fg_color_rgb() {
         let line = make_line("\x1b[38;2;255;128;0morange\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("color:#ff8000"));
+        assert!(result.markup.contains("color:#ff8000"));
     }
 
     #[test]
     fn render_line_underline_strikethrough() {
         let line = make_line("\x1b[4;9mboth\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("text-decoration:underline line-through"));
+        assert!(result.markup.contains("text-decoration:underline line-through"));
     }
 
     #[test]
     fn render_line_inverse() {
         let line = make_line("\x1b[7minv\x1b[0m", 80);
         let result = render_line(&line, true, false);
-        assert!(result.html.contains("var(--term-bg"));
-        assert!(result.html.contains("var(--term-fg"));
+        assert!(result.markup.contains("var(--term-bg"));
+        assert!(result.markup.contains("var(--term-fg"));
     }
 
     #[test]

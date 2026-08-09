@@ -37,7 +37,7 @@ fn main() {
         Err(e) => {
             let error_result = vec![CellResult {
                 id: 0,
-                html: String::new(),
+                markup: String::new(),
                 error: Some(format!("failed to parse input: {e}")),
                 recorded_assertions: Vec::new(),
             }];
@@ -62,7 +62,7 @@ fn main() {
                 .iter()
                 .map(|cell| CellResult {
                     id: cell.id,
-                    html: String::new(),
+                    markup: String::new(),
                     error: Some(format!("session failed to start: {e}")),
                     recorded_assertions: Vec::new(),
                 })

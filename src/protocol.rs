@@ -350,7 +350,7 @@ impl AssertSpec {
 #[derive(Debug, Serialize)]
 pub struct CellResult {
     pub id: u32,
-    pub html: String,
+    pub markup: String,
     pub error: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub recorded_assertions: Vec<RecordedAssertion>,

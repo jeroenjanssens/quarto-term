@@ -335,7 +335,7 @@ impl PtySession {
         self.config.timeout = orig_timeout;
 
         let use_ansi = cell.options.ansi.unwrap_or(self.config.ansi);
-        let html = self.build_cell_html(cell, before_cursor_row, before_scrollback, use_ansi);
+        let markup = self.build_cell_html(cell, before_cursor_row, before_scrollback, use_ansi);
 
         if error.is_none() {
             if let Some(ref assert_spec) = cell.options.assert {
@@ -362,7 +362,7 @@ impl PtySession {
 
         CellResult {
             id: cell.id,
-            html,
+            markup,
             error,
             recorded_assertions,
         }

@@ -105,9 +105,9 @@ impl PromptMatcher {
             if prompt_len > 0 {
                 let prompt_text = &line.text[..prompt_len];
                 let char_len = prompt_text.chars().count();
-                line.html = renderer::wrap_prompt_span(&line.html, char_len, prompt_text);
+                line.markup = renderer::wrap_prompt_span(&line.markup, char_len, prompt_text);
             } else {
-                line.html = format!("<span class=\"term-output\">{}</span>", line.html);
+                line.markup = format!("<span class=\"term-output\">{}</span>", line.markup);
             }
         }
     }
