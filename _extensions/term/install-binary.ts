@@ -85,7 +85,9 @@ async function main() {
   console.log(`quarto-term: installed v${version} (${binName})`);
 }
 
-main().catch((err) => {
-  console.error(`quarto-term: ${err.message}`);
-  console.error("quarto-term: falling back to binary on PATH or development build");
-});
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error(`quarto-term: ${err.message}`);
+    console.error("quarto-term: falling back to binary on PATH or development build");
+  });
+}

@@ -651,7 +651,7 @@ function Pandoc(doc)
   local use_cache = _cache ~= false
 
   if use_cache then
-    local cache_key = pandoc.utils.sha1(input_json)
+    local cache_key = pandoc.utils.sha1(VERSION .. "\n" .. input_json)
     local cache_dir = pandoc.system.get_working_directory() .. "/.quarto-term-cache"
     local cache_file = cache_dir .. "/" .. cache_key .. ".json"
     local cf = io.open(cache_file, "r")

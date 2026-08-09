@@ -363,7 +363,7 @@ pub struct RecordedAssertion {
 }
 
 fn default_shell() -> String {
-    "bash".to_string()
+    "zsh".to_string()
 }
 
 fn default_prompt() -> String {
@@ -440,7 +440,7 @@ mod tests {
     #[test]
     fn batch_request_minimal_deserialization() {
         let req: BatchRequest = serde_json::from_str(minimal_json()).unwrap();
-        assert_eq!(req.config.shell, "bash");
+        assert_eq!(req.config.shell, "zsh");
         assert_eq!(req.config.cols, 80);
         assert_eq!(req.config.rows, 24);
         assert_eq!(req.config.timeout, 10.0);
