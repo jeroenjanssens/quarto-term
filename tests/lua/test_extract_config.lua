@@ -1,51 +1,14 @@
--- Test extract_config function from term.lua
+-- Test extract_config function from config.lua
 local h = dofile(debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") .. "helpers.lua")
 
-local source = h.read_term_source()
+pandoc = {
+  system = { get_working_directory = function() return "/tmp" end },
+  utils = { stringify = function(v) return tostring(v) end },
+}
 
--- Extract needed functions and data
-local shell_presets_src = source:match("(local SHELL_PRESETS = %{.-\n%})")
-local resolve_init_src = source:match("(local function resolve_init_path.-\nend)")
-local extract_config_src = source:match("(local function extract_config.-\n  return config\nend)")
-
--- Build a loadable chunk with stubs for pandoc meta helpers
-local chunk = [[
-pandoc = { system = { get_working_directory = function() return "/tmp" end } }
-local function meta_str(val)
-  if not val then return nil end
-  if type(val) == "string" then return val end
-  if type(val) == "number" then return tostring(val) end
-  if type(val) == "table" then
-    if val.t == "MetaInlines" or val[1] then
-      local parts = {}
-      for _, el in ipairs(val) do
-        if type(el) == "string" then
-          table.insert(parts, el)
-        elseif type(el) == "table" and el.t == "Str" then
-          table.insert(parts, el.text)
-        end
-      end
-      return table.concat(parts)
-    end
-  end
-  return tostring(val)
-end
-local function meta_bool(val)
-  if val == nil then return nil end
-  if type(val) == "boolean" then return val end
-  local s = meta_str(val)
-  if s == "true" then return true end
-  if s == "false" then return false end
-  return nil
-end
-local function meta_num(val)
-  if not val then return nil end
-  if type(val) == "number" then return val end
-  return tonumber(meta_str(val))
-end
-]] .. shell_presets_src .. "\n" .. resolve_init_src .. "\n" .. extract_config_src .. "\nreturn extract_config"
-
-local extract_config = load(chunk)()
+local root = h.project_root()
+local config_mod = dofile(root .. "_extensions/term/config.lua")
+local extract_config = config_mod.extract_config
 
 -- Test: nil meta returns defaults
 do
