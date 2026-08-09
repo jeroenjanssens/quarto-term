@@ -1,7 +1,8 @@
--- Test coerce_value function from term.lua
+-- Test coerce_value function from cell.lua
 local h = dofile(debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") .. "helpers.lua")
 
-local coerce_value = h.load_term_functions({"coerce_value"}, { prelude = "" })
+local cell_mod = h.load_cell_module()
+local coerce_value = cell_mod.coerce_value
 
 -- Tests
 h.assert_eq(coerce_value("true"), true, "string 'true' -> boolean true")

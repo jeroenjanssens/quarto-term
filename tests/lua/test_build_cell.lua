@@ -1,9 +1,8 @@
--- Test build_cell function from term.lua
+-- Test build_cell function from cell.lua
 local h = dofile(debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") .. "helpers.lua")
 
-local build_cell = h.load_term_functions(
-  {"escape_pattern", "coerce_value", "as_list", "parse_cell_options", "build_cell"}
-)
+local cell_mod = h.load_cell_module()
+local build_cell = cell_mod.build_cell
 
 -- Test: default options
 do

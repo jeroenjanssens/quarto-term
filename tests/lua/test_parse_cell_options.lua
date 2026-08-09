@@ -1,10 +1,8 @@
--- Test parse_cell_options function from term.lua
+-- Test parse_cell_options function from cell.lua
 local h = dofile(debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") .. "helpers.lua")
 
-local parse_cell_options = h.load_term_functions(
-  {"escape_pattern", "coerce_value", "parse_cell_options"},
-  { prelude = "" }
-)
+local cell_mod = h.load_cell_module()
+local parse_cell_options = cell_mod.parse_cell_options
 
 -- Test: basic cell options parsing
 do

@@ -10,6 +10,7 @@ local extract_config_src = source:match("(local function extract_config.-\n  ret
 
 -- Build a loadable chunk with stubs for pandoc meta helpers
 local chunk = [[
+pandoc = { system = { get_working_directory = function() return "/tmp" end } }
 local function meta_str(val)
   if not val then return nil end
   if type(val) == "string" then return val end
@@ -287,7 +288,7 @@ do
   h.assert_eq(config.shell_args[1], "-q", "profile python: shell_args")
   h.assert_eq(config.prompt, ">>>", "profile python: prompt")
   h.assert_eq(config.env["PS2"], "... ", "profile python: PS2 env (with trailing space)")
-  h.assert_eq(config.quit, "exit()", "profile python: quit")
+  h.assert_eq(config.quit, nil, "profile python: quit removed")
 end
 
 -- Test: profile with explicit override
@@ -304,7 +305,7 @@ do
   local config = extract_config(meta)
   h.assert_eq(config.shell, "node", "profile node: shell")
   h.assert_eq(config.prompt, ">", "profile node: prompt")
-  h.assert_eq(config.quit, ".exit", "profile node: quit")
+  h.assert_eq(config.quit, nil, "profile node: quit removed")
 end
 
 -- Test: unknown profile is ignored

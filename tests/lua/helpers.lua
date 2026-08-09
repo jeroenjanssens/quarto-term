@@ -116,6 +116,14 @@ function M.load_multiple_functions(names, opts)
   return fn()
 end
 
+function M.load_cell_module()
+  local root = M.project_root()
+  local cell_lua = root .. "_extensions/term/cell.lua"
+  pandoc = { List = function(t) return t or {} end, system = { get_working_directory = function() return "/tmp" end } }
+  local mod = dofile(cell_lua)
+  return mod
+end
+
 function M.mock_block(text, classes)
   return { text = text, classes = classes or {"term"} }
 end
