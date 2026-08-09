@@ -72,6 +72,7 @@ Set these under `extensions: term:` in your YAML front matter:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `profile` | (none) | Shell preset: `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh` (see [Shells](shells/index.qmd#quick-start-with-profiles)) |
 | `strip-auto-indent` | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
 | `shell` | `zsh` | Shell to use |
 | `shell-args` | auto | Shell arguments (defaults: `--no-rcs` for zsh, `--norc --noprofile` for bash) |
@@ -124,6 +125,29 @@ Set these with `#|` at the top of a cell:
 | `truncate` | `[]` | Line specs to truncate (replaced with "[N lines truncated]" message) |
 | `callouts` | `[]` | Line specs for callout annotations |
 | `style` | (from config) | Override style options for this cell (see [Styling](styling.qmd#per-cell-style)) |
+
+### Display Controls
+
+The `eval`, `echo`, `output`, and `include` options interact to control what the user sees:
+
+| `eval` | `echo` | `output` | `include` | Result |
+|--------|--------|----------|-----------|--------|
+| `true` | `terminal` | `true` | `true` | Full terminal output (default) |
+| `true` | `source` | `true` | `true` | Source code block + terminal output |
+| `true` | `source` | `false` | `true` | Source code block only |
+| `true` | `false` | `true` | `true` | Terminal output without commands |
+| `true` | `false` | `false` | `true` | Nothing visible (but cell executes) |
+| `true` | any | any | `false` | Nothing visible (but cell executes) |
+| `false` | — | — | — | Static code block (no execution) |
+
+Common patterns:
+
+- **Show only output**: `echo: false`
+- **Show only source**: `echo: source`, `output: false`
+- **Execute silently** (e.g., setup): `include: false`
+- **Static example** (no execution): `eval: false`
+
+Note: `include: false` is a shortcut that sets both `echo: false` and `output: false`.
 
 ## Line Options
 

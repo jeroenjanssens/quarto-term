@@ -5,6 +5,39 @@ engine: markdown
 
 quarto-term works with any shell — or any REPL — that provides a detectable prompt. Set `shell` to any executable on your system and configure `prompt` or `prompt-regex` to match what it emits.
 
+## Quick Start with Profiles
+
+For common shells, use `profile` to set shell, prompt, and PS2 in one line:
+
+```yaml
+extensions:
+  term:
+    profile: python
+```
+
+Available profiles:
+
+| Profile | Shell | Prompt | PS2 |
+|---------|-------|--------|-----|
+| `python` | `python3 -q` | `>>>` | `...` |
+| `node` | `node` | `>` | `...` |
+| `r` | `R --no-save --no-restore --quiet` | `>` | `+` |
+| `ruby` | `irb --noecho --nomultiline` | `irb>` | `irb*` |
+| `sqlite` | `sqlite3` | `sqlite>` | `   ...>` |
+| `duckdb` | `duckdb` | `D` | `>` |
+| `fish` | `fish --no-config` | `>` | (empty) |
+| `nushell` | `nu --no-config-file` | `>` | `:::` |
+| `sh` | `sh` | `$` | `>` |
+
+Profiles set defaults that you can override individually:
+
+```yaml
+extensions:
+  term:
+    profile: python
+    prompt: "In:"  # override just the prompt
+```
+
 ## Supported Shells
 
 Each shell below is a live demonstration rendered by quarto-term:
