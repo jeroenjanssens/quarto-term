@@ -1,27 +1,8 @@
-mod color;
-mod docker;
-mod error;
-mod keymap;
-mod latex;
-mod markdown;
-mod output_transform;
-mod prompt;
-mod protocol;
-mod render_backend;
-mod recorder;
-mod renderer;
-mod session;
-mod terminal_line;
-#[cfg(test)]
-mod test_support;
-mod typing;
-mod typst;
-
 use std::io::{self, Read};
 use std::process::Command;
 
-use protocol::{BatchRequest, CellResult};
-use session::PtySession;
+use quarto_term::protocol::{BatchRequest, CellResult};
+use quarto_term::session::PtySession;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
