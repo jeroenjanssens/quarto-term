@@ -123,18 +123,16 @@ for i in 1 2 3; do
   sleep 0.3
 done
 echo "Done."
-htop #! enter: false, hold: 0.5, typing: false
+htop #! enter: false, hold: 0.5
 ```
 
 ```{term}
 #| fullscreen: true
-#| typing: false
 #| timeout: 4
 enter #! literal: false, hold: 3.0
 ```
 
 ```{term}
-#| typing: false
 #| include: false
 q #! literal: false
 ```
@@ -147,18 +145,16 @@ for i in 1 2 3; do
   sleep 0.3
 done
 echo "Done."
-htop #! enter: false, hold: 0.5, typing: false
+htop #! enter: false, hold: 0.5
 ```
 
 ```{term}
 #| fullscreen: true
-#| typing: false
 #| timeout: 4
 enter #! literal: false, hold: 3.0
 ```
 
 ```{term}
-#| typing: false
 #| include: false
 q #! literal: false
 ```
