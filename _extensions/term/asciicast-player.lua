@@ -236,9 +236,9 @@ return {
     local chrome_val = kwargs["chrome"]
     if chrome_val then
       chrome_val = pandoc.utils.stringify(chrome_val)
-      if chrome_val == "true" or chrome_val == "" then
+      if chrome_val == "true" then
         chrome_cfg = { os = "macos", shadow = true }
-      elseif chrome_val ~= "false" then
+      elseif chrome_val ~= "" and chrome_val ~= "false" then
         chrome_cfg = { os = chrome_val, shadow = true }
       end
     end
