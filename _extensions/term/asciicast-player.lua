@@ -4,6 +4,9 @@ local PLAYER_VERSION = "3.9.0"
 local player_id_counter = 0
 local dependency_injected = false
 local injected_themes = {}
+local chrome_css_injected = false
+
+local chrome = dofile(FILTER_DIR .. "chrome.lua")
 
 local function inject_dependency()
   if dependency_injected then return end
@@ -224,8 +227,71 @@ return {
       opts_str = ", {\n" .. table.concat(opts, ",\n") .. "\n}"
     end
 
+    local chrome_cfg = nil
+    local chrome_val = kwargs["chrome"]
+    if chrome_val then
+      chrome_val = pandoc.utils.stringify(chrome_val)
+      if chrome_val == "true" or chrome_val == "" then
+        chrome_cfg = { os = "macos", shadow = true }
+      elseif chrome_val ~= "false" then
+        chrome_cfg = { os = chrome_val, shadow = true }
+      end
+    end
+    local chrome_os = kwargs["chrome-os"]
+    if chrome_os then
+      chrome_os = pandoc.utils.stringify(chrome_os)
+      if chrome_os ~= "" then
+        if not chrome_cfg then chrome_cfg = { shadow = true } end
+        chrome_cfg.os = chrome_os
+      end
+    end
+    local chrome_title = kwargs["chrome-title"]
+    if chrome_title then
+      chrome_title = pandoc.utils.stringify(chrome_title)
+      if chrome_title ~= "" then
+        if not chrome_cfg then chrome_cfg = { os = "macos", shadow = true } end
+        chrome_cfg.title = chrome_title
+      end
+    end
+    local chrome_color = kwargs["chrome-color"]
+    if chrome_color then
+      chrome_color = pandoc.utils.stringify(chrome_color)
+      if chrome_color ~= "" then
+        if not chrome_cfg then chrome_cfg = { os = "macos", shadow = true } end
+        chrome_cfg.color = chrome_color
+      end
+    end
+    local chrome_shadow = kwargs["chrome-shadow"]
+    if chrome_shadow then
+      chrome_shadow = pandoc.utils.stringify(chrome_shadow)
+      if chrome_shadow == "false" then
+        if not chrome_cfg then chrome_cfg = { os = "macos" } end
+        chrome_cfg.shadow = false
+      end
+    end
+    if chrome_cfg then
+      chrome_cfg = chrome.normalize(chrome_cfg)
+      if not chrome_css_injected then
+        chrome_css_injected = true
+        local css_f = io.open(FILTER_DIR .. "term.css", "r")
+        if css_f then
+          css_f:close()
+          quarto.doc.add_html_dependency({
+            name = "quarto-term-chrome",
+            version = "1.0",
+            stylesheets = { "term.css" },
+          })
+        end
+      end
+    end
+
+    local player_html = '<div id="' .. player_id .. '"></div>'
+    local inner = chrome_cfg
+      and chrome.wrap(player_html, chrome_cfg)
+      or player_html
+
     local html = '<div class="asciicast-player-container">\n'
-      .. '  <div id="' .. player_id .. '"></div>\n'
+      .. '  ' .. inner .. '\n'
       .. '</div>\n'
       .. '<script>\n'
       .. 'AsciinemaPlayer.create("' .. src:gsub('"', '\\"') .. '", '
