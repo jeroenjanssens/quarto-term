@@ -16,6 +16,11 @@ local function inject_dependency()
     .. PLAYER_VERSION .. '/dist/bundle/asciinema-player.min.css">\n'
     .. '<script src="https://cdn.jsdelivr.net/npm/asciinema-player@'
     .. PLAYER_VERSION .. '/dist/bundle/asciinema-player.min.js"></script>')
+  quarto.doc.add_html_dependency({
+    name = "asciicast-player",
+    version = "1.0",
+    stylesheets = { "asciicast-player.css" },
+  })
 end
 
 local function transform_theme_vars(css_content)
