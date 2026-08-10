@@ -3,7 +3,7 @@ title: "POSIX sh"
 engine: markdown
 extensions:
   term:
-    shell: sh
+    profile: sh
     init: false
     spacing: false
 ---

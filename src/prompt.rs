@@ -103,6 +103,7 @@ impl PromptMatcher {
             };
 
             if prompt_len > 0 {
+                line.is_prompt = true;
                 let prompt_text = &line.text[..prompt_len];
                 let char_len = prompt_text.chars().count();
                 line.markup = renderer::wrap_prompt_span(&line.markup, char_len, prompt_text);

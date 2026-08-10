@@ -28,6 +28,7 @@ pub fn render_line_generic<B: RenderBackend>(
         return RenderedLine {
             markup: backend.escape(&src),
             text,
+            is_prompt: false,
         };
     }
 
@@ -36,6 +37,7 @@ pub fn render_line_generic<B: RenderBackend>(
         return RenderedLine {
             markup: String::new(),
             text,
+            is_prompt: false,
         };
     }
 
@@ -57,5 +59,5 @@ pub fn render_line_generic<B: RenderBackend>(
         backend.trim_trailing(output)
     };
 
-    RenderedLine { markup: output, text }
+    RenderedLine { markup: output, text, is_prompt: false }
 }

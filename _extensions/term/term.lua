@@ -32,7 +32,41 @@ end
 
 local build_cell = cell_mod.build_cell
 
+local function deep_merge_meta(base, override)
+  for k, v in pairs(override) do
+    base[k] = v
+  end
+  return base
+end
+
+local function load_project_term_meta()
+  if not (quarto and quarto.project and quarto.project.directory) then
+    return nil
+  end
+  local path = quarto.project.directory .. "/_quarto.yml"
+  local f = io.open(path, "r")
+  if not f then return nil end
+  local content = f:read("*a")
+  f:close()
+  local ok, parsed = pcall(pandoc.read, "---\n" .. content .. "\n---\n", "markdown")
+  if not ok or not parsed then return nil end
+  return parsed.meta
+    and parsed.meta["extensions"]
+    and parsed.meta["extensions"]["term"]
+end
+
 function Pandoc(doc)
+  local doc_term = doc.meta
+    and doc.meta["extensions"]
+    and doc.meta["extensions"]["term"]
+  if doc_term then
+    local proj_term = load_project_term_meta()
+    if proj_term then
+      local merged = deep_merge_meta(proj_term, doc_term)
+      doc.meta["extensions"]["term"] = merged
+    end
+  end
+
   local config = extract_config(doc.meta)
 
   if quarto and quarto.doc and quarto.doc.is_format then
@@ -394,6 +428,26 @@ function Pandoc(doc)
         local js = js_file:read("*a")
         js_file:close()
         quarto.doc.include_text("after-body", "<script>\n" .. js .. "</script>")
+      end
+    end
+  end
+
+  if config.record and #config.record > 0 and quarto and quarto.doc then
+    local output_file = quarto.doc.output_file
+    if output_file then
+      local output_dir = output_file:match("(.*[/\\])") or "./"
+      for _, path in ipairs(config.record) do
+        local basename = path:match("([^/\\]+)$") or path
+        local src_f = io.open(path, "rb")
+        if src_f then
+          local content = src_f:read("*a")
+          src_f:close()
+          local dst_f = io.open(output_dir .. basename, "wb")
+          if dst_f then
+            dst_f:write(content)
+            dst_f:close()
+          end
+        end
       end
     end
   end

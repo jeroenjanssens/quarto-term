@@ -15,6 +15,7 @@ pub fn apply_spacing(lines: &mut Vec<RenderedLine>, prompt: &str) {
         lines.insert(idx + offset, RenderedLine {
             markup: String::new(),
             text: String::new(),
+            is_prompt: false,
         });
     }
 }
@@ -138,7 +139,7 @@ fn format_truncation_message(count: usize, format: OutputFormat) -> RenderedLine
         OutputFormat::Markdown => format!("*{}*", text),
         OutputFormat::Html => format!("<span class=\"term-truncated\">{}</span>", text),
     };
-    RenderedLine { markup, text }
+    RenderedLine { markup, text, is_prompt: false }
 }
 
 fn resolve_line_specs(specs: &[LineSpec], lines: &[RenderedLine]) -> Vec<usize> {

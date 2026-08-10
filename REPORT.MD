@@ -1,196 +1,413 @@
-# Roborev Report: quarto-term (Jobs 144–151)
+# Roborev Report: quarto-term (Jobs 152–159)
 
-Compiled 2026-08-08. Eight automated reviews by Copilot covering refactoring, complexity, API design, dead code, architecture, security, and duplication.
+Compiled 2026-08-09. Eight automated reviews by Copilot covering test-fixtures, duplication, refactor, complexity, api-design, dead-code, architecture, and security.
 
 ---
 
 ## Phase 1: Critical Fixes
 
-Quick wins that fix bugs, security issues, and dead code. Each task is independent and can be done in any order.
+Security and correctness issues that affect users now. Each task is independent.
 
 ---
 
-### 1.1 Fix Typst raw-block injection
+### 1.1 Fix Typst escape injection (backslash)
 
-**Why:** `src/typst.rs:96-110` wraps terminal output in a fixed triple-backtick fence. Command output containing triple backticks can close the raw block and inject arbitrary Typst code (e.g., `#read("...")`), leaking local files during PDF rendering. This is exploitable whenever untrusted command output is rendered to Typst/PDF.
+**Why:** `typst_escape()` in `src/typst.rs:155-169` escapes `#`, `[`, and `]` but not backslashes. Attacker-controlled terminal output containing `\] \#read("Cargo.toml") \[` can break out of the text block and cause Typst to evaluate arbitrary code during PDF rendering. This is exploitable whenever untrusted command output (logs, remote CLI output) is rendered to Typst/PDF.
 
-**How:** Use a dynamic fence — scan the content for the longest backtick run, then use a fence one longer. Alternatively, escape backtick sequences within the content.
+**How:** Escape backslashes in `typst_escape()` before escaping other metacharacters. Add regression tests with ANSI-styled output containing escape sequences.
 
 **TODO:**
-- [ ] In `src/typst.rs`, find the longest consecutive backtick run in the rendered content
-- [ ] Use a fence of length `max_run + 1` (minimum 3)
-- [ ] Add a test in `src/typst.rs` tests: feed a line containing ` ``` ` and `#read("/etc/passwd")` — verify they appear as literal text, not Typst directives
-- [ ] Add a test with content containing backtick runs of varying lengths (4, 5, 10)
+- [ ] In `src/typst.rs`, add backslash escaping to `typst_escape()` — escape `\` before `#`, `[`, `]`
+- [ ] Add test: feed a line containing `\] \#read("/etc/passwd") \[` — verify it appears as literal text
+- [ ] Add test: ANSI-styled (colored) output containing backslash sequences — verify no Typst evaluation
+- [ ] Add test: verify existing content with legitimate backslashes (file paths) renders correctly
+- [ ] Run `cargo test`
 
 ---
 
-### 1.2 Fix `cache: false` being broken
+### 1.2 Fix stale HTML dependency version strings
 
-**Why:** In `term.lua`, `config._cache` is cleared before the line `local use_cache = config._cache ~= false`, so `use_cache` is always `true`. The documented `cache: false` option does nothing. Users who set it expect cache bypass (e.g., during development/debugging).
+**Why:** Hard-coded `0.2.0` in `term.lua:1123,1143` while the package is at `0.4.4`, producing stale asset paths like `quarto-term-0.2.0/term.css`. This means users loading the extension at version 0.4.4 get CSS paths that don't match expectations and could conflict with older cached versions.
 
-**How:** Read the cache setting before clearing config internals, or restructure so the cache flag is preserved through normalization.
+**How:** Read the version from `_extension.yml` or define a single `VERSION` constant at the top of `term.lua` and reference it in all dependency paths.
 
 **TODO:**
-- [ ] In `term.lua`, locate where `config._cache` is cleared
-- [ ] Move the `use_cache` assignment to before the clearing, or preserve the value through a local
-- [ ] Add a Lua test: `extract_config` with `cache: false` → verify the flag is preserved and passed through
-- [ ] Verify manually: set `cache: false` in a doc, change command output, re-render → confirm no stale cache
+- [ ] Define a `VERSION` constant near the top of `term.lua` (or read from `_extension.yml`)
+- [ ] Replace hard-coded `"0.2.0"` at line ~1123 with the constant
+- [ ] Replace hard-coded `"0.2.0"` at line ~1143 with the constant
+- [ ] Search for any other hard-coded version strings in `term.lua`
+- [ ] Render a doc and verify the generated `site_libs` path uses the correct version
+- [ ] Run Lua tests
 
 ---
 
-### 1.3 Remove dead variables in term.lua
+### 1.3 Rename `theme_bg`/`theme_fg` to `colorscheme_bg`/`colorscheme_fg`
 
-**Why:** `cache_hit` is assigned but never read. `nested_key` is declared but never used. Dead code adds noise and confuses future readers.
+**Why:** Project policy: never use "theme" in user-facing API. These internal variable names leak into debug output, error messages, and code review. Aligning them with the canonical `colorscheme` naming prevents accidental exposure and reduces cognitive load.
 
-**How:** Delete the assignments.
+**How:** Find-and-replace in both Lua and Rust. The fields are internal, so no protocol or user-facing change is needed.
 
 **TODO:**
-- [ ] Remove `cache_hit` assignment (search for where it's set)
-- [ ] Remove `nested_key` declaration
-- [ ] Run Lua tests to confirm no breakage
+- [ ] In `term.lua`, rename all `theme_bg` → `colorscheme_bg`, `theme_fg` → `colorscheme_fg`
+- [ ] In `term.lua`, rename any functions/locals containing `theme` (e.g., `read_theme` → `read_colorscheme`)
+- [ ] In Rust (`src/protocol.rs`, `src/session.rs`, `src/renderer.rs`), rename any `theme_bg`/`theme_fg` fields
+- [ ] Verify the extracted `theme.lua` module is renamed or its internal references updated
+- [ ] Run `cargo test` and Lua tests
+- [ ] Grep entire codebase for remaining `theme` references — rename or document why they stay
 
 ---
 
-### 1.4 Fix cell-level `colorscheme-light` / `colorscheme-dark`
+## Phase 2: Dead Code Removal
 
-**Why:** These options are parsed and stored at cell level but never applied during rendering. The docs claim cell-level support. Users trying to use per-cell light/dark schemes get silently ignored.
+Remove code that serves no purpose. Each task is trivial and independent.
 
-**How:** In the HTML rendering path where document-level colorscheme-light/dark is applied (CSS class or inline style injection), extend the logic to also check cell-level values.
+---
+
+### 2.1 Remove dead `quit` field from shell presets
+
+**Why:** Shell profiles define `quit` values in Lua (`term.lua:187-195`), and these are sent in the JSON config to Rust. But `Config` in Rust has no `quit` field — Serde silently drops it. The field misleads contributors into thinking it's used.
+
+**How:** Either remove `quit` from all shell presets in Lua, or implement graceful session teardown using the quit command. Removal is simpler and correct until quit behavior is needed.
 
 **TODO:**
-- [ ] Find where document-level `colorscheme-light`/`colorscheme-dark` produce output (likely the CSS variable/class injection in `term.lua`)
-- [ ] Replicate that logic for per-cell values — add scoped CSS or inline style on the cell's container div
-- [ ] Add a test: two cells in one doc, one with `colorscheme-light: github-light`, one with `colorscheme-light: solarized-light` — verify different classes/styles
-- [ ] Update `docs/styling.qmd` with a cell-level light/dark example if not already present
+- [ ] In `term.lua`, locate the shell preset definitions (~line 187-195)
+- [ ] Remove the `quit` key from every preset
+- [ ] Search for any other references to `quit` in Lua (config extraction, build_cell)
+- [ ] Remove any `quit`-related parsing/assignment
+- [ ] Run Lua tests
+- [ ] Run E2E tests to verify session teardown still works (it uses SIGHUP/close, not quit)
 
 ---
 
-### 1.5 Remove unused `TermError::Io`
+### 2.2 Remove `typing.mode` from Lua
 
-**Why:** `src/error.rs` defines `TermError::Io` and `impl From<io::Error>` with no call sites. Dead code.
+**Why:** Lua copies `typing.mode` into config, but Rust's `TypingConfig` only uses `speed`/`error_rate`. The field is silently ignored, misleading users who set it.
 
-**How:** Delete the variant and the `From` impl.
+**How:** Remove the `mode` parsing from Lua config extraction. If a future use is planned, add a comment explaining it's reserved.
 
 **TODO:**
-- [ ] Remove `Io(std::io::Error)` from the `TermError` enum
-- [ ] Remove `impl From<io::Error> for TermError`
-- [ ] Run `cargo build` to confirm no compile errors
-- [ ] Run `cargo test` to confirm no test failures
+- [ ] In `term.lua`, locate where `typing.mode` is read/copied (around line 469)
+- [ ] Remove the `mode` field handling
+- [ ] If `mode` appears in docs (`reference.qmd`), remove it
+- [ ] Run Lua tests
+- [ ] Run `cargo test`
 
 ---
 
-### 1.6 Fix `typing: true` boolean inconsistency
+## Phase 3: API Consistency & Naming
 
-**Why:** In Rust JSON protocol, `typing: true` (boolean) is treated as disabled/default. In Lua cell-level config, `typing: true` becomes `{}` and enables typing with defaults. This means the same logical intent produces opposite behavior depending on where it's specified.
+Make the user-facing option surface coherent and well-validated.
 
-**How:** Align both sides. `typing: true` should mean "enable typing with default speed/error-rate" everywhere. In Rust, treat `true` as `TypingConfig::default()` rather than ignoring it.
+---
+
+### 3.1 Normalize option naming across layers
+
+**Why:** Option naming drifts across Lua/Rust/docs. `reference.qmd` documents both `disable-auto-indent` and `auto-indent`, but implementation only reads `disable-auto-indent`. Kebab-case (YAML), snake_case (Rust), and mixed keys (Lua) coexist without clear rules.
+
+**How:** Establish canonical kebab-case for all user-facing YAML options. Internally use snake_case in Rust and snake_case in Lua. Remove all aliases — breaking changes are fine.
 
 **TODO:**
-- [ ] In `src/protocol.rs`, find where `typing` is deserialized — handle `Value::Bool(true)` as `Some(TypingConfig::default())`
-- [ ] In `term.lua`, verify that `typing: true` produces `typing: {}` or `typing: {"speed": ..., "error_rate": ...}` with defaults
-- [ ] Add a Rust test: JSON with `"typing": true` → verify typing is enabled with default config
-- [ ] Add a Rust test: JSON with `"typing": false` → verify typing is disabled
-- [ ] Add a Rust test: JSON with `"typing": {"speed": 50}` → verify custom config
+- [ ] Audit every option in `src/protocol.rs` — list current field names
+- [ ] Audit every option in `term.lua` `extract_config` and `build_cell` — list current field names
+- [ ] Audit `docs/reference.qmd` — list documented options
+- [ ] Establish canonical name for each: `font-size` (not `fontsize`), `colorscheme` (not `theme`), etc.
+- [ ] For `auto-indent`: pick one canonical form (recommend `auto-indent: true/false`, remove `disable-auto-indent`)
+- [ ] Update `src/protocol.rs` serde attributes to use canonical kebab-case names
+- [ ] Update `term.lua` to use canonical names in extraction/building
+- [ ] Update all docs to use canonical names only
+- [ ] Remove all dead aliases — no backwards compatibility
+- [ ] Run full test suite
+- [ ] Render docs site and verify no broken option references
 
 ---
 
-## Phase 2: API Consistency & Validation
-
-Fixes that improve the user experience by catching errors early and making the option surface coherent.
-
----
-
-### 2.1 Validate unknown option values
+### 3.2 Validate unknown option values
 
 **Why:** Unknown enum values for `echo`, `format`, `pull`, and colorscheme names silently no-op. A user who typos `colorscheme: dracual` gets no feedback — just default styling. This wastes debugging time.
 
-**How:** Add validation at the Lua level (before sending to Rust) and at the Rust protocol deserialization level. Error hard on invalid values — no silent fallbacks.
+**How:** Add validation in Lua (before sending to Rust) and in Rust deserialization. Error on invalid values rather than silently falling back.
 
 **TODO:**
-- [ ] In `term.lua`, after resolving colorscheme name, check if the CSS file exists — warn if not
-- [ ] In `term.lua`, validate `echo` values against known set (`true`, `false`, `"source"`, `"fenced"`)
-- [ ] In `src/protocol.rs`, validate `format` against known values during deserialization — return error for unknowns
-- [ ] In `src/protocol.rs`, validate `pull` against `"always"`, `"missing"`, `"never"` — return error for unknowns
+- [ ] In `term.lua`, after resolving colorscheme name, check if the CSS file exists — emit `quarto.log.warning()` if not
+- [ ] In `term.lua`, validate `echo` values against known set: `true`, `false`, `"source"`, `"fenced"`, `"terminal"`
+- [ ] In `src/protocol.rs`, make `format` a strict enum (`Html`, `Latex`, `Typst`, `Markdown`) — unknown values → deserialization error
+- [ ] In `src/protocol.rs`, validate `pull` against `"always"`, `"missing"`, `"never"` — error on unknown
 - [ ] Add Lua test: unknown colorscheme name → warning logged
-- [ ] Add Rust test: unknown format string → error returned
+- [ ] Add Rust test: unknown format string → clear error message
+- [ ] Add Rust test: unknown pull value → clear error message
+- [ ] Run full test suite
 
 ---
 
-### 2.2 Propagate recorder errors
+### 3.3 Document display control interactions
 
-**Why:** `src/session.rs` uses `.ok()` and `let _ = ...` for recorder creation and writes. If a user requests `record: output.cast` and the path is unwritable, they get no feedback — just a missing file.
+**Why:** `echo`, `output`, `include`, and `eval` interact in surprising ways. Default `echo: terminal` shows output even with `output: false`. Users get confused when combinations don't do what they expect.
 
-**How:** Return errors from recorder creation. For write errors during session, at minimum log a warning (recording is non-critical to execution).
+**How:** Add a truth table to the docs showing the behavior of each combination. This follows Quarto's own semantics, so we document rather than redesign.
 
 **TODO:**
-- [ ] In `src/session.rs`, change recorder creation from `.ok()` / `.filter_map()` to `.collect::<Result<Vec<_>, _>>()?`
-- [ ] Surface a clear error message when a record path is unwritable
-- [ ] For mid-session write errors, log to stderr rather than silently ignoring
-- [ ] Add a test: request recording to an invalid path → verify error is returned
-- [ ] Verify existing tests still pass (some may rely on silent failure)
+- [ ] In `docs/reference.qmd`, add a "Display Controls" section
+- [ ] Create a truth table showing: `eval` × `echo` × `output` × `include` → what the user sees
+- [ ] Note that `echo: terminal` overrides `output: false` behavior (this is by design)
+- [ ] Add 2-3 examples showing common combinations: "show only output", "show only source", "hide everything but execute"
+- [ ] Render and verify the docs page looks correct
 
 ---
 
-### 2.3 Fix inconsistent naming
+### 3.4 Add diagnostics/warnings envelope to protocol
 
-**Why:** Option naming drift across Lua/Rust/docs creates confusion. Examples: `fontsize` vs `font-size`, `theme` vs `colorscheme`, `disable-auto-indent` vs `auto-indent`.
+**Why:** The current protocol returns a raw result array. Warnings for unknown options, missing colorschemes, deprecated aliases, and non-fatal issues have nowhere to go except stderr (invisible to Lua). A structured diagnostics channel lets Lua surface them to the user.
 
-**Canonical names:** `font-size` (not `fontsize`), `colorscheme` (not `theme`). The term "theme" should not appear in the user-facing API or codebase.
-
-**How:** Rename to the canonical names everywhere. No aliases, no backwards compatibility — just remove the old names entirely.
+**How:** Wrap the result array in `{ results, diagnostics }`. Each diagnostic has a severity, message, and optional cell reference.
 
 **TODO:**
-- [ ] Audit all option names in `src/protocol.rs`, `term.lua`, and docs
-- [ ] Rename any uses of `theme` to `colorscheme` (structs, variables, fields, function names, file references)
-- [ ] Rename any uses of `fontsize` to `font-size`
-- [ ] Remove `disable-auto-indent` — use a single canonical name (pick one: `auto-indent: false` or `strip-auto-indent: true`)
-- [ ] Update all docs to use canonical names only
-- [ ] Remove all dead aliases — no backwards compatibility shims
-- [ ] Add tests verifying the canonical names work and old names are not silently accepted
+- [ ] In `src/protocol.rs`, define `BatchResponse { results: Vec<CellResult>, diagnostics: Vec<Diagnostic> }`
+- [ ] Define `Diagnostic { severity: DiagnosticLevel, message: String, cell_id: Option<u32> }`
+- [ ] Change `main.rs` to serialize `BatchResponse` instead of raw `Vec<CellResult>`
+- [ ] Update `term.lua` JSON parsing to handle both old (array) and new (envelope) response formats during migration
+- [ ] Add diagnostics for: unknown config keys, invalid colorscheme names, recorder path errors
+- [ ] In `term.lua`, surface diagnostics as `quarto.log.warning()` calls
+- [ ] Update `tests/binary_protocol.rs` to expect the new envelope format
+- [ ] Run full test suite
 
 ---
 
-### 2.4 Add shell presets
+## Phase 4: Code Structure — Rust
 
-**Why:** Configuring a non-bash shell requires setting `shell`, `shell-args`, `prompt`, and `ps2` manually every time. This is error-prone and verbose. Presets like `profile: python` would set all four in one line.
+Decompose the two largest Rust files into focused modules.
 
-**How:** Define a preset table in Lua mapping profile names to their full config. When `profile` is set, merge preset values as defaults (user overrides still win).
+---
+
+### 4.1 Decompose `PtySession::execute_cell`
+
+**Why:** 208 lines with cognitive complexity 32/25 (Clippy). Combines option resolution, typing/key sending, assertions, prompt recovery, timeout mutation, and rendering setup. The reader must track multiple state variables simultaneously: `last_enter`, `error`, `output_since_cell_start`, line overrides, prompt state, scrollback, and config overrides.
+
+**How:** Extract logical phases into named methods. Keep the top-level `execute_cell` as a 30-line orchestrator calling into focused helpers.
 
 **TODO:**
-- [ ] Define presets in `term.lua` for: `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh`
-- [ ] Each preset sets: `shell`, `shell-args` (if needed), `prompt` regex, `ps2` regex, `quit` command
-- [ ] In `extract_config` or `build_cell`, if `profile` is set, merge preset values under user-specified values
-- [ ] Add Lua test: `profile: python` → verify shell is `python3`, prompt is `>>> `, etc.
-- [ ] Add Lua test: `profile: python` + explicit `prompt: "py> "` → verify user override wins
-- [ ] Update `docs/shells/index.qmd` to mention profiles as the easy path
-- [ ] Add a `profiles` section to `docs/reference.qmd`
+- [ ] Extract `fn resolve_line_options(&self, cell: &Cell) -> Vec<LineOptions>` — parses per-line overrides
+- [ ] Extract `fn send_cell_line(&mut self, line: &str, opts: &LineOptions) -> Result<(), TermError>` — handles typing, key sending, delay
+- [ ] Extract `fn check_assertions(&self, cell: &Cell, output: &[RenderedLine]) -> Vec<AssertionResult>` — pure logic
+- [ ] Extract `fn recover_primary_prompt(&mut self) -> Result<(), TermError>` — PS2 recovery, timeout
+- [ ] Replace timeout mutation with a local variable or scoped guard pattern
+- [ ] Rewrite `execute_cell` as orchestrator: resolve → send lines → wait → capture → assert → render
+- [ ] Run `cargo test` after each extraction step
+- [ ] Verify E2E tests pass (prompt timing is sensitive)
+- [ ] Check Clippy cognitive complexity is now under 25
 
 ---
 
-## Phase 3: Test Infrastructure
+### 4.2 Decompose `build_cell_html`
 
-Reduce test boilerplate and make adding new tests cheap.
+**Why:** 129 lines mixing echo handling, capture mode, output transforms, theme/style resolution, and format dispatch. Named `build_cell_html` but returns LaTeX/Typst/Markdown too — the name is actively misleading.
 
----
-
-### 3.1 Create `tests/lua/helpers.lua`
-
-**Why:** All 4 Lua test files repeat: pass/fail counters, `assert_eq`/`assert_true`/`assert_nil` helpers, `term.lua` path discovery, source loading, function extraction via string patterns, `mock_block`, and final report/exit logic. This makes new tests expensive to write and fragile to maintain.
-
-**How:** Extract shared utilities into a single `helpers.lua` module that each test file requires.
+**How:** Rename to `build_cell_output`. Split into: source echo rendering, output capture, transform application, and format-specific rendering dispatch.
 
 **TODO:**
-- [ ] Create `tests/lua/helpers.lua` with:
-  - [ ] `assert_eq(actual, expected, msg)`
+- [ ] Rename `build_cell_html` → `build_cell_output`
+- [ ] Extract `fn render_source_echo(&self, cell: &Cell, format: OutputFormat) -> Option<String>` — source/fenced echo modes
+- [ ] Extract `fn apply_output_transforms(&self, lines: &mut Vec<RenderedLine>, cell: &Cell)` — remove, truncate, callouts, spacing
+- [ ] Extract `fn render_output_block(&self, lines: &[RenderedLine], cell: &Cell, format: OutputFormat) -> String` — format dispatch
+- [ ] Rewrite `build_cell_output` as: echo + capture + transform + render
+- [ ] Update all call sites (should be just `execute_cell`)
+- [ ] Run `cargo test`
+- [ ] Render a doc in each format (HTML, LaTeX, Typst, Markdown) to verify output unchanged
+
+---
+
+### 4.3 Rename `RenderedLine.html` and `CellResult.html`
+
+**Why:** These fields carry LaTeX/Typst/Markdown markup depending on format. The name `html` is misleading and causes confusion when working on non-HTML renderers. Every new contributor asks "why is this called html when it contains LaTeX?"
+
+**How:** Rename to `markup` throughout. This is an internal-only field (JSON protocol between Lua and Rust), so no user-facing change.
+
+**TODO:**
+- [ ] In `src/terminal_line.rs` or wherever `RenderedLine` is defined, rename `html` → `markup`
+- [ ] In `src/protocol.rs`, rename `CellResult.html` → `CellResult.markup`
+- [ ] Update all Rust code referencing `.html` on these structs
+- [ ] In `term.lua`, update JSON result parsing to read `markup` instead of `html`
+- [ ] Add `#[serde(alias = "html")]` temporarily if needed for migration (remove once Lua is updated)
+- [ ] Run `cargo test`
+- [ ] Run Lua tests
+- [ ] Run E2E tests
+- [ ] Remove any temporary aliases
+
+---
+
+### 4.4 Introduce `LineSelector` enum
+
+**Why:** `apply_remove`, `apply_truncate`, `apply_callouts`, and `resolve_line_specs` all independently parse index/range/regex patterns with slightly different behavior. Adding a new selector type requires touching 3+ places. Bugs in parsing are duplicated rather than fixed once.
+
+**How:** Define a `LineSelector` enum that all line-targeting operations share. Parse once, resolve against any line set.
+
+**TODO:**
+- [ ] Define in `src/output_transform.rs`:
+  ```rust
+  enum LineSelector {
+      Index(i32),          // positive or negative (from end)
+      Range(i32, i32),     // inclusive
+      Regex(String),       // matched against line text
+      All,
+  }
+  ```
+- [ ] Implement `fn parse_line_selector(spec: &str) -> Result<LineSelector, String>`
+- [ ] Implement `fn resolve_indices(selector: &LineSelector, lines: &[RenderedLine]) -> Vec<usize>`
+- [ ] Refactor `apply_remove` to use `parse_line_selector` + `resolve_indices`
+- [ ] Refactor `apply_truncate` to use `parse_line_selector` + `resolve_indices`
+- [ ] Refactor `apply_callouts` to use `parse_line_selector` + `resolve_indices`
+- [ ] Add tests: negative indices, out-of-range, regex matching multiple lines, empty input
+- [ ] Verify existing transform tests still pass
+- [ ] Run `cargo test`
+
+---
+
+### 4.5 Fix default shell mismatch
+
+**Why:** Lua/docs default to `zsh`; Rust `protocol.rs` defaults to `bash`. While Lua always sends an explicit shell value (making the Rust default unreachable), if the protocol is ever used directly or the Lua default changes, behavior would silently differ.
+
+**How:** Change the Rust default to match Lua (`zsh`), or remove the Rust default entirely (require the field).
+
+**TODO:**
+- [ ] In `src/protocol.rs`, find the `shell` field default
+- [ ] Change default from `"bash"` to `"zsh"` to match Lua/docs
+- [ ] Alternatively: make `shell` a required field (remove `#[serde(default)]`)
+- [ ] Run `cargo test` — fix any tests that relied on the old default
+- [ ] Run `tests/binary_protocol.rs` — update any requests that omit `shell`
+
+---
+
+## Phase 5: Code Structure — Lua
+
+Continue modularizing `term.lua` into focused modules loaded via `dofile()`.
+
+---
+
+### 5.1 Extract `config.lua`
+
+**Why:** `extract_config` is ~405 lines of option parsing, coercion, default merging, and format-specific overrides. It's testable in isolation and changes independently from rendering. Extracting it eliminates the regex-based function extraction that Lua tests currently use.
+
+**How:** Move to `_extensions/term/config.lua` and `dofile()` it from `term.lua`.
+
+**TODO:**
+- [ ] Create `_extensions/term/config.lua`
+- [ ] Move `extract_config`, `coerce_value`, `as_list`, and all option normalization helpers
+- [ ] Export via `return { extract_config = ..., coerce_value = ..., as_list = ... }`
+- [ ] In `term.lua`, load with `local config_mod = dofile(FILTER_DIR .. "config.lua")`
+- [ ] Replace direct function calls with `config_mod.extract_config(...)` etc.
+- [ ] Update Lua tests to `dofile()` the module directly (no more regex extraction)
+- [ ] Run all Lua tests
+- [ ] Render a doc to verify config parsing still works
+
+---
+
+### 5.2 Extract `cell.lua`
+
+**Why:** `parse_cell_options` (~119 lines) and `build_cell` (~152 lines) handle per-cell option parsing and request construction. They're self-contained and heavily tested. Extracting them simplifies both `term.lua` and the test setup.
+
+**How:** Move to `_extensions/term/cell.lua`.
+
+**TODO:**
+- [ ] Create `_extensions/term/cell.lua`
+- [ ] Move `parse_cell_options`, `build_cell`, and helpers they use (e.g., `escape_pattern`, dotted key expansion)
+- [ ] Export via return table
+- [ ] In `term.lua`, load with `local cell_mod = dofile(FILTER_DIR .. "cell.lua")`
+- [ ] Update call sites in `term.lua`
+- [ ] Update Lua tests to import from `cell.lua` directly
+- [ ] Run all Lua tests
+- [ ] Render a doc with various cell options to verify
+
+---
+
+### 5.3 Extract `cache.lua`
+
+**Why:** Cache management (hash computation, file read/write, staleness checks) is I/O logic that's independent of the filter pipeline. Separating it clarifies what's pure logic vs. side effects and makes cache behavior testable.
+
+**How:** Move to `_extensions/term/cache.lua`.
+
+**TODO:**
+- [ ] Create `_extensions/term/cache.lua`
+- [ ] Move cache hash computation, cache file read, cache file write
+- [ ] Move the `pandoc.pipe()` invocation that calls the Rust binary (this is the "engine run" step)
+- [ ] Export: `M.run(request_json, config) -> results` (checks cache, runs binary if miss, writes cache)
+- [ ] In `term.lua`, replace inline cache logic with `cache_mod.run(...)`
+- [ ] Verify caching works: render twice, confirm second uses cache
+- [ ] Verify `cache: false` bypasses correctly
+- [ ] Run Lua tests
+
+---
+
+### 5.4 Extract `style.lua`
+
+**Why:** Style resolution — merging document-level, format-level, and cell-level styles — is repeated logic that touches colorschemes, font-size, chrome, and line options. Centralizing it reduces the ~60 LOC of duplicated merge patterns.
+
+**How:** Move to `_extensions/term/style.lua`.
+
+**TODO:**
+- [ ] Create `_extensions/term/style.lua`
+- [ ] Move style extraction, merging, and format-override application logic
+- [ ] Define `M.resolve(doc_style, cell_style, format_overrides) -> merged_style`
+- [ ] Export via return table
+- [ ] In `term.lua`, replace inline style merging with `style_mod.resolve(...)`
+- [ ] Run Lua tests
+- [ ] Render a doc with format-specific style overrides (e.g., `html: { colorscheme: nord }`) to verify
+
+---
+
+### 5.5 Slim down `term.lua`
+
+**Why:** After extracting config, cell, cache, and style modules, `term.lua` should be a thin orchestrator: load modules, register the Pandoc filter, collect blocks, call engine, inject results and dependencies. Target: under 300 lines.
+
+**How:** Verify that all logic has been properly delegated and `term.lua` is just glue.
+
+**TODO:**
+- [ ] Verify `term.lua` only contains: module loading, `FILTER_DIR` constant, Pandoc filter registration, block collection, engine invocation, result injection, CSS/JS dependency injection
+- [ ] Remove any remaining inline logic that belongs in a module
+- [ ] Verify line count is under 300
+- [ ] Run full Quarto render of docs site
+- [ ] Run all Lua tests
+- [ ] Run E2E tests
+
+---
+
+## Phase 6: Duplication Reduction
+
+Eliminate repeated code patterns in source and tests.
+
+---
+
+### 6.1 Consolidate Rust source duplication
+
+**Why:** ~90-140 LOC of duplicated patterns in render/style logic, assertion building, and line-spec resolution across `session.rs`, `renderer.rs`, and `output_transform.rs`. The `RenderBackend` trait partially addresses rendering duplication, but assertion building and line-spec parsing remain repeated.
+
+**How:** Identify the 3-4 most-repeated patterns and extract shared helpers.
+
+**TODO:**
+- [ ] Audit: grep for duplicated assertion-building patterns across test files and `session.rs`
+- [ ] Extract a shared `fn build_assertion_result(pattern, output, cell_id) -> AssertionResult` if pattern repeats 3+ times
+- [ ] Identify duplicated style/config default construction — extract `impl Default` or builder methods
+- [ ] The `LineSelector` extraction (Phase 4.4) handles the line-spec duplication
+- [ ] Run `cargo test` after each change
+
+---
+
+### 6.2 Consolidate Lua test helpers
+
+**Why:** All 4 Lua test files repeat: pass/fail counters, `assert_eq`/`assert_true`/`assert_nil` helpers, `term.lua` path discovery, source loading, function extraction via string patterns, `mock_block`, and final report/exit logic. This makes new tests expensive to write.
+
+**How:** Extract shared utilities into a single `helpers.lua` module. Now that functions are being extracted into real modules (Phase 5), tests can import directly instead of regex-extracting from source.
+
+**TODO:**
+- [ ] Enhance existing `tests/lua/helpers.lua` with:
+  - [ ] `assert_eq(actual, expected, msg)` with diff output on failure
   - [ ] `assert_true(value, msg)`
   - [ ] `assert_nil(value, msg)`
   - [ ] `assert_not_nil(value, msg)`
   - [ ] `pass_count`, `fail_count` tracking
   - [ ] `finish(test_name)` — prints summary, exits with code
-  - [ ] `load_term_functions(names, opts)` — discovers term.lua, extracts named functions
+  - [ ] `load_module(name)` — dofile's a module from the extension directory
   - [ ] `mock_block(text, classes)` — creates a mock Pandoc CodeBlock
   - [ ] `term_meta(opts)` — builds a metadata table for `extract_config`
-- [ ] Refactor `test_build_cell.lua` to use helpers
+- [ ] Refactor `test_build_cell.lua` to use helpers + direct module import
 - [ ] Refactor `test_coerce_value.lua` to use helpers
 - [ ] Refactor `test_extract_config.lua` to use helpers
 - [ ] Refactor `test_parse_cell_options.lua` to use helpers
@@ -198,433 +415,245 @@ Reduce test boilerplate and make adding new tests cheap.
 
 ---
 
-### 3.2 Replace hand-built JSON in integration tests
+### 6.3 Consolidate Rust test support module
 
-**Why:** `tests/binary_protocol.rs` constructs JSON request strings by hand ~15 times. This is verbose, error-prone, and fragile when the protocol changes.
+**Why:** Multiple Rust source files repeat `avt::Vt::builder().size(...).feed_str(...)` for creating test terminal lines, `RenderedLine { html, text }` construction, and default style/theme fixtures. Each new test file re-invents these.
+
+**How:** Expand the existing `src/test_support.rs` module (already exists, behind `#[cfg(test)]`) with shared builders.
+
+**TODO:**
+- [ ] Add to `src/test_support.rs`:
+  - [ ] `pub fn vt_line(ansi: &str, cols: usize) -> avt::Line`
+  - [ ] `pub fn rendered(text: &str) -> RenderedLine` — plain text, markup = escaped text
+  - [ ] `pub fn rendered_markup(markup: &str, text: &str) -> RenderedLine`
+  - [ ] `pub fn rendered_lines(texts: &[&str]) -> Vec<RenderedLine>`
+  - [ ] `pub fn default_config() -> Config` — minimal valid config
+  - [ ] `pub fn numbered_lines(n: usize) -> Vec<RenderedLine>`
+- [ ] Refactor `src/output_transform.rs` tests to use helpers (already uses `make_rendered` — consolidate)
+- [ ] Refactor `src/renderer.rs` tests to use helpers
+- [ ] Refactor `src/latex.rs` tests to use helpers
+- [ ] Refactor `src/typst.rs` tests to use helpers
+- [ ] Run `cargo test` — all pass
+
+---
+
+### 6.4 Replace hand-built JSON in integration tests
+
+**Why:** `tests/binary_protocol.rs` constructs JSON request strings by hand ~15 times. This is verbose, error-prone, and fragile when the protocol changes (e.g., renaming `html` to `markup`).
 
 **How:** Use `serde_json::json!` macro and helper functions for common patterns.
 
 **TODO:**
 - [ ] Add helper functions at the top of `tests/binary_protocol.rs`:
-  - [ ] `fn request(cells: Vec<Value>) -> Value` — wraps cells in a default config
+  - [ ] `fn default_config() -> Value` — minimal valid config
+  - [ ] `fn request(cells: Vec<Value>) -> Value` — wraps cells in default config
   - [ ] `fn request_with_config(config: Value, cells: Vec<Value>) -> Value`
-  - [ ] `fn cell(id: u32, code: &str) -> Value` — minimal cell
+  - [ ] `fn cell(id: u32, code: &str) -> Value` — minimal cell with defaults
   - [ ] `fn cell_with_opts(id: u32, code: &str, opts: Value) -> Value`
-  - [ ] `fn run_request(req: &Value) -> Value` — pipes JSON through the binary, parses output
-  - [ ] `fn assert_cell_ok(result: &Value, index: usize) -> &str` — extract HTML from successful cell
+  - [ ] `fn run_request(req: &Value) -> Value` — pipes JSON through binary, parses output
 - [ ] Convert each existing test to use helpers
 - [ ] Run `cargo test` to confirm all pass
-- [ ] Verify test output is still clear on failure (error messages should show which cell failed)
+- [ ] Verify failure output is still clear (shows which cell and what went wrong)
 
 ---
 
-### 3.3 Add Rust test support module
+## Phase 7: Architecture & Robustness
 
-**Why:** Multiple Rust source files repeat `avt::Vt::builder().size(...).feed_str(...)` for creating test terminal lines, `RenderedLine { html, text }` construction, and default style/theme fixtures.
+Structural improvements that reduce drift and improve reliability.
 
-**How:** Add a `src/test_support.rs` module (behind `#[cfg(test)]`) with shared builders.
+---
+
+### 7.1 Add cache versioning
+
+**Why:** Cache keys are based on request JSON but not versioned by binary/filter version. After upgrading the extension, stale cached output may be served — causing confusion when behavior changes don't take effect until the cache is manually cleared.
+
+**How:** Include a version hash (or the extension version string) in the cache key computation.
 
 **TODO:**
-- [ ] Create `src/test_support.rs` with:
-  - [ ] `pub fn vt_line(ansi: &str, cols: usize) -> avt::Line`
-  - [ ] `pub fn rendered(text: &str) -> RenderedLine` — plain text, html = escaped text
-  - [ ] `pub fn rendered_html(html: &str, text: &str) -> RenderedLine`
-  - [ ] `pub fn rendered_lines(texts: &[&str]) -> Vec<RenderedLine>`
-  - [ ] `pub fn default_html_style() -> HtmlStyle`
-  - [ ] `pub fn default_latex_theme() -> LatexTheme`
-  - [ ] `pub fn default_typst_theme() -> TypstTheme`
-  - [ ] `pub fn numbered_lines(n: usize) -> Vec<RenderedLine>`
-- [ ] Add `#[cfg(test)] pub mod test_support;` to `src/main.rs` (or `lib.rs` if split)
-- [ ] Refactor `src/terminal_line.rs` tests to use `vt_line`
-- [ ] Refactor `src/renderer.rs` tests to use helpers
-- [ ] Refactor `src/latex.rs` tests to use helpers
-- [ ] Refactor `src/typst.rs` tests to use helpers
-- [ ] Refactor `src/markdown.rs` tests to use helpers
-- [ ] Run `cargo test` — all pass
+- [ ] In `term.lua` (or `cache.lua` after extraction), locate cache key/hash computation
+- [ ] Include the extension version (from `_extension.yml` or the `VERSION` constant from Phase 1.2) in the hash input
+- [ ] Optionally include the binary's own version (run `quarto-term --version` or hash the binary)
+- [ ] Verify: upgrade version → old cache entries are missed → fresh execution
+- [ ] Verify: same version → cache still hits correctly
+- [ ] Run Lua tests
+- [ ] Run E2E tests with cache enabled
 
 ---
 
-## Phase 4: Type Safety & Format Handling
+### 7.2 Add `OutputFormat` enum in Rust
 
-Replace stringly-typed patterns with proper enums and traits.
+**Why:** Format strings `"html"`, `"latex"`, `"typst"`, `"markdown"` are matched as raw strings across `protocol.rs`, `session.rs`, and all renderer modules. A typo compiles fine but produces wrong output silently. An enum catches this at compile time and makes adding/removing formats explicit.
 
----
-
-### 4.1 Add `OutputFormat` enum in Rust
-
-**Why:** Format strings `"html"`, `"latex"`, `"typst"`, `"markdown"` are matched across `protocol.rs`, `session.rs`, and all renderer modules. A typo compiles fine but produces wrong output silently. An enum catches this at compile time and makes adding/removing formats explicit.
-
-**How:** Define `OutputFormat` enum, implement `Deserialize` (with error on unknown), and replace all string-based format matching.
+**How:** Define `OutputFormat` enum with `Deserialize`, replace all string matching.
 
 **TODO:**
 - [ ] Define in `src/protocol.rs`:
   ```rust
-  #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
   #[serde(rename_all = "lowercase")]
-  enum OutputFormat { Html, Latex, Typst, Markdown }
+  pub enum OutputFormat { Html, Latex, Typst, Markdown }
   ```
-- [ ] Change `BatchRequest.format` from `String` to `OutputFormat`
-- [ ] Update `session.rs` format matching: replace string literals with enum variants
-- [ ] Update `build_cell_html` (rename to `build_cell_output`) to dispatch on enum
+- [ ] Change `Config.format` from `String` to `OutputFormat`
+- [ ] Update all format matching in `session.rs` — replace `"html"` string literals with `OutputFormat::Html` etc.
+- [ ] Update `build_cell_output` (after rename) dispatch
 - [ ] Update renderer selection logic
 - [ ] Ensure unknown format in JSON → deserialization error with clear message
-- [ ] Run `cargo test` — fix any compilation errors from the switch
-- [ ] Update `term.lua` to validate format before sending (should already be lowercase string)
-
----
-
-### 4.2 Extract shared renderer trait
-
-**Why:** `renderer.rs` (HTML), `latex.rs`, `typst.rs`, and `markdown.rs` all iterate terminal lines, extract styled runs, escape text, and wrap with format-specific markup. The control flow is ~95% identical; only escaping and wrapping differ. When a rendering behavior needs to change (e.g., trailing space handling), it must be fixed in 4 places.
-
-**How:** Define a `RenderBackend` trait with format-specific methods, then implement shared line-walking logic once.
-
-**TODO:**
-- [ ] Define trait in a new `src/render_backend.rs`:
-  ```rust
-  trait RenderBackend {
-      fn escape(&self, text: &str) -> String;
-      fn wrap_styled(&self, text: &str, pen: &Pen) -> String;
-      fn wrap_line(&self, content: &str) -> String;
-      fn wrap_block(&self, lines: &str, fullscreen: bool) -> String;
-  }
-  ```
-- [ ] Implement for `HtmlBackend`, `LatexBackend`, `TypstBackend`, `MarkdownBackend`
-- [ ] Implement shared `fn render_lines<B: RenderBackend>(lines: &[Line], backend: &B, ansi: bool, trailing: bool) -> Vec<RenderedLine>`
-- [ ] Replace the body of `render_lines_to_html`, `render_lines_to_latex`, `render_lines_to_typst`, `render_lines_to_markdown` with calls to the shared function
-- [ ] Keep the existing public API signatures intact (avoid breaking callers)
-- [ ] Run `cargo test` — verify all renderer tests pass
-- [ ] Manually check one rendered doc in each format to confirm output unchanged
-
----
-
-### 4.3 Table-drive `keymap.rs`
-
-**Why:** Key-name mapping is duplicated between `translate` (base keys) and `arrow_or_special_csi` (modified keys). Adding a new key requires editing two match arms. A shared lookup table removes this duplication (~80 LOC savings).
-
-**How:** Define a static table of `(aliases, escape_sequence)` pairs, then look up by name in both functions.
-
-**TODO:**
-- [ ] Define `static NAMED_KEYS: &[(&[&str], &[u8])]` with entries like `(&["pageup", "page-up", "page_up"], b"\x1b[5~")`
-- [ ] Refactor `translate()` to look up in `NAMED_KEYS` first, fall back to single-char logic
-- [ ] Refactor `arrow_or_special_csi()` to find the key in `NAMED_KEYS` and apply the modifier CSI prefix
-- [ ] Run existing keymap tests — all should pass unchanged
-- [ ] Verify the `ctrl+home`, `shift+tab`, etc. modifier combinations still work
-
----
-
-## Phase 5: Architecture — Split `session.rs`
-
-The largest single-file maintainability problem. ~1700 lines mixing 7 concerns.
-
----
-
-### 5.1 Extract `src/docker.rs`
-
-**Why:** Docker availability detection, image pulling, and command construction are self-contained and unrelated to PTY session logic. Separating them makes the Docker path testable without a real PTY.
-
-**How:** Move Docker-related functions and the Docker command builder into their own module.
-
-**TODO:**
-- [ ] Create `src/docker.rs`
-- [ ] Move `check_docker_available()`, `pull_image()`, and Docker command construction from `PtySession::new`
-- [ ] Define `pub fn docker_command(config: &BatchConfig) -> Command` (or similar)
-- [ ] Keep `PtySession::new` calling into the new module
-- [ ] Run `cargo test` — Docker-related tests still pass
-- [ ] Optionally: add a unit test for `docker_command()` that verifies correct volume mounts and env vars without actually running Docker
-
----
-
-### 5.2 Extract `src/typing.rs`
-
-**Why:** The human-typing simulation (random delays, error injection, correction) is a self-contained feature that doesn't need access to PTY internals beyond "write bytes" and "sleep."
-
-**How:** Move typing logic into its own module with a simple interface.
-
-**TODO:**
-- [ ] Create `src/typing.rs` (or rename existing if already partially there)
-- [ ] Move typing simulation functions: character-by-character sending, delay calculation, error injection
-- [ ] Define a public function like `pub fn type_line(writer: &mut dyn Write, text: &str, config: &TypingConfig)` or similar
-- [ ] Update `session.rs` to call into `typing.rs`
-- [ ] Run `cargo test`
-- [ ] Add a unit test: verify typing produces correct byte sequence (ignoring timing)
-
----
-
-### 5.3 Extract `src/output_capture.rs`
-
-**Why:** Capturing terminal output — deciding which lines are new since the last prompt, handling fullscreen viewport capture vs. scrollback capture — is a distinct responsibility from executing commands.
-
-**How:** Move capture logic into its own module.
-
-**TODO:**
-- [ ] Create `src/output_capture.rs`
-- [ ] Move logic that determines which lines to capture (new-output mode vs. fullscreen `vt.view()`)
-- [ ] Move scroll position tracking if it's only used for capture decisions
-- [ ] Define a clear interface: given current terminal state + last prompt position → captured lines
-- [ ] Update `session.rs` to use the new module
-- [ ] Run `cargo test`
-
----
-
-### 5.4 Extract `src/output_transform.rs`
-
-**Why:** `remove`, `truncate`, `callouts`, and `spacing` transforms are applied post-capture and are independent of each other and of terminal/PTY state. They should be a pure function from `(lines, options) -> lines`.
-
-**How:** Move all line-transform functions into their own module.
-
-**TODO:**
-- [ ] Create `src/output_transform.rs`
-- [ ] Move `apply_remove()`, `apply_truncate()`, `apply_callouts()`, `apply_spacing()`
-- [ ] Move `LineSpec` parsing (`resolve_line_specs`, range parsing, regex selectors)
-- [ ] Define a pipeline interface:
-  ```rust
-  pub fn transform_lines(lines: &mut Vec<RenderedLine>, opts: &TransformOpts, format: OutputFormat)
-  ```
-- [ ] Fix callouts to be format-aware (currently always emits HTML spans — should emit LaTeX/Typst equivalents too)
-- [ ] Update `session.rs` to call the new module
-- [ ] Move existing transform tests to the new module
-- [ ] Run `cargo test`
-
----
-
-### 5.5 Extract `src/prompt.rs`
-
-**Why:** Prompt detection (primary prompt regex, PS2 regex, last-line-is-prompt checks, PS2 recovery) is complex logic that interacts with terminal state but doesn't need the full PTY session context.
-
-**How:** Move prompt-related logic into its own module.
-
-**TODO:**
-- [ ] Create `src/prompt.rs`
-- [ ] Move `last_line_is_primary_prompt()`, PS2 recovery logic, prompt regex construction
-- [ ] Move `mark_prompts()` (wrapping lines with prompt/output spans)
-- [ ] Define a `PromptDetector` struct that holds compiled regexes
-- [ ] Update `session.rs` to use `PromptDetector`
-- [ ] Run `cargo test`
-
----
-
-### 5.6 Slim down `session.rs`
-
-**Why:** After the above extractions, `session.rs` should only contain PTY session lifecycle (new/drop), line sending, and the `execute_cell` orchestration that ties everything together. Target: under 500 lines.
-
-**TODO:**
-- [ ] Verify `session.rs` only contains: `PtySession` struct, `new()`, `execute_cell()`, `process_batch()`
-- [ ] `execute_cell` should read as a high-level orchestration: resolve options → send lines → capture → transform → render
-- [ ] Remove the temporary `self.config.timeout` mutation (use a local instead)
-- [ ] Run full test suite
-- [ ] Verify line count is manageable (~400-600 lines)
-
----
-
-## Phase 6: Architecture — Modularize `term.lua`
-
-The Lua filter is ~1300 lines mixing 6 concerns. Quarto requires a single filter file, but we can `require()` local modules from the extension directory or use `dofile()`.
-
----
-
-### 6.1 Extract `config.lua`
-
-**Why:** `extract_config` is ~389 LOC of option parsing, coercion, default merging, and format-specific overrides. It's testable in isolation and changes independently from the rendering pipeline.
-
-**How:** Move to `_extensions/term/config.lua` and `dofile()` it from `term.lua`.
-
-**TODO:**
-- [ ] Create `_extensions/term/config.lua`
-- [ ] Move `extract_config`, `coerce_value`, `as_list`, and option normalization helpers
-- [ ] Export via `return { extract_config = ..., coerce_value = ..., ... }`
-- [ ] In `term.lua`, load with `local config_mod = dofile(PANDOC_SCRIPT_FILE:match("(.*/)")  .. "config.lua")`
-- [ ] Verify Quarto still discovers and runs the filter correctly
-- [ ] Update Lua tests to load from the new file (simpler than regex extraction)
-- [ ] Run all Lua tests
-
----
-
-### 6.2 Extract `cell.lua`
-
-**Why:** `parse_cell_options` and `build_cell` handle per-cell option parsing and request construction. They're self-contained and heavily tested.
-
-**How:** Move to `_extensions/term/cell.lua`.
-
-**TODO:**
-- [ ] Create `_extensions/term/cell.lua`
-- [ ] Move `parse_cell_options`, `build_cell`, and any helper they use (e.g., `escape_pattern`)
-- [ ] Export via return table
-- [ ] Load from `term.lua`
-- [ ] Update Lua tests to import directly
-- [ ] Run all Lua tests
-
----
-
-### 6.3 Extract `theme.lua`
-
-**Why:** Theme/colorscheme resolution, CSS file reading, and light/dark mode handling are independent of the main filter pipeline.
-
-**How:** Move to `_extensions/term/theme.lua`.
-
-**TODO:**
-- [ ] Create `_extensions/term/theme.lua`
-- [ ] Move colorscheme resolution, CSS reading, theme variable rescoping
-- [ ] Export via return table
-- [ ] Load from `term.lua`
-- [ ] Verify themes still apply correctly (render a doc with colorscheme)
-- [ ] Run Lua tests
-
----
-
-### 6.4 Extract `engine.lua`
-
-**Why:** Cache management and `pandoc.pipe()` invocation are the I/O boundary of the filter. Separating them clarifies what's pure logic vs. side effects.
-
-**How:** Move to `_extensions/term/engine.lua`.
-
-**TODO:**
-- [ ] Create `_extensions/term/engine.lua`
-- [ ] Move cache read/write logic, hash computation, `pandoc.pipe` call
-- [ ] Export: `run_engine(request_json, config) -> results`
-- [ ] Load from `term.lua`
-- [ ] Verify caching still works (render twice, confirm cache hit)
-- [ ] Verify `cache: false` works (after Phase 1 fix)
-
----
-
-### 6.5 Extract `chrome.lua`
-
-**Why:** `normalize_chrome()` and `wrap_chrome()` are self-contained HTML generation for window decorations. They're already well-isolated logically.
-
-**How:** Move to `_extensions/term/chrome.lua`.
-
-**TODO:**
-- [ ] Create `_extensions/term/chrome.lua`
-- [ ] Move `normalize_chrome`, `wrap_chrome`
-- [ ] Export via return table
-- [ ] Load from `term.lua`
-- [ ] Verify chrome still renders for all three OS styles
-- [ ] Add a Lua test for `normalize_chrome` (currently untested)
-
----
-
-### 6.6 Slim down `term.lua`
-
-**Why:** After extractions, `term.lua` should be a thin orchestrator: load modules, register the Pandoc filter, collect blocks, call engine, inject results and dependencies.
-
-**TODO:**
-- [ ] Verify `term.lua` is under ~200 lines
-- [ ] It should read as: load modules → define `Pandoc` filter → collect term blocks → build request → call engine → inject results → inject CSS/JS
-- [ ] Run full Quarto render of the docs site
-- [ ] Run all Lua tests
+- [ ] Update `term.lua` to validate format string before sending (already lowercase)
+- [ ] Run `cargo test` — fix compilation errors from the switch
 - [ ] Run E2E tests
 
 ---
 
-## Phase 7: Shared Config & Docs Generation
+### 7.3 Guard `install-binary.ts` with `import.meta.main`
 
-Eliminate config drift between Lua and Rust, and reduce manual maintenance of repetitive docs.
+**Why:** The Deno install script exports helper functions but runs `main()` unconditionally on import. This makes it impossible to import the helpers for testing without triggering the full install flow.
 
----
-
-### 7.1 Create a shared config schema
-
-**Why:** Options are defined independently in Lua (`extract_config`, `build_cell`) and Rust (`protocol.rs` structs). Defaults and validation can drift silently. A single source of truth prevents this.
-
-**How:** Define options in a TOML/JSON schema file. Generate (or validate against) both Lua normalization and Rust serde structs. Alternatively: use the Rust structs as canonical and add conformance tests that verify Lua output matches.
+**How:** Wrap the `main()` call in `if (import.meta.main)`.
 
 **TODO:**
-- [ ] Create `schema/options.toml` (or `.json`) defining every option: name, type, default, valid values, scope (project/doc/cell), aliases
-- [ ] Write a script (or test) that reads the schema and verifies:
-  - [ ] Every option in the schema has a corresponding field in `protocol.rs`
-  - [ ] Every option in the schema is handled in `term.lua` `extract_config` or `build_cell`
-  - [ ] Defaults match between Lua and Rust
-- [ ] Alternatively: add integration tests that send known JSON to the binary and verify the defaults applied match what Lua would send
-- [ ] Document the schema format for contributors
+- [ ] In `tests/deno/install_binary_test.ts` (or wherever the script lives), locate the top-level `main()` call
+- [ ] Wrap it: `if (import.meta.main) { main(); }`
+- [ ] Verify the script still works when run directly: `deno run install-binary.ts`
+- [ ] Verify it can be imported without side effects: `import { someHelper } from "./install-binary.ts"`
+- [ ] Run Deno tests
 
 ---
 
-### 7.2 Generate docs reference table from schema
+### 7.4 Library crate extraction
 
-**Why:** `docs/reference.qmd` has a manually maintained option table that can drift from implementation. The colorscheme gallery in `docs/styling.qmd` manually lists every theme CSS file.
+**Why:** The Rust binary is a monolithic CLI. Integration tests must spawn the binary and pipe JSON, which is slow and makes debugging harder. A library crate would allow tests to import protocol/session/rendering directly and test at finer granularity.
 
-**How:** Write a small script that generates the reference table and colorscheme gallery from the schema and the `themes/` directory listing.
+**How:** Split into `quarto-term` (binary, thin CLI) and `quarto-term-lib` (library crate with all logic). The binary just does stdin/stdout I/O and calls into the library.
 
 **TODO:**
-- [ ] Write `scripts/generate-reference.lua` (or Python/shell) that:
-  - [ ] Reads `schema/options.toml`
-  - [ ] Outputs the Markdown table for `docs/reference.qmd`
-  - [ ] Reads `_extensions/term/themes/*.css`
-  - [ ] Outputs the colorscheme gallery sections for `docs/styling.qmd`
-- [ ] Add a CI check: generated output matches committed docs (or make docs build auto-generate)
-- [ ] Decide: check in generated docs (easier workflow) or generate at build time (always fresh)
-- [ ] Update contributing guide to mention the generation step
+- [ ] Create `src/lib.rs` that re-exports all modules
+- [ ] Move `main()` logic into a `pub fn run(input: &str) -> String` in the library
+- [ ] Keep `src/main.rs` as a thin wrapper: read stdin → `run()` → print stdout
+- [ ] Update `Cargo.toml` to produce both `[[bin]]` and `[lib]`
+- [ ] Update `tests/binary_protocol.rs` to optionally call `run()` directly (faster)
+- [ ] Verify the binary still works end-to-end
+- [ ] Run `cargo test`
 
 ---
 
-### 7.3 Centralize line-selector parsing
+## Phase 8: Test Infrastructure
 
-**Why:** `remove`, `truncate`, and `callouts` each re-interpret `LineSpec` (ranges, regexes, single indices) with slightly different behavior. Adding a new selector type requires touching 3+ places.
+Improve test coverage and reduce friction for adding new tests.
 
-**How:** Define a `LineSelector` abstraction that `remove`, `truncate`, and `callouts` all use.
+---
+
+### 8.1 Create shared Lua test fixtures
+
+**Why:** Adding a new Lua test requires: setting up pass/fail counters, loading term.lua, extracting functions, mocking pandoc globals, and formatting results. This overhead discourages test creation.
+
+**How:** With modules extracted (Phase 5), tests can import directly. The fixture layer provides mock pandoc globals and assertion helpers.
 
 **TODO:**
-- [ ] Define `LineSelector` enum: `Index(i32)`, `Range(i32, i32)`, `Regex(String)`, `All`
-- [ ] Implement `resolve(selector, lines) -> Vec<usize>` — returns matching line indices
-- [ ] Refactor `apply_remove` to use `LineSelector::resolve`
-- [ ] Refactor `apply_truncate` to use `LineSelector::resolve`
-- [ ] Refactor `apply_callouts` to use `LineSelector::resolve`
-- [ ] Add tests for edge cases: negative indices, out-of-range, regex matching multiple lines
-- [ ] Move into `src/output_transform.rs` (or `src/line_selector.rs` if extracted separately)
+- [ ] In `tests/lua/helpers.lua`, add mock pandoc globals:
+  - [ ] `pandoc.system.os` (default: `"darwin"`)
+  - [ ] `pandoc.system.arch` (default: `"aarch64"`)
+  - [ ] `pandoc.pipe` (mock that returns configurable JSON)
+  - [ ] `pandoc.utils.stringify` (simplified version for testing)
+  - [ ] `quarto.log.warning` (captures warnings for assertion)
+- [ ] Add `mock_metadata(overrides)` — returns a full metadata table with sane defaults
+- [ ] Add `mock_code_block(code, attrs)` — returns a Pandoc CodeBlock AST node
+- [ ] Verify all existing tests still pass with the enhanced helpers
+- [ ] Write one new test using the fixtures to validate the workflow
 
 ---
 
-## Phase 8: Miscellaneous Cleanup
+### 8.2 Consolidate shell E2E test runners
 
-Lower-priority items that round out the codebase quality.
-
----
-
-### 8.1 Remove generated docs from git
-
-**Why:** `docs/*_files/libs/` and `docs/_site/` contain ~3 MiB of duplicated Quarto build output (Bootstrap, reveal.js, etc.). These are generated artifacts that bloat the repo and create noisy diffs.
-
-**How:** Add to `.gitignore`, remove from git history (or just from tracking going forward), and build via CI for deployment.
-
-**TODO:**
-- [ ] Add `docs/_site/` to `.gitignore`
-- [ ] Add `docs/*_files/` to `.gitignore`
-- [ ] `git rm -r --cached docs/_site/ docs/*_files/` (remove from tracking without deleting locally)
-- [ ] Verify docs build still works: `cd docs && quarto render`
-- [ ] Set up CI/GitHub Pages deployment if not already present
-- [ ] Update README/contributing guide if it references committed site output
-
----
-
-### 8.2 CLI parser for `quarto-term check`
-
-**Why:** `src/main.rs` manually parses `--record` with custom arg iteration. Adding future flags (e.g., `--format`, `--verbose`) will make this increasingly fragile.
-
-**How:** Use `clap` (already common in Rust) or keep manual parsing but wrap it in a clean function with proper error messages.
-
-**TODO:**
-- [ ] Evaluate: is `clap` worth adding as a dependency for 2-3 flags? (probably yes for correctness; adds ~200KB to binary)
-- [ ] If yes: add `clap` to `Cargo.toml`, define a `Cli` struct with subcommands
-- [ ] If no: at minimum extract arg parsing into a `fn parse_args(args: &[String]) -> Result<CliCommand, String>`
-- [ ] Support `--help` with usage text
-- [ ] Add a test: verify `quarto-term --help` exits 0 and prints usage
-- [ ] Add a test: verify unknown flag produces helpful error
-
----
-
-### 8.3 Consolidate shell E2E test runners
-
-**Why:** `tests/e2e/run_e2e.sh` duplicates the Pandoc invocation pattern, pass/fail reporting, and Docker variant logic. Adding a new test case requires copying ~20 lines of boilerplate.
+**Why:** `tests/e2e/run_e2e.sh` duplicates the Pandoc invocation pattern, pass/fail reporting, and Docker variant logic for each test case. Adding a new test requires copying ~20 lines of boilerplate.
 
 **How:** Extract shared functions and make test cases data-driven.
 
 **TODO:**
-- [ ] Create a `run_test()` function that takes: metadata YAML, input content, expected needle, assertion type (present/absent)
-- [ ] Create a `run_docker_test()` wrapper that sets up Docker-specific env
-- [ ] Convert all existing test cases to call the shared functions
-- [ ] Add a summary at the end: N passed, M failed, with exit code
+- [ ] Define a `run_test()` function: takes input .qmd content, expected output pattern, assertion type (contains/not-contains/regex)
+- [ ] Define a `run_docker_test()` wrapper: sets up Docker-specific environment
+- [ ] Define `assert_contains()`, `assert_not_contains()`, `assert_exit_code()`
+- [ ] Convert each existing test case to call shared functions
+- [ ] Add summary at end: N passed, M failed, with appropriate exit code
 - [ ] Run the E2E suite to confirm all still pass
+- [ ] Add one new test case using the shared functions to validate the pattern
+
+---
+
+### 8.3 Add Rust integration test helpers
+
+**Why:** `tests/binary_protocol.rs` is the only integration test file. As the protocol grows (diagnostics envelope, new formats), more integration tests will be needed. A shared harness reduces per-test overhead.
+
+**How:** Create a `tests/common/mod.rs` with shared setup.
+
+**TODO:**
+- [ ] Create `tests/common/mod.rs` with:
+  - [ ] `fn binary_path() -> PathBuf` — finds the compiled binary
+  - [ ] `fn run_binary(input: &str) -> (String, String, ExitStatus)` — runs binary, returns stdout/stderr/status
+  - [ ] `fn run_request(request: &Value) -> BatchResponse` — serialize, run, deserialize
+  - [ ] `fn assert_cell_ok(response: &BatchResponse, index: usize) -> &str`
+  - [ ] `fn assert_cell_error(response: &BatchResponse, index: usize) -> &str`
+- [ ] Update `tests/binary_protocol.rs` to use common helpers
+- [ ] Run `cargo test`
+
+---
+
+## Phase 9: Documentation & Developer Experience
+
+Improve docs accuracy and reduce maintenance burden.
+
+---
+
+### 9.1 Add shell presets documentation
+
+**Why:** Shell profiles exist in the implementation but are under-documented. Users manually set `shell`/`prompt`/`ps2` for each non-bash shell, which is error-prone. The `docs/shells/` pages teach manual setup but don't mention the preset shortcut.
+
+**How:** Document the `profile` option prominently and show it as the recommended approach.
+
+**TODO:**
+- [ ] In `docs/shells/index.qmd`, add a "Quick Start with Profiles" section at the top
+- [ ] Show: `profile: python` is equivalent to setting shell + prompt + ps2 manually
+- [ ] List all available profiles with their effective settings
+- [ ] In each shell-specific page (`docs/shells/python.qmd`, etc.), add a note: "You can use `profile: python` instead of manual configuration"
+- [ ] In `docs/reference.qmd`, add `profile` to the options table with valid values
+- [ ] Render and verify
+
+---
+
+### 9.2 Remove generated docs from git tracking
+
+**Why:** `docs/*_files/libs/` directories contain ~3 MiB of duplicated Quarto build output per page (Bootstrap, reveal.js, clipboard.js). These are generated artifacts that bloat the repo, create noisy diffs, and slow down clones.
+
+**How:** Add to `.gitignore` and remove from git tracking. Deploy docs via CI.
+
+**TODO:**
+- [ ] Add to `.gitignore`:
+  ```
+  docs/_site/
+  docs/*_files/
+  ```
+- [ ] Run `git rm -r --cached docs/_site/ docs/*_files/` to remove from tracking
+- [ ] Verify docs build still works: `cd docs && quarto render`
+- [ ] Verify the docs site deploys correctly (CI/GitHub Pages)
+- [ ] Update contributing guide if it references committed site output
+
+---
+
+### 9.3 CLI parser for `quarto-term check`
+
+**Why:** `src/main.rs:116` manually parses `--record` with custom arg iteration and a confusing predicate that mixes `&&` and `||` without parentheses. Adding future flags (e.g., `--format`, `--verbose`, `--timeout`) will make this increasingly fragile and bug-prone.
+
+**How:** Either add `clap` for proper argument parsing, or at minimum extract a clean `parse_check_args` function with clear predicates.
+
+**TODO:**
+- [ ] Add `clap` to `Cargo.toml` as an optional dependency (feature-gated if binary size is a concern)
+- [ ] Define a `CheckArgs` struct: `file: PathBuf`, `record: Option<PathBuf>`, `format: Option<String>`
+- [ ] Implement CLI parsing with `clap::Parser` derive macro
+- [ ] Add `--help` support with usage text
+- [ ] Replace the manual arg parsing in `run_check`
+- [ ] Add test: `quarto-term check --help` exits 0
+- [ ] Add test: `quarto-term check` with no file → helpful error
+- [ ] Add test: `quarto-term check nonexistent.qmd` → "file not found" error
+- [ ] Run `cargo test`
 
 ---
 
@@ -633,12 +662,13 @@ Lower-priority items that round out the codebase quality.
 | Phase | Effort | Risk | Dependency |
 |-------|--------|------|-----------|
 | 1. Critical Fixes | Low | Low | None — independent tasks |
-| 2. API Consistency | Medium | Low | 1.6 depends on understanding protocol.rs (Phase 1 work helps) |
-| 3. Test Infrastructure | Medium | Low | Do before Phase 5/6 to have good coverage during refactors |
-| 4. Type Safety | Medium | Medium | OutputFormat (4.1) should happen before session.rs split (Phase 5) |
-| 5. Split session.rs | High | Medium | Phase 3 + 4 first (tests + types catch regressions) |
-| 6. Modularize term.lua | Medium | Medium | Phase 3.1 first (Lua test helpers) |
-| 7. Schema & Docs Gen | Medium | Low | Phase 2.3 (naming) and Phase 6 (modular Lua) make this easier |
-| 8. Miscellaneous | Low | Low | Independent — do whenever |
+| 2. Dead Code Removal | Low | Low | None — independent tasks |
+| 3. API Consistency | Medium | Low | Phase 1.3 (naming) should happen first |
+| 4. Rust Structure | High | Medium | Phase 3.2 (validation) informs enum design |
+| 5. Lua Structure | Medium | Medium | Phase 2 cleanup first (less code to move) |
+| 6. Duplication | Medium | Low | Phases 4+5 first (modules exist to consolidate into) |
+| 7. Architecture | Medium | Medium | Phases 4+5 first (structure supports changes) |
+| 8. Test Infrastructure | Medium | Low | Phase 5 first (modules importable for tests) |
+| 9. Docs & DX | Low | Low | Phase 3 first (correct names to document) |
 
-**Recommended order:** 1 → 3 → 4 → 2 → 5 → 6 → 7 → 8
+**Recommended order:** 1 → 2 → 3 → 5 → 4 → 6 → 7 → 8 → 9

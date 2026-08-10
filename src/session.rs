@@ -112,20 +112,13 @@ impl PtySession {
             .scrollback_limit(10000)
             .build();
 
-        let recorders: Vec<Recorder> = config
-            .record
-            .iter()
-            .map(|path| Recorder::new(path, config.cols, config.rows))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| TermError::SpawnFailed(format!("recorder: {e}")))?;
-
         let mut session = Self {
             writer,
             rx,
             vt,
             prompt,
             config: config.clone(),
-            recorders,
+            recorders: Vec::new(),
             output_since_cell_start: Vec::new(),
             cursor_row_after_last_cell: 0,
             scrollback_after_last_cell: 0,
@@ -140,6 +133,20 @@ impl PtySession {
             session.writer.flush().map_err(|_| TermError::ShellExited)?;
             session.drain_pty();
             session.wait_for_prompt()?;
+        }
+
+        session.recorders = config
+            .record
+            .iter()
+            .map(|path| Recorder::new(path, config.cols, config.rows))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| TermError::SpawnFailed(format!("recorder: {e}")))?;
+
+        if !session.recorders.is_empty() {
+            let prompt_str = format!("{} ", config.prompt);
+            for rec in &mut session.recorders {
+                rec.record_output(prompt_str.as_bytes());
+            }
         }
 
         session.save_position();
@@ -677,9 +684,9 @@ impl PtySession {
             }
         }
 
-        let show_output = cell.options.output
-            || matches!(echo_mode, EchoMode::Mode(m) if m == "terminal")
+        let is_terminal_mode = matches!(echo_mode, EchoMode::Mode(ref m) if m == "terminal")
             || matches!(echo_mode, EchoMode::Bool(true));
+        let show_output = cell.options.output || is_terminal_mode;
 
         if show_output {
             let mut lines = if cell.options.fullscreen {
@@ -758,6 +765,16 @@ impl PtySession {
                         out.push_str(&renderer::render_fullscreen_to_html(&lines, &html_style));
                     } else {
                         self.mark_prompts(&mut lines);
+                        let hide_echo = matches!(echo_mode, EchoMode::Bool(false))
+                            || matches!(echo_mode, EchoMode::Mode(ref m) if m == "false");
+                        let hide_output = !cell.options.output;
+                        if hide_echo || hide_output {
+                            lines.retain(|line| {
+                                if hide_echo && line.is_prompt { return false; }
+                                if hide_output && !line.is_prompt { return false; }
+                                true
+                            });
+                        }
                         out.push_str(&renderer::render_lines_to_html(&lines, "term-output", &html_style));
                     }
                 }

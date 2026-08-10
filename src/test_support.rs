@@ -12,6 +12,7 @@ pub fn rendered(text: &str) -> RenderedLine {
     RenderedLine {
         markup: text.to_string(),
         text: text.to_string(),
+        is_prompt: false,
     }
 }
 
@@ -19,6 +20,7 @@ pub fn rendered_markup(markup: &str, text: &str) -> RenderedLine {
     RenderedLine {
         markup: markup.to_string(),
         text: text.to_string(),
+        is_prompt: false,
     }
 }
 

@@ -1,6 +1,11 @@
 ---
 title: "Recipes"
 engine: markdown
+extensions:
+  term:
+    env:
+      GREETING: "Hello from env"
+      APP_VERSION: "2.0.1"
 ---
 
 Common patterns for documenting terminal workflows. Each recipe is self-contained; copy the fenced block into your own `.qmd` file.
@@ -81,25 +86,25 @@ Each cell runs in the same shell session. Variables and shell state carry over f
 
 ````markdown
 ```{term}
-GREETING="Hello from quarto-term"
+MESSAGE="Hello from quarto-term"
 COUNT=3
 ```
 
 ```{term}
 for i in $(seq 1 $COUNT); do
-  echo "$GREETING (#$i)"
+  echo "$MESSAGE (#$i)"
 done
 ```
 ````
 
 ```{term}
-GREETING="Hello from quarto-term"
+MESSAGE="Hello from quarto-term"
 COUNT=3
 ```
 
 ```{term}
 for i in $(seq 1 $COUNT); do
-  echo "$GREETING (#$i)"
+  echo "$MESSAGE (#$i)"
 done
 ```
 
@@ -146,6 +151,26 @@ done
 1. The `for` loop iterates over a space-separated list of values.
 2. The loop body runs once per item, with `$planet` bound to the current value.
 3. `done` closes the loop; the shell waits until here before executing.
+
+Customize the marker style with `callout-values` and `callout-format`. By default, markers render as `<1>`, `<2>`, etc. Change `callout-values` to a string (each character becomes one marker) or a list of strings, and `callout-format` to control the surrounding text (`{}` is the placeholder):
+
+```{term}
+#| callout: [1, 2, 3]
+#| callout-values: "abc"
+#| callout-format: "({})"
+for planet in Mercury Venus Earth Mars; do
+  echo "- $planet"
+done
+```
+
+```{term}
+#| callout: [1, -1]
+#| callout-values: ["start", "end"]
+#| callout-format: "[{}]"
+echo "first"
+echo "second"
+echo "third"
+```
 
 ## Hide setup, show result
 
@@ -203,32 +228,7 @@ echo "third"
 
 ## Record a session for playback
 
-Record the terminal session to an asciicast (`.cast`) or termshow (`.termshow`) file alongside the rendered document. This is useful for embedding animated replays on a webpage or sharing a demo without requiring the reader to re-run anything.
-
-````markdown
----
-extensions:
-  term:
-    record: "demo.cast"
-    typing: true
----
-
-```{term}
-echo "This session is being recorded"
-```
-````
-
-The `record` option accepts a single path or a list for multiple formats:
-
-```yaml
-extensions:
-  term:
-    record:
-      - "demo.cast"
-      - "demo.termshow"
-```
-
-The `.cast` format is playable with [asciinema](https://asciinema.org/). The `.termshow` format works with the [termshow](https://github.com/posit-dev/great-docs) player. Combine with `typing: true` to make the recording look natural.
+See the [Recording](recording.qmd) page for how to record sessions to `.cast` files and embed an interactive player.
 
 ## Simulate realistic typing
 
@@ -314,6 +314,128 @@ echo "back to normal"
 echo "fast"
 sleep 2 && echo "done" #! timeout: 5.0
 echo "back to normal"
+```
+
+## Show only the output
+
+Use `echo: false` to hide commands and prompts, showing only the terminal output:
+
+````markdown
+```{term}
+#| echo: false
+echo "You only see the output"
+```
+````
+
+```{term}
+#| echo: false
+echo "You only see the output"
+```
+
+## Show only the commands
+
+Use `output: false` to hide the output and show only the typed commands with prompts:
+
+````markdown
+```{term}
+#| output: false
+echo "The output of this is hidden"
+date
+```
+````
+
+```{term}
+#| output: false
+echo "The output of this is hidden"
+date
+```
+
+## Show the trailing prompt
+
+By default the final prompt after a command is hidden. Use `keep-last-prompt: true` to include it, which is useful when showing that a command returned to a ready state:
+
+````markdown
+```{term}
+#| keep-last-prompt: true
+echo "done"
+```
+````
+
+```{term}
+#| keep-last-prompt: true
+echo "done"
+```
+
+## Render a static code block without execution
+
+Use `eval: false` to show a `{term}` block as a static code example without executing it. Useful for showing syntax that can't run in your environment:
+
+````markdown
+```{term}
+#| eval: false
+ssh production-server "systemctl restart myapp"
+```
+````
+
+```{term}
+#| eval: false
+ssh production-server "systemctl restart myapp"
+```
+
+## Pass environment variables
+
+Use `env` at the document level to inject variables into the shell session without showing setup commands:
+
+````markdown
+---
+extensions:
+  term:
+    env:
+      GREETING: "Hello from env"
+      APP_VERSION: "2.0.1"
+---
+
+```{term}
+echo "$GREETING (v$APP_VERSION)"
+```
+````
+
+Produces:
+
+```{term}
+echo "$GREETING (v$APP_VERSION)"
+```
+
+## Validate output with assertions
+
+Use `assert` to verify that expected content appears in the output. The render fails if the pattern is not found, which is useful for CI to catch documentation drift:
+
+````markdown
+```{term}
+echo "version 3.2.1" #! assert: "3.2.1"
+```
+````
+
+```{term}
+echo "version 3.2.1" #! assert: "3.2.1"
+```
+
+## Use a custom line marker
+
+Change the line option marker from the default `#!` to something else when `#!` conflicts with your shell syntax:
+
+````markdown
+```{term}
+#| marker: "//"
+sleep 5 // expect-prompt: false
+ctrl-c // literal: false
+```
+````
+
+```{term}
+#| marker: "//"
+sleep 5 // expect-prompt: false
+ctrl-c // literal: false
 ```
 
 ```{term}

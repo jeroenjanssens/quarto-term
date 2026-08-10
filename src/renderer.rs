@@ -6,6 +6,7 @@ use crate::render_backend::{self, RenderBackend};
 pub struct RenderedLine {
     pub markup: String,
     pub text: String,
+    pub is_prompt: bool,
 }
 
 struct HtmlBackend;

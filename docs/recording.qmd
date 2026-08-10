@@ -1,0 +1,114 @@
+---
+title: "Recording"
+engine: markdown
+extensions:
+  term:
+    record: "recording-demo.cast"
+    timeout: 60
+    typing:
+      speed: 400
+      error-rate: 0.01
+---
+
+quarto-term can record terminal sessions to [asciicast](https://docs.asciinema.org/manual/asciicast/v2/) (`.cast`) files and embed an interactive player for playback.
+
+## Recording a session
+
+Add the `record` option at the document level to capture everything into a `.cast` file:
+
+```yaml
+extensions:
+  term:
+    record: "demo.cast"
+```
+
+The file is written relative to the document directory. You can record to multiple formats simultaneously:
+
+```yaml
+extensions:
+  term:
+    record:
+      - "demo.cast"
+      - "demo.termshow"
+```
+
+Combine with `typing` to make the recording look like a human is typing:
+
+```yaml
+extensions:
+  term:
+    record: "demo.cast"
+    typing:
+      speed: 400
+      error-rate: 0.01
+```
+
+The `speed` controls characters per minute (default: 300) and `error-rate` adds occasional typos that get corrected (0.01 = 1% chance per keystroke). Use `typing: true` for defaults.
+
+## Embedding the player
+
+Use the `asciicast-player` shortcode to embed an interactive player:
+
+```markdown
+{{</* asciicast-player src="demo.cast" */>}}
+```
+
+{{< asciicast-player src="recording-demo.cast" >}}
+
+## Player options
+
+All options are specified as shortcode attributes in kebab-case:
+
+```markdown
+{{</* asciicast-player src="demo.cast" autoplay=true speed=2 idle-time-limit=2 */>}}
+```
+
+{{< asciicast-player src="recording-demo.cast" autoplay=true speed=2 idle-time-limit=2 >}}
+
+### Available options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `src` | string | (required) | Path to the `.cast` file |
+| `cols` | number | from file | Terminal width in columns |
+| `rows` | number | from file | Terminal height in rows |
+| `autoplay` | boolean | `false` | Start playback automatically |
+| `preload` | boolean | `false` | Preload the recording on init |
+| `loop` | boolean/number | `false` | Loop playback; number sets loop count |
+| `start-at` | number/string | `0` | Start time (seconds or "mm:ss") |
+| `speed` | number | `1` | Playback speed multiplier |
+| `idle-time-limit` | number | unlimited | Cap idle time to N seconds |
+| `theme` | string | document theme | Colorscheme name |
+| `poster` | string | first frame | Preview frame specification |
+| `fit` | string | `"width"` | Sizing: "width", "height", "both", "none" |
+| `controls` | boolean/string | `"auto"` | Show control bar |
+| `keystroke-overlay` | boolean | `false` | Show keystroke overlay |
+| `markers` | JSON array | none | Timeline markers |
+| `pause-on-markers` | boolean | `false` | Auto-pause at markers |
+| `font-size` | string | `"small"` | Font size (CSS value or "small"/"medium"/"big") |
+| `font-family` | string | system mono | CSS font-family |
+| `line-height` | number | `1.33` | Line height |
+| `cursor-mode` | string | `"blinking"` | Cursor: "blinking", "steady", "hidden" |
+
+## Theming
+
+The player automatically uses the document's colorscheme (set via `style.html.colorscheme-light` / `colorscheme-dark`). To override for a specific player instance, use the `theme` attribute with any quarto-term theme name:
+
+```markdown
+{{</* asciicast-player src="demo.cast" theme="dracula" */>}}
+```
+
+{{< asciicast-player src="recording-demo.cast" theme="dracula" >}}
+
+All themes from the [Styling](styling.qmd) page are available.
+
+The recording below uses `typing: {speed: 400, error-rate: 0.01}`:
+
+```{term}
+echo "This is being recorded"
+for i in 1 2 3; do
+  echo "Step $i"
+  sleep 0.3
+done
+echo "Done."
+```

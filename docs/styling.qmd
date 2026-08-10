@@ -54,27 +54,46 @@ style:
 
 Sets the monospace font for terminal output. Accepts any CSS font-family value:
 
-```yaml
-style:
-  font-family: "Berkeley Mono, Fira Code, monospace"
+```{term}
+#| style.font-family: "Courier New, monospace"
+echo "Courier New font"
+```
+
+```{term}
+#| style.font-family: "Georgia, serif"
+echo "Georgia (serif) font"
 ```
 
 ### `font-size`
 
 Controls the font size. Accepts `em` or `pt` units:
 
-```yaml
-style:
-  font-size: 0.85em
+```{term}
+#| style.font-size: 0.75em
+echo "Smaller text (0.75em)"
+```
+
+```{term}
+#| style.font-size: 1.2em
+echo "Larger text (1.2em)"
 ```
 
 ### `line-height`
 
 Controls line spacing as a multiplier of the font size:
 
-```yaml
-style:
-  line-height: 1.3
+```{term}
+#| style.line-height: "1.0"
+echo "line-height: 1.0"
+echo "Tight spacing"
+echo "Between lines"
+```
+
+```{term}
+#| style.line-height: "2.0"
+echo "line-height: 2.0"
+echo "Wide spacing"
+echo "Between lines"
 ```
 
 ### `cols` / `rows`
@@ -87,9 +106,19 @@ These cannot be set per cell because the PTY is shared across all cells in a doc
 
 When `true` (the default), ANSI escape sequences produce colored output. Set to `false` to strip all color and render plain monochrome text.
 
+```{term}
+#| style.ansi: false
+printf '\033[1;31mRed\033[0m \033[1;32mGreen\033[0m \033[1;34mBlue\033[0m\n'
+```
+
 ### `trailing-spaces`
 
-When `true`, trailing spaces on each line are preserved. By default they are trimmed.
+When `true`, trailing spaces on each line are preserved. By default they are trimmed. This is useful for terminal art or tools that use whitespace for alignment:
+
+```{term}
+#| style.trailing-spaces: true
+printf "%-20s|\n%-20s|\n%-20s|\n" "first" "second" "third"
+```
 
 ## Format-Specific Overrides
 

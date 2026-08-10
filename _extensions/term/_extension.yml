@@ -4,6 +4,8 @@ version: 0.5.0
 contributes:
   filters:
     - term.lua
+  shortcodes:
+    - asciicast-player.lua
   metadata:
     project:
       pre-render:
