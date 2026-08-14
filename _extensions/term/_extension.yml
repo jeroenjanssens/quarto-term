@@ -5,7 +5,7 @@ contributes:
   filters:
     - term.lua
   shortcodes:
-    - asciicast-player.lua
+    - term-player.lua
   metadata:
     project:
       pre-render:

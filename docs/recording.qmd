@@ -46,41 +46,49 @@ The `speed` controls characters per minute (default: 300) and `error-rate` adds 
 
 ## Embedding the player
 
-Use the `asciicast-player` shortcode to embed an interactive player:
+Use the `term-player` shortcode to embed a recording. The player format is auto-detected from the file extension (`.cast` for asciicast, `.termshow` for termshow):
 
 ```markdown
-{{</* asciicast-player src="demo.cast" */>}}
+{{</* term-player src="demo.cast" */>}}
+{{</* term-player src="demo.termshow" */>}}
 ```
 
-{{< asciicast-player src="recording-demo.cast" >}}
+{{< term-player src="recording-demo.cast" >}}
 
 ## Player options
 
 All options are specified as shortcode attributes in kebab-case:
 
 ```markdown
-{{</* asciicast-player src="demo.cast" autoplay=true speed=2 idle-time-limit=2 */>}}
+{{</* term-player src="demo.cast" autoplay=true speed=2 idle-time-limit=2 */>}}
 ```
 
-{{< asciicast-player src="recording-demo.cast" autoplay=true speed=2 idle-time-limit=2 >}}
+{{< term-player src="recording-demo.cast" autoplay=true speed=2 idle-time-limit=2 >}}
 
 ### Available options
 
+Options shared by both formats:
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `src` | string | (required) | Path to the `.cast` file |
+| `src` | string | (required) | Path to the recording file |
+| `autoplay` | boolean | `false` | Start playback automatically |
+| `loop` | boolean/number | `false` | Loop playback |
+| `speed` | number | `1` | Playback speed multiplier |
+| `controls` | boolean/string | `"auto"` | Show control bar |
+| `poster` | string | first frame | Preview frame specification |
+
+Asciicast-only options (`.cast`):
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
 | `cols` | number | from file | Terminal width in columns |
 | `rows` | number | from file | Terminal height in rows |
-| `autoplay` | boolean | `false` | Start playback automatically |
 | `preload` | boolean | `false` | Preload the recording on init |
-| `loop` | boolean/number | `false` | Loop playback; number sets loop count |
 | `start-at` | number/string | `0` | Start time (seconds or "mm:ss") |
-| `speed` | number | `1` | Playback speed multiplier |
 | `idle-time-limit` | number | unlimited | Cap idle time to N seconds |
-| `theme` | string | document theme | Colorscheme name |
-| `poster` | string | first frame | Preview frame specification |
+| `theme` | string | document theme | Colorscheme name (uses quarto-term themes) |
 | `fit` | string | `"width"` | Sizing: "width", "height", "both", "none" |
-| `controls` | boolean/string | `"auto"` | Show control bar |
 | `keystroke-overlay` | boolean | `false` | Show keystroke overlay |
 | `markers` | JSON array | none | Timeline markers |
 | `pause-on-markers` | boolean | `false` | Auto-pause at markers |
@@ -89,15 +97,22 @@ All options are specified as shortcode attributes in kebab-case:
 | `line-height` | number | `1.33` | Line height |
 | `cursor-mode` | string | `"blinking"` | Cursor: "blinking", "steady", "hidden" |
 
+Termshow-only options (`.termshow`):
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `pause-on-chapters` | boolean | `false` | Auto-pause at chapter boundaries |
+| `theme` | string | `"auto"` | Player shell theme: "auto", "dark", "light" |
+
 ## Theming
 
 The player automatically uses the document's colorscheme (set via `style.html.colorscheme-light` / `colorscheme-dark`). To override for a specific player instance, use the `theme` attribute with any quarto-term theme name:
 
 ```markdown
-{{</* asciicast-player src="demo.cast" theme="dracula" */>}}
+{{</* term-player src="demo.cast" theme="dracula" */>}}
 ```
 
-{{< asciicast-player src="recording-demo.cast" theme="dracula" >}}
+{{< term-player src="recording-demo.cast" theme="dracula" >}}
 
 All themes from the [Styling](styling.qmd) page are available.
 
@@ -106,10 +121,10 @@ All themes from the [Styling](styling.qmd) page are available.
 Wrap the player in a window chrome decoration using the same options as `{term}` blocks:
 
 ```markdown
-{{</* asciicast-player src="demo.cast" chrome=true chrome-title="Terminal" */>}}
+{{</* term-player src="demo.cast" chrome=true chrome-title="Terminal" keystroke-overlay=true */>}}
 ```
 
-{{< asciicast-player src="recording-demo.cast" chrome=true chrome-title="Recording" >}}
+{{< term-player src="recording-demo.cast" chrome=true chrome-title="Recording" keystroke-overlay=true >}}
 
 Available chrome options:
 
@@ -137,7 +152,7 @@ extensions:
 
 ````markdown
 ```{term}
-echo "This is being recorded"
+echo "This is being recorded using quarto-term"
 for i in 1 2 3; do
   echo "Step $i"
   sleep 0.3
@@ -159,7 +174,7 @@ q #! literal: false
 ````
 
 ```{term}
-echo "This is being recorded"
+echo "This is being recorded using quarto-term"
 for i in 1 2 3; do
   echo "Step $i"
   sleep 0.3
