@@ -359,6 +359,8 @@ function Pandoc(doc)
     end
   elseif config.format == "typst" then
     -- No special header dependencies needed for typst
+  elseif config.format == "markdown" then
+    -- No special header dependencies needed for markdown/GFM
   else
     local is_epub = quarto and quarto.doc and quarto.doc.is_format and quarto.doc.is_format("epub")
 

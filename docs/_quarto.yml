@@ -6,6 +6,7 @@ project:
     - "./use-dev-binary.sh"
     - "./render-termshow.sh"
   post-render:
+    - "./render-readme.sh"
     - "rm -rf _extensions"
 
 extensions:
