@@ -4,6 +4,7 @@ project:
   pre-render:
     - "cp -r ../_extensions ."
     - "./use-dev-binary.sh"
+    - "./render-termshow.sh"
   post-render:
     - "rm -rf _extensions"
 

@@ -13,17 +13,20 @@ quarto-term is great for:
 - **DevOps and security**: runbooks, CTF writeups, and environment setup guides where colored tool output and multi-step sessions matter
 
 ```{term}
-export NAME="quarto-term"
+date
+EXTENSION_NAME="quarto-term"
 ```
 
 ```{term}
-echo "Hello, $NAME"
+cowsay "Hello, I'm rendered using $EXTENSION_NAME"
 htop #! enter: false, hold: 0.5
 ```
 
 ```{term}
 #| fullscreen: true
 #| timeout: 4
+#| style.chrome.title: htop
+#| style.chrome.shadow: false
 enter #! literal: false, hold: 3.0
 ```
 

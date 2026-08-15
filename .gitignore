@@ -5,8 +5,11 @@ docs/_extensions/
 *_files/
 *.html
 *.cast
+!docs/recording-demo.cast
 *.termshow
+!docs/recording-demo.termshow
 *.termshow.yml
+docs/termshow/
 *.pdf
 demo.md
 docs/_site/
