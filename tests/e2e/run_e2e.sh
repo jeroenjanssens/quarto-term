@@ -119,7 +119,7 @@ echo "Annotations:"
 
 run_test "callouts add term-callout span" \
   '``` {.term}
-#| callouts: [1]
+#| callout: [1]
 echo annotated
 ```' \
   "term-callout"
