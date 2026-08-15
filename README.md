@@ -115,4 +115,6 @@ On first render, the correct binary for your platform is automatically
 downloaded from GitHub Releases and cached locally. Supported platforms:
 macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
 
-See [Get Started](get-started.qmd) for a complete walkthrough.
+See [Get
+Started](https://jeroenjanssens.github.io/quarto-term/get-started.html)
+for a complete walkthrough.

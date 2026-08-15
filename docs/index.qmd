@@ -70,4 +70,10 @@ quarto add jeroenjanssens/quarto-term
 
 On first render, the correct binary for your platform is automatically downloaded from GitHub Releases and cached locally. Supported platforms: macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
 
+::: {.content-visible when-format="html"}
 See [Get Started](get-started.qmd) for a complete walkthrough.
+:::
+
+::: {.content-visible when-format="gfm"}
+See [Get Started](https://jeroenjanssens.github.io/quarto-term/get-started.html) for a complete walkthrough.
+:::
