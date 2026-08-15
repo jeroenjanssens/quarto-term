@@ -108,11 +108,11 @@ do
   h.assert_eq(cell.options.hold, 2.0, "hold: 2.0")
 end
 
--- Test: callouts as list
+-- Test: callout as list
 do
-  local cell = build_cell(h.mock_block("#| callouts: [1, -1]\necho hi\n"), 1, {})
-  h.assert_eq(cell.options.callouts[1], 1, "callouts[1] = 1")
-  h.assert_eq(cell.options.callouts[2], -1, "callouts[2] = -1")
+  local cell = build_cell(h.mock_block("#| callout: [1, -1]\necho hi\n"), 1, {})
+  h.assert_eq(cell.options.callout[1], 1, "callout[1] = 1")
+  h.assert_eq(cell.options.callout[2], -1, "callout[2] = -1")
 end
 
 -- Test: remove as list
@@ -151,11 +151,11 @@ do
   h.assert_eq(cell.options.remove[2], "pattern", "remove comma-sep[2] = pattern")
 end
 
--- Test: callouts comma-separated (no brackets)
+-- Test: callout comma-separated (no brackets)
 do
-  local cell = build_cell(h.mock_block('#| callouts: 1, -1\necho hi\n'), 1, {})
-  h.assert_eq(cell.options.callouts[1], 1, "callouts comma-sep[1] = 1")
-  h.assert_eq(cell.options.callouts[2], -1, "callouts comma-sep[2] = -1")
+  local cell = build_cell(h.mock_block('#| callout: 1, -1\necho hi\n'), 1, {})
+  h.assert_eq(cell.options.callout[1], 1, "callout comma-sep[1] = 1")
+  h.assert_eq(cell.options.callout[2], -1, "callout comma-sep[2] = -1")
 end
 
 -- Test: truncate single value (no brackets, no comma)
