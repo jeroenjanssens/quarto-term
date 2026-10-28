@@ -116,5 +116,5 @@ downloaded from GitHub Releases and cached locally. Supported platforms:
 macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
 
 See [Get
-Started](https://jeroenjanssens.github.io/quarto-term/get-started.html)
+Started](https://quarto-term.jeroenjanssens.com/get-started.html)
 for a complete walkthrough.
