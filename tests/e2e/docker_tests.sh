@@ -288,3 +288,12 @@ check "docker not installed" "$out" "docker not found in PATH"
 out=$(DOCKER_HOST="unix://$WORK_DIR/no-daemon.sock" render "$(docker_doc "" "      image: \"$IMAGE\"
       pull: never" "$(cell 'echo hi')")")
 check "docker daemon not reachable" "$out" "docker daemon is not running or not accessible"
+
+# Some Docker versions exit 0 from `docker info` with an empty server
+# version when the daemon is unreachable; simulate that with a fake docker
+mkdir -p "$WORK_DIR/fake-docker"
+printf '#!/bin/sh\nexit 0\n' > "$WORK_DIR/fake-docker/docker"
+chmod +x "$WORK_DIR/fake-docker/docker"
+out=$(PATH="$WORK_DIR/fake-docker:$PATH" render "$(docker_doc "" "      image: \"$IMAGE\"
+      pull: never" "$(cell 'echo hi')")")
+check "docker daemon not reachable (docker info exits 0)" "$out" "docker daemon is not running or not accessible"

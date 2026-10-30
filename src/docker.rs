@@ -8,11 +8,14 @@ pub fn check_docker_available() -> Result<(), TermError> {
         .arg("info")
         .arg("--format")
         .arg("{{.ServerVersion}}")
-        .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .status();
+        .output();
     match out {
-        Ok(s) if s.success() => Ok(()),
+        // Some Docker versions exit 0 with an empty server version when the
+        // daemon is unreachable, so require both
+        Ok(o) if o.status.success() && !String::from_utf8_lossy(&o.stdout).trim().is_empty() => {
+            Ok(())
+        }
         Ok(_) => Err(TermError::SpawnFailed(
             "docker daemon is not running or not accessible".to_string(),
         )),
