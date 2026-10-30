@@ -1,7 +1,9 @@
 ---
-title: "quarto-term"
+title: "quarto-term ![](logo.svg){.float-end .ms-3 width=\"139\" fig-alt=\"quarto-term logo\"}"
+pagetitle: "quarto-term"
 subtitle: "Persistent interactive terminal sessions for Quarto"
 engine: markdown
+image: logo.png
 ---
 
 **quarto-term** is a [Quarto](https://quarto.org) extension that runs commands in a real, persistent shell session. State carries across cells, colors render faithfully, and you can drive fullscreen TUI apps, all from your `.qmd` file.
@@ -75,5 +77,5 @@ See [Get Started](get-started.qmd) for a complete walkthrough.
 :::
 
 ::: {.content-visible when-format="gfm"}
-See [Get Started](https://jeroenjanssens.github.io/quarto-term/get-started.html) for a complete walkthrough.
+See [Get Started](https://quarto-term.jeroenjanssens.com/get-started.html) for a complete walkthrough.
 :::

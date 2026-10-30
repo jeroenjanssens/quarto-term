@@ -1,4 +1,4 @@
-# quarto-term
+# quarto-term <img src="docs/logo.svg" align="right" height="139" alt="quarto-term logo" />
 
 
 **quarto-term** is a [Quarto](https://quarto.org) extension that runs
@@ -19,7 +19,7 @@ quarto-term is great for:
 
 ```console
 $ date
-Sat Aug 15 14:30:22 CEST 2026
+Fri Oct 30 16:47:01 CET 2026
 
 $ EXTENSION_NAME="quarto-term"
 ```
@@ -40,28 +40,28 @@ $ htop
 
 ```text
 
-    0[||||||||59.5%]   4[         0.0%]   7[          0.0%] 11[||        6.6%]
-    1[||||||||51.3%]   5[         0.0%]   8[          0.0%] 12[||        1.3%]
-    2[||||||| 48.3%]   6[         0.0%]   9[||       10.0%] 13[||        1.3%]
-    3[||||||  42.0%]                     10[||        9.2%]
-  Mem[|||||||||||||||||||||20.0G/24.0G] Tasks: 632, 4264 thr, 0 kthr; 1 runnin
-  Swp[|||||||||||||||||||||2.47G/3.00G] Load average: 2.48 4.14 4.56
-                                        Uptime: 7 days, 02:59:54
+    0[||||||  41.2%]   4[||||    23.8%]   7[||        4.0%] 11[|         1.3%]
+    1[||||||  38.9%]   5[||||    18.5%]   8[|         2.0%] 12[|         0.7%]
+    2[|||||   31.1%]   6[|||     11.9%]   9[|         1.3%] 13[|         1.3%]
+    3[|||||   25.7%]                     10[|         1.3%]
+  Mem[|||||||||||||||||||||20.3G/24.0G] Tasks: 711, 4429 thr, 0 kthr; 2 runnin
+  Swp[|||||||||||||||||||||7.32G/9.00G] Load average: 9.47 8.35 11.52
+                                        Uptime: 10 days, 05:52:15
 
   [Main]
   PID USER       PRI  NI  VIRT   RES S  CPU%▽MEM%   TIME+  Command
- 2052 jeroen      24   0 1577G  206M S   0.7  0.8 10:41.96 /Applications/Obsidia
- 3616 jeroen      26   0  420G  419M S   0.6  1.7  2:25.16 claude --dangerously-
-31502 jeroen      17   0  415G 53808 S   0.4  0.2  0:25.71 /Applications/Adobe I
-22161 jeroen      17   0  464G 53072 S   0.3  0.2  0:23.19 /Applications/Positro
-22165 jeroen      17   0 1860G  230M S   0.2  0.9  0:14.52 /Applications/Positro
-31388 jeroen      24   0  426G  206M S   0.2  0.8  0:34.12 /Applications/Adobe I
-22164 jeroen      17   0 1860G  245M S   0.1  1.0  0:13.15 /Applications/Positro
-90050 jeroen      24   0  461G  215M S   0.1  0.9  1:47.73 /Applications/Utiliti
-31469 jeroen      17   0  415G 40240 S   0.1  0.2  0:13.01 /Applications/Adobe I
-31507 jeroen      17   0  455G 55136 S   0.1  0.2  0:05.97 /Applications/Adobe I
-88757 jeroen      17   0  416G  168M S   0.1  0.7  0:11.82 /Applications/WhatsAp
-33383 jeroen      17   0  415G 12304 S   0.1  0.0  0:04.80 /System/Library/Frame
+ 2369 jeroen      24   0 1628G  201M R   0.9  0.8 15:10.03 /Applications/Obsidia
+99784 jeroen      17   0 1910G  287M S   0.4  1.2  0:00.04 /Applications/Vivaldi
+13635 jeroen      17   0  467G 74080 S   0.3  0.3 16:38.10 /Applications/Elgato
+86488 jeroen      26   0  471G  249M S   0.1  1.0  0:00.37 claude --dangerously-
+66404 jeroen      24   0 1912G  263M S   0.1  1.1  0:11.07 /Applications/Vivaldi
+ 1972 jeroen      17   0  517G  106M S   0.1  0.4 12:17.82 /Applications/Vivaldi
+97207 jeroen      17   0  467G  272M S   0.1  1.1  1:00.80 /Applications/WhatsAp
+25742 jeroen      17   0  466G 14800 S   0.0  0.1  0:00.99 /System/Library/Frame
+ 1255 jeroen      17   0  470G 12960 S   0.0  0.1  6:47.44 osascript /Users/jero
+34740 jeroen      17   0  472G  122M S   0.0  0.5 15:22.61 /Applications/zoom.us
+ 6063 jeroen      17   0  444G 51776 S   0.0  0.2  0:06.33 /Applications/kitty.a
+99841 jeroen      17   0 1911G  103M S   0.0  0.4  0:00.00 /Applications/Vivaldi
 F1Help  F2Setup F3SearchF4FilterF5Tree  F6SortByF7Nice -F8Nice +F9Kill  F10Quit
 ```
 
@@ -116,5 +116,5 @@ downloaded from GitHub Releases and cached locally. Supported platforms:
 macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
 
 See [Get
-Started](https://quarto-term.jeroenjanssens.com/get-started.html)
-for a complete walkthrough.
+Started](https://quarto-term.jeroenjanssens.com/get-started.html) for a
+complete walkthrough.

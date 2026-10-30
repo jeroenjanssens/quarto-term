@@ -26,6 +26,11 @@ test-e2e: build
 build:
     cargo build
 
+# Preview the website locally with live reload
+preview:
+    cargo build --release
+    quarto preview docs
+
 # Release: bump patch version (0.4.0 → 0.4.1), commit, tag, push
 release-patch:
     #!/usr/bin/env bash

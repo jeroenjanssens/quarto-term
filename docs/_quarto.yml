@@ -1,6 +1,9 @@
 project:
   type: website
   output-dir: _site
+  resources:
+    - apple-touch-icon.png
+    - logo.png
   pre-render:
     - "cp -r ../_extensions ."
     - "./use-dev-binary.sh"
@@ -23,6 +26,12 @@ extensions:
 
 website:
   title: "quarto-term"
+  site-url: https://quarto-term.jeroenjanssens.com
+  favicon: favicon.png
+  image: logo.png
+  open-graph: true
+  twitter-card:
+    card-style: summary
   repo-url: https://github.com/jeroenjanssens/quarto-term
   repo-actions: [issue]
   navbar:
@@ -86,3 +95,6 @@ format:
     toc: true
     toc-depth: 3
     css: styles.css
+    include-in-header:
+      - text: |
+          <link rel="apple-touch-icon" href="/apple-touch-icon.png">
