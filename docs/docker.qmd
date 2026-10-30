@@ -154,7 +154,7 @@ For example, with `shell: zsh` the container is started as:
 docker run --rm -i -t <options> <image> zsh --no-rcs
 ```
 
-If the shell doesn't exist in the image, you'll get a timeout error (the prompt never appears).
+If the shell doesn't exist in the image, the session fails to start with `shell process exited unexpectedly`.
 
 ## Error Handling
 
@@ -162,9 +162,9 @@ If the shell doesn't exist in the image, you'll get a timeout error (the prompt 
 |----------|---------------|
 | Docker CLI not installed | `docker not found in PATH` |
 | Docker daemon not running | `docker daemon is not running or not accessible` |
-| Image not found (pull: never) | Container fails to start, timeout error |
+| Image not found (pull: never) | `session failed to start: shell process exited unexpectedly` |
 | Image pull fails | `failed to pull image '<image>'` |
-| Shell not in image | Timeout waiting for prompt |
+| Shell not in image | `session failed to start: shell process exited unexpectedly` |
 
 All errors appear in the rendered output as cell-level error messages (visible in verbose mode on stderr).
 

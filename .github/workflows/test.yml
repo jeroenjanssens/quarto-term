@@ -40,6 +40,8 @@ jobs:
         run: deno test tests/deno/ --allow-read --allow-write --allow-env
 
       - name: End-to-end tests
+        env:
+          QUARTO_TERM_TEST_DOCKER: "1"
         run: |
           export PATH="$PWD/target/debug:$PATH"
           bash tests/e2e/run_e2e.sh

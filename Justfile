@@ -22,6 +22,10 @@ test-deno:
 test-e2e: build
     bash tests/e2e/run_e2e.sh
 
+# End-to-end tests including Docker mode (requires a running Docker daemon)
+test-e2e-docker: build
+    QUARTO_TERM_TEST_DOCKER=1 bash tests/e2e/run_e2e.sh
+
 # Build debug binary
 build:
     cargo build

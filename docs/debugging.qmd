@@ -110,7 +110,7 @@ quarto-term caches execution results to speed up repeated renders. If no cell in
 quarto-term: cache hit (a3f2b1c4)
 ```
 
-The cache is stored in `.quarto-term-cache/` (add to `.gitignore`). To force re-execution:
+The cache is stored in `.quarto-term-cache/` (add to `.gitignore`). Results that contain a cell error are not cached, so failing cells run again on the next render. To force re-execution:
 
 ```yaml
 extensions:
@@ -119,6 +119,14 @@ extensions:
 ```
 
 Or simply delete the `.quarto-term-cache/` directory.
+
+## Using a specific binary
+
+By default, quarto-term uses the binary downloaded into `_extensions/term/bin/`, falling back to a local `target/release` or `target/debug` build. To use a specific binary instead, for example while developing quarto-term itself, set `QUARTO_TERM_BINARY`:
+
+```bash
+QUARTO_TERM_BINARY=./target/debug/quarto-term quarto render
+```
 
 ## Common Issues
 

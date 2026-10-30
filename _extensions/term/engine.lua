@@ -23,6 +23,11 @@ local function detect_platform()
 end
 
 function M.find(filter_dir)
+  local override = os.getenv("QUARTO_TERM_BINARY")
+  if override and override ~= "" then
+    return override
+  end
+
   local project_root = filter_dir:match("(.*/?)_extensions/term/") or "./"
 
   local platform = detect_platform()
