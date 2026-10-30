@@ -42,6 +42,27 @@ local SHELL_PRESETS = {
   sh = { shell = "sh", shell_args = {}, prompt = "$", ps2 = ">" },
 }
 
+-- Resolve a volume spec (host:container[:options]) the way `docker run -v`
+-- does: host paths starting with `.` are relative to cwd; absolute paths
+-- (including Windows drive paths) and named volumes pass through unchanged
+function M.resolve_volume(spec, cwd)
+  local host, rest = spec:match("^(%a:[\\/][^:]*)(:.*)$")
+  if not host then
+    host, rest = spec:match("^([^:]+)(:.*)$")
+  end
+  if not host then
+    return spec
+  end
+  if host == "." then
+    host = cwd
+  elseif host:match("^%.[\\/]") then
+    host = cwd .. "/" .. host:sub(3)
+  elseif host:sub(1, 1) == "." then
+    host = cwd .. "/" .. host
+  end
+  return host .. rest
+end
+
 function M.extract_config(meta)
   local config = {
     shell = "zsh",
@@ -389,16 +410,7 @@ function M.extract_config(meta)
         local vols_val = docker_meta["volumes"]
         if type(vols_val) == "table" then
           for i = 1, #vols_val do
-            local v = meta_str(vols_val[i])
-            local host, rest = v:match("^([^:]+)(:.*)$")
-            if host and not host:match("^/") then
-              host = cwd .. "/" .. host
-            end
-            if host then
-              table.insert(docker.volumes, host .. rest)
-            else
-              table.insert(docker.volumes, v)
-            end
+            table.insert(docker.volumes, M.resolve_volume(meta_str(vols_val[i]), cwd))
           end
         end
       end

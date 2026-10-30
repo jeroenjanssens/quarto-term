@@ -224,13 +224,33 @@ else
   pass "volumes: :ro leaves host untouched"
 fi
 
+mkdir -p "$WORK_DIR/shared"
+echo "parent-content-$$" > "$WORK_DIR/shared/host.txt"
 out=$(cd "$WORK_DIR/doc" && render "$(docker_doc "" "      image: \"$IMAGE\"
       pull: never
       volumes:
         - \"./rel:/rel\"
-        - \"rel:/rel2\"" "$(cell 'cat /rel/host.txt /rel2/host.txt')")")
-check "volumes: relative paths resolve against working directory" "$out" "rel-content-$$
-rel-content-$$"
+        - \"../shared:/shared\"" "$(cell 'cat /rel/host.txt /shared/host.txt')")")
+check "volumes: ./ and ../ resolve against working directory" "$out" "rel-content-$$" "parent-content-$$"
+
+# Named volumes are managed by Docker and outlive the container
+named_volume="quarto-term-e2e-$$"
+docker volume rm "$named_volume" >/dev/null 2>&1 || true
+out=$(cd "$WORK_DIR/doc" && render "$(docker_doc "" "      image: \"$IMAGE\"
+      pull: never
+      volumes:
+        - \"$named_volume:/named\"" "$(cell 'echo "named-$((7 * 6))" > /named/f.txt')")")
+out=$(cd "$WORK_DIR/doc" && render "$(docker_doc "" "      image: \"$IMAGE\"
+      pull: never
+      volumes:
+        - \"$named_volume:/named\"" "$(cell 'cat /named/f.txt')")")
+check "volumes: named volume persists across documents" "$out" "named-42"
+if [ -e "$WORK_DIR/doc/$named_volume" ]; then
+  fail "volumes: named volume is not a host directory" "$WORK_DIR/doc/$named_volume was created"
+else
+  pass "volumes: named volume is not a host directory"
+fi
+docker volume rm "$named_volume" >/dev/null 2>&1 || true
 
 # --- Pull policies ---
 

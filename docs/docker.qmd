@@ -74,7 +74,7 @@ extensions:
         - "./output:/workspace/output"
 ```
 
-Relative host paths (like `./data`) are resolved relative to the document's working directory.
+Relative host paths (starting with `.`, like `./data`) are resolved relative to the document's working directory.
 
 ### Full-Featured
 
@@ -122,17 +122,21 @@ extensions:
 
 ## Volume Mounts
 
-Volume mount syntax follows Docker's `-v` flag: `host_path:container_path[:options]`.
+Volume mount syntax follows Docker's `-v` flag: `source:container_path[:options]`. The source is interpreted the same way as by `docker run -v`:
 
-- **Relative host paths** (starting with `./` or not starting with `/`) are resolved relative to the document's working directory.
-- **Absolute host paths** are used as-is.
+- **Relative host paths** (starting with `.`, like `./data` or `../shared`) are resolved relative to the document's working directory.
+- **Absolute host paths** (like `/tmp/cache` or, on Windows, `C:\data`) are used as-is.
+- **Named volumes** (a bare name like `cache`) are Docker-managed volumes that outlive the container, so data persists across renders. Docker creates them on first use.
 - **Options** like `:ro` (read-only) are passed through.
 
 ```yaml
 volumes:
   - "./data:/data"           # relative to document directory
   - "/tmp/cache:/cache:ro"   # absolute, read-only
+  - "pip-cache:/root/.cache" # named volume
 ```
+
+To mount a directory next to your document, start the path with `./`. A bare name like `data:/data` mounts a named volume called `data`, not the `data` directory.
 
 ## Pull Policies
 

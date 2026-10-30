@@ -333,4 +333,33 @@ do
   h.assert_eq(config.docker.volumes[2], "/abs/path:/abs:ro", "absolute volume unchanged")
 end
 
+-- Test: docker volumes keep named volumes
+do
+  local meta = { extensions = { term = { docker = {
+    image = "alpine",
+    volumes = { "myvol:/data" },
+  } } } }
+  local config = extract_config(meta)
+  h.assert_eq(config.docker.volumes[1], "myvol:/data", "named volume in config unchanged")
+end
+
+-- Test: resolve_volume follows docker run -v
+do
+  local resolve = config_mod.resolve_volume
+  local cwd = "/doc"
+  h.assert_eq(resolve("./data:/data", cwd), "/doc/data:/data", "./ is relative")
+  h.assert_eq(resolve("./data:/data:ro", cwd), "/doc/data:/data:ro", "options preserved")
+  h.assert_eq(resolve(".:/work", cwd), "/doc:/work", ". is the working directory")
+  h.assert_eq(resolve("../shared:/shared", cwd), "/doc/../shared:/shared", "../ is relative")
+  h.assert_eq(resolve("..:/parent", cwd), "/doc/..:/parent", ".. is relative")
+  h.assert_eq(resolve(".\\data:/data", cwd), "/doc/data:/data", ".\\ is relative (Windows)")
+  h.assert_eq(resolve("/abs/path:/abs", cwd), "/abs/path:/abs", "absolute path unchanged")
+  h.assert_eq(resolve("myvol:/data", cwd), "myvol:/data", "named volume unchanged")
+  h.assert_eq(resolve("my.vol:/data", cwd), "my.vol:/data", "named volume with dot unchanged")
+  h.assert_eq(resolve(".hidden:/data", cwd), "/doc/.hidden:/data", "dot-prefixed name is relative, like docker")
+  h.assert_eq(resolve("C:\\data:/data", cwd), "C:\\data:/data", "Windows drive path unchanged")
+  h.assert_eq(resolve("C:/data:/data:ro", cwd), "C:/data:/data:ro", "Windows drive path with / unchanged")
+  h.assert_eq(resolve("/data", cwd), "/data", "anonymous volume unchanged")
+end
+
 h.finish("extract_config")
