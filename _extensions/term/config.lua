@@ -44,21 +44,33 @@ local SHELL_PRESETS = {
 
 -- Resolve a volume spec (host:container[:options]) the way `docker run -v`
 -- does: host paths starting with `.` are relative to cwd; absolute paths
--- (including Windows drive paths) and named volumes pass through unchanged
+-- (including Windows drive paths) and named volumes pass through unchanged.
+-- Relative paths are joined with the separator cwd uses, so a Windows cwd
+-- (C:\Users\doc) never yields a mixed path like C:\Users\doc/data
 function M.resolve_volume(spec, cwd)
   local host, rest = spec:match("^(%a:[\\/][^:]*)(:.*)$")
   if not host then
     host, rest = spec:match("^([^:]+)(:.*)$")
   end
-  if not host then
+  if not host or host:sub(1, 1) ~= "." then
     return spec
+  end
+  local sep = cwd:find("\\", 1, true) and "\\" or "/"
+  local function join(relative)
+    if sep == "\\" then
+      relative = relative:gsub("/", "\\")
+    end
+    if cwd:sub(-1) == sep then
+      return cwd .. relative
+    end
+    return cwd .. sep .. relative
   end
   if host == "." then
     host = cwd
   elseif host:match("^%.[\\/]") then
-    host = cwd .. "/" .. host:sub(3)
-  elseif host:sub(1, 1) == "." then
-    host = cwd .. "/" .. host
+    host = join(host:sub(3))
+  else
+    host = join(host)
   end
   return host .. rest
 end

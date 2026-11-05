@@ -3,8 +3,8 @@
 Open tasks, roughly in priority order.
 
 1. **Windows is untested for Docker mode.**
-   - `resolve_volume` handles drive paths in the host part. But relative paths are joined as `cwd .. "/" .. host`, which gives mixed separators on Windows (`C:\Users\doc/data`). Docker Desktop probably accepts this, but nobody has verified it.
-   - Whether the PTY plus `docker run -i -t` approach works on Windows at all is also unverified. CI only runs on `ubuntu-latest`.
+   - Volume path resolution is covered by unit tests with a Windows working directory, but whether Docker Desktop accepts the resulting paths has not been checked on a real machine.
+   - Whether the PTY plus `docker run -i -t` approach works on Windows at all is unverified. CI only runs on `ubuntu-latest`.
 2. **Make the cache key robust.**
    - Using the binary's *file size* in the key means a rebuild of the same size reuses stale results; this has bitten local development.
    - Options: hash the binary contents (cost: reading ~3 MB per render; could memoize by mtime+size), or use mtime+size.
