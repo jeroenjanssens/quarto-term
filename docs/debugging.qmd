@@ -110,7 +110,37 @@ quarto-term caches execution results to speed up repeated renders. If no cell in
 quarto-term: cache hit (a3f2b1c4)
 ```
 
-The cache is stored in `.quarto-term-cache/` (add to `.gitignore`). Results that contain a cell error are not cached, so failing cells run again on the next render. To force re-execution:
+The cache is stored in `.quarto-term-cache/` (add to `.gitignore`), one entry per document. Results that contain a cell error are not cached, so failing cells run again on the next render.
+
+The cache key covers:
+
+- all cells of the document and the quarto-term configuration;
+- the quarto-term version and the binary itself;
+- in Docker mode, the local image's id, so a new image behind the same tag (e.g. `:latest`) re-runs the document. With `pull: always`, the image is pulled before the key is computed;
+- the contents of host files sourced through `init`;
+- the contents of the files and directories listed in `cache-depends`.
+
+It does **not** cover the contents of mounted volumes or anything fetched from the network. If cells depend on files that aren't in the document, such as scripts in a mounted directory that `init` sources inside the container, list them in `cache-depends` (paths are relative to the working directory; directories are hashed recursively):
+
+```yaml
+extensions:
+  term:
+    init: "source /setup/setup.zsh"
+    cache-depends:
+      - setup              # mounted at /setup
+    docker:
+      image: "myorg/toolbox:latest"
+      volumes:
+        - "./setup:/setup:ro"
+```
+
+Hashing is cheap for scripts, but avoid listing large data directories. Run with `verbose: true` to see the key and what went into it:
+
+```
+quarto-term: cache key 5d41402a (engine 7c4a8d09, image 1aeded7acb69, 3 dependency files)
+```
+
+To force re-execution:
 
 ```yaml
 extensions:

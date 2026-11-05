@@ -67,6 +67,58 @@ h.assert_nil(run('{"cells":["invalid"]}'), "invalid output: returns nil")
 run('{"cells":["invalid"]}')
 h.assert_eq(calls(), 7, "invalid output: second run executes again")
 
+-- Test: key() changes with each part and is stable otherwise
+do
+  local base = { version = "1", engine_hash = "e", image_id = "sha256:a",
+    dependencies = { "f\0h1" }, input_json = "{}" }
+  local function with(k, v)
+    local t = {}
+    for key, val in pairs(base) do t[key] = val end
+    t[k] = v
+    return cache.key(t)
+  end
+  local k = cache.key(base)
+  h.assert_eq(cache.key(base), k, "key: stable for the same parts")
+  h.assert_true(with("version", "2") ~= k, "key: version")
+  h.assert_true(with("engine_hash", "x") ~= k, "key: engine binary")
+  h.assert_true(with("image_id", "sha256:b") ~= k, "key: docker image")
+  h.assert_true(with("dependencies", { "f\0h2" }) ~= k, "key: dependency contents")
+  h.assert_true(with("input_json", "{\"x\":1}") ~= k, "key: request")
+end
+
+-- Test: dependency_hashes walks directories, is sorted, records missing files
+do
+  local deps = dir .. "/deps"
+  os.execute('mkdir -p "' .. deps .. '/sub"')
+  local function write(path, text)
+    local wf = io.open(path, "w"); wf:write(text); wf:close()
+  end
+  write(deps .. "/b.sh", "b")
+  write(deps .. "/sub/a.sh", "a")
+  local hashes = cache.dependency_hashes({ deps, dir .. "/does-not-exist" })
+  h.assert_eq(#hashes, 3, "dependency_hashes: two files + one missing path")
+  h.assert_true(hashes[1] < hashes[2] and hashes[2] < hashes[3], "dependency_hashes: sorted")
+  local missing = false
+  for _, entry in ipairs(hashes) do
+    if entry:match("does%-not%-exist\0missing$") then missing = true end
+  end
+  h.assert_true(missing, "dependency_hashes: missing path recorded")
+
+  -- Changing a dependency makes the next run a cache miss
+  respond('[{"id":1,"markup":"ok","error":null}]')
+  local before = calls()
+  local function run_deps()
+    return cache.run('{"cells":["deps"]}', { cache = true, engine = engine, version = "test",
+      dependencies = { deps } })
+  end
+  run_deps()
+  run_deps()
+  h.assert_eq(calls(), before + 1, "dependencies unchanged: cache hit")
+  write(deps .. "/sub/a.sh", "changed")
+  run_deps()
+  h.assert_eq(calls(), before + 2, "dependency changed: cache miss")
+end
+
 os.execute('rm -rf "' .. dir .. '"')
 
 h.finish("cache")

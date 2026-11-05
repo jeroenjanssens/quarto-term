@@ -11,6 +11,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 |--------|:-------:|:--------:|:----:|:----:|---------|-------------|
 | `assert` | | | x | x | (none) | Regex/substring pattern to validate in output |
 | `cache` | x | x | | | `true` | Cache results to skip re-execution on unchanged inputs |
+| `cache-depends` | x | x | | | `[]` | Host files or directories whose contents are part of the cache key (see [Caching](debugging.qmd#caching)) |
 | `strip-auto-indent` | x | x | | | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
 | `callout` | | | x | | `[]` | Line specs to annotate with callout markers |
 | `callout-values` | x | x | x | | `"123456789"` | Characters or list of strings for callout labels |

@@ -130,9 +130,14 @@ function Pandoc(doc)
   local _marker = config.marker
   local _chrome = config._chrome
   local _cache = config._cache
+  local _cache_dependencies = {}
+  for _, path in ipairs(config._init_files or {}) do table.insert(_cache_dependencies, path) end
+  for _, path in ipairs(config._cache_depends or {}) do table.insert(_cache_dependencies, path) end
   config.marker = nil
   config._cache = nil
   config._chrome = nil
+  config._init_files = nil
+  config._cache_depends = nil
 
   local term_positions = {}
   local cells = {}
@@ -267,6 +272,24 @@ function Pandoc(doc)
     cells = cells,
   }
 
+  -- With pull: always and caching, pull before computing the cache key, so
+  -- a new image behind the same tag is a cache miss. The binary then only
+  -- needs to check that the image is present.
+  if _cache ~= false and config.docker and config.docker.pull == "always" then
+    local cmd = "docker pull -q"
+    if config.docker.platform then
+      cmd = cmd .. " --platform '" .. config.docker.platform:gsub("'", "") .. "'"
+    end
+    cmd = cmd .. " '" .. config.docker.image:gsub("'", "") .. "' >&2"
+    if config.verbose then
+      io.stderr:write("quarto-term: pulling image " .. config.docker.image .. "\n")
+    end
+    local ok = os.execute(cmd)
+    if ok == true or ok == 0 then
+      config.docker.pull = "missing"
+    end
+  end
+
   local input_json = pandoc.json.encode(request)
 
   local results = cache.run(input_json, {
@@ -274,6 +297,8 @@ function Pandoc(doc)
     engine = ENGINE,
     verbose = config.verbose,
     version = VERSION,
+    docker_image = config.docker and config.docker.image or nil,
+    dependencies = _cache_dependencies,
   })
   if not results then
     if next(replacements) then

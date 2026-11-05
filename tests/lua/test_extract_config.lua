@@ -334,6 +334,18 @@ do
   h.assert_nil(config._callout_values, "no callout-values by default")
 end
 
+-- Test: cache-depends paths are resolved against the working directory
+do
+  local cwd = pandoc.system.get_working_directory()
+  local config = extract_config({ extensions = { term = {
+    ["cache-depends"] = { "container", "./scripts/", "/abs/file.sh" } } } })
+  h.assert_eq(config._cache_depends[1], cwd .. "/container", "cache-depends relative path")
+  h.assert_eq(config._cache_depends[2], cwd .. "/scripts", "cache-depends ./ and trailing slash")
+  h.assert_eq(config._cache_depends[3], "/abs/file.sh", "cache-depends absolute path")
+  config = extract_config({ extensions = { term = { ["cache-depends"] = "setup.sh" } } })
+  h.assert_eq(config._cache_depends[1], cwd .. "/setup.sh", "cache-depends single value")
+end
+
 -- Test: docker config without image is ignored
 do
   local meta = { extensions = { term = { docker = { platform = "linux/amd64" } } } }

@@ -147,6 +147,52 @@ check "shell entrypoint + explicit shell + empty entrypoint: works" "$out" "ep-c
 
 docker image rm -f "$SHELL_EP_IMAGE" > /dev/null 2>&1 || true
 
+# --- Cache key includes the image ---
+
+CACHE_IMAGE="quarto-term-test-cache:latest"
+CACHE_DIR="$WORK_DIR/cache-test"
+mkdir -p "$CACHE_DIR"
+cache_doc() {
+  printf -- '---
+extensions:
+  term:
+    cache: true
+    timeout: 30.0
+    shell: sh
+    shell-args: []
+    docker:
+      image: "%s"
+      pull: never
+---
+
+``` {.term}
+echo "run-$(od -An -N4 -tu4 /dev/urandom | tr -d " ")"
+```
+' "$CACHE_IMAGE"
+}
+render_in_cache_dir() {
+  (cd "$CACHE_DIR" && render "$(cache_doc)") | grep -o 'run-[0-9][0-9]*' | tail -1
+}
+
+docker tag "$IMAGE" "$CACHE_IMAGE"
+first=$(render_in_cache_dir)
+second=$(render_in_cache_dir)
+if [ -n "$first" ] && [ "$first" = "$second" ]; then
+  pass "cache: same image is a cache hit"
+else
+  fail "cache: same image is a cache hit" "first='$first' second='$second'"
+fi
+
+docker pull -q alpine:3 > /dev/null 2>&1 || true
+docker tag alpine:3 "$CACHE_IMAGE"
+third=$(render_in_cache_dir)
+if [ -n "$third" ] && [ "$third" != "$second" ]; then
+  pass "cache: new image behind the same tag is a cache miss"
+else
+  fail "cache: new image behind the same tag is a cache miss" "second='$second' third='$third'"
+fi
+docker image rm -f "$CACHE_IMAGE" > /dev/null 2>&1 || true
+
 # --- Interaction with term options ---
 
 out=$(render "$(docker_doc '    prompt: "%"' "      image: \"$IMAGE\"
