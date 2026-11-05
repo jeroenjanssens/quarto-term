@@ -178,7 +178,13 @@ ctrl-c #! literal: false, delay: 0.5
 
 ## Line Specs
 
-The `remove`, `truncate`, and `callout` options accept a list of **line specs** that identify lines in the rendered output (input + output combined). Line numbers refer to the original output before any removals or truncations.
+The `remove`, `truncate`, and `callout` options accept a list of **line specs** that identify lines in the rendered output (input + output combined).
+
+The options are applied in this order, and line numbers refer to the output as it is at that step:
+
+1. `remove` counts the full output;
+2. `truncate` counts the output after `remove`;
+3. `callout` counts the output after `remove` and `truncate`, so its line numbers are those of the lines you see in the rendered block (a "[N lines truncated]" message counts as one line).
 
 | Format | Example | Description |
 |--------|---------|-------------|
@@ -188,7 +194,7 @@ The `remove`, `truncate`, and `callout` options accept a list of **line specs** 
 | Open start | `":5"` | First 5 lines (lines 1-5) |
 | Open end | `"5:"` | From line 5 to the end |
 | Negative range | `"-3:"` | Last 3 lines |
-| Regex | `"error"` | Lines matching the pattern |
+| Regex | `"error"` | Lines matching the pattern (for `callout`: the first matching line) |
 
 Values are comma-separated:
 
@@ -199,6 +205,8 @@ Values are comma-separated:
 ```
 
 Use bracket syntax when a regex contains a comma: `#| remove: ["foo,bar"]`.
+
+For `callout`, markers are numbered in order: one per integer or regex, and one per line for a range. So `#| callout: "2:4", -1` marks lines 2, 3, and 4 with markers 1, 2, and 3, and the last line with marker 4. A spec that matches no line still uses up its marker, so the numbering stays in sync with the list of explanations below the cell.
 
 For `truncate`, removed lines are replaced with an italic "[N lines truncated]" message. Consecutive truncated lines are grouped into a single message.
 
