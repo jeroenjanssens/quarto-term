@@ -85,46 +85,40 @@ pub fn apply_callouts(
         return;
     }
 
-    for (n, spec) in specs.iter().enumerate() {
-        let val = match get_callout_value(values, n) {
-            Some(v) => v,
-            None => continue,
-        };
+    // Markers are numbered in order: one per index or regex spec, and one
+    // per line for a range (so "2:4" marks lines 2, 3, and 4).
+    let mut n = 0;
+    let mark = |lines: &mut Vec<RenderedLine>, idx: Option<usize>, n: usize| {
+        let Some(val) = get_callout_value(values, n) else { return };
         let marker = html_escape(&format_str.replace("{}", &val));
+        if let Some(line) = idx.and_then(|i| lines.get_mut(i)) {
+            line.markup = format!(
+                "{} <span class=\"term-callout\">{}</span>",
+                line.markup, marker
+            );
+        }
+    };
 
+    for spec in specs {
         match spec {
             LineSpec::Index(i) => {
-                if let Some(idx) = resolve_single_index(*i, lines.len()) {
-                    if let Some(line) = lines.get_mut(idx) {
-                        line.markup = format!(
-                            "{} <span class=\"term-callout\">{}</span>",
-                            line.markup, marker
-                        );
-                    }
+                let idx = resolve_single_index(*i, lines.len());
+                mark(lines, idx, n);
+                n += 1;
+            }
+            LineSpec::Expr(s) if is_range_syntax(s) => {
+                for idx in parse_range_spec(s, lines.len()) {
+                    mark(lines, Some(idx), n);
+                    n += 1;
                 }
             }
             LineSpec::Expr(s) => {
-                if is_range_syntax(s) {
-                    let indices = parse_range_spec(s, lines.len());
-                    if let Some(&idx) = indices.first() {
-                        if let Some(line) = lines.get_mut(idx) {
-                            line.markup = format!(
-                                "{} <span class=\"term-callout\">{}</span>",
-                                line.markup, marker
-                            );
-                        }
-                    }
-                } else if let Ok(re) = Regex::new(s) {
-                    for line in lines.iter_mut() {
-                        if re.is_match(&line.text) {
-                            line.markup = format!(
-                                "{} <span class=\"term-callout\">{}</span>",
-                                line.markup, marker
-                            );
-                            break;
-                        }
-                    }
-                }
+                // A regex marks the first matching line
+                let idx = Regex::new(s)
+                    .ok()
+                    .and_then(|re| lines.iter().position(|line| re.is_match(&line.text)));
+                mark(lines, idx, n);
+                n += 1;
             }
         }
     }
@@ -414,6 +408,36 @@ mod tests {
         apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(2)], &values, "[{}]");
         assert!(lines[0].markup.contains("[one]"));
         assert!(lines[1].markup.contains("[two]"));
+    }
+
+    #[test]
+    fn apply_callouts_range_marks_every_line() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b"), make_rendered("c"), make_rendered("d"), make_rendered("e")];
+        apply_callouts(
+            &mut lines,
+            &[LineSpec::Expr("2:4".to_string()), LineSpec::Index(5)],
+            &default_callout_values(),
+            "<{}>",
+        );
+        assert!(!lines[0].markup.contains("term-callout"));
+        assert!(lines[1].markup.ends_with("&lt;1&gt;</span>"));
+        assert!(lines[2].markup.ends_with("&lt;2&gt;</span>"));
+        assert!(lines[3].markup.ends_with("&lt;3&gt;</span>"));
+        // Numbering continues after the range
+        assert!(lines[4].markup.ends_with("&lt;4&gt;</span>"));
+    }
+
+    #[test]
+    fn apply_callouts_unmatched_spec_keeps_numbering() {
+        let mut lines = vec![make_rendered("a"), make_rendered("b")];
+        apply_callouts(
+            &mut lines,
+            &[LineSpec::Expr("nomatch".to_string()), LineSpec::Index(2)],
+            &default_callout_values(),
+            "<{}>",
+        );
+        // The regex didn't match, but it still takes marker 1
+        assert!(lines[1].markup.ends_with("&lt;2&gt;</span>"));
     }
 
     #[test]

@@ -201,6 +201,24 @@ echo annotated
 ```' \
   "term-callout"
 
+# remove drops both lines of the first command; line 2 is then the output
+# of the second command (before removal, line 2 would be the removed output)
+run_test "callout counts lines after remove" \
+  '``` {.term}
+#| remove: ["hidden"]
+#| callout: [2]
+echo "hidden-$((1 + 1))"
+echo "shown-$((2 + 2))"
+```' \
+  'shown-4 <span class="term-callout">&lt;1&gt;'
+
+run_test "callout range marks every line" \
+  '``` {.term}
+#| callout: "1:3"
+printf "r%s\n" 1 2
+```' \
+  'r2 <span class="term-callout">&lt;3&gt;'
+
 run_test_doc "document-level callout-values and callout-format" \
   '---
 extensions:
