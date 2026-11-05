@@ -44,8 +44,9 @@ release-patch:
     new="${major}.${minor}.$((patch + 1))"
     sed -i '' "s/^version: .*/version: ${new}/" _extensions/term/_extension.yml
     sed -i '' "s/^version = .*/version = \"${new}\"/" Cargo.toml
+    sed -i '' "s/^local VERSION = .*/local VERSION = \"${new}\"/" _extensions/term/term.lua
     cargo update --workspace --offline --quiet
-    git add _extensions/term/_extension.yml Cargo.toml Cargo.lock
+    git add _extensions/term/_extension.yml Cargo.toml Cargo.lock _extensions/term/term.lua
     git commit -m "Bump version to ${new}"
     git tag "v${new}"
     git push origin main "v${new}"
@@ -60,8 +61,9 @@ release-minor:
     new="${major}.$((minor + 1)).0"
     sed -i '' "s/^version: .*/version: ${new}/" _extensions/term/_extension.yml
     sed -i '' "s/^version = .*/version = \"${new}\"/" Cargo.toml
+    sed -i '' "s/^local VERSION = .*/local VERSION = \"${new}\"/" _extensions/term/term.lua
     cargo update --workspace --offline --quiet
-    git add _extensions/term/_extension.yml Cargo.toml Cargo.lock
+    git add _extensions/term/_extension.yml Cargo.toml Cargo.lock _extensions/term/term.lua
     git commit -m "Bump version to ${new}"
     git tag "v${new}"
     git push origin main "v${new}"
@@ -76,8 +78,9 @@ release-major:
     new="$((major + 1)).0.0"
     sed -i '' "s/^version: .*/version: ${new}/" _extensions/term/_extension.yml
     sed -i '' "s/^version = .*/version = \"${new}\"/" Cargo.toml
+    sed -i '' "s/^local VERSION = .*/local VERSION = \"${new}\"/" _extensions/term/term.lua
     cargo update --workspace --offline --quiet
-    git add _extensions/term/_extension.yml Cargo.toml Cargo.lock
+    git add _extensions/term/_extension.yml Cargo.toml Cargo.lock _extensions/term/term.lua
     git commit -m "Bump version to ${new}"
     git tag "v${new}"
     git push origin main "v${new}"

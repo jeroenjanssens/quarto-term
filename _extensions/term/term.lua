@@ -1,5 +1,5 @@
 local FILTER_DIR = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
-local VERSION = "0.5.0"
+local VERSION = "0.6.0"
 
 local cell_mod = dofile(FILTER_DIR .. "cell.lua")
 local chrome = dofile(FILTER_DIR .. "chrome.lua")
