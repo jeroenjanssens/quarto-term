@@ -97,6 +97,59 @@ echo $E2E_VAR
 ```' \
   "success42"
 
+# --- Nested cells ---
+echo ""
+echo "Nested cells:"
+
+run_test "cell in definition list runs" \
+  'Term
+
+:   Definition:
+
+    ``` {.term}
+    echo nested-in-dl
+    ```' \
+  'term-output">nested-in-dl'
+
+run_test "cell in div runs" \
+  '::: {.callout-note}
+``` {.term}
+echo nested-in-div
+```
+:::' \
+  'term-output">nested-in-div'
+
+run_test "cell in block quote runs" \
+  '> ``` {.term}
+> echo nested-in-quote
+> ```' \
+  'term-output">nested-in-quote'
+
+run_test "nested cells run in document order" \
+  '``` {.term}
+export ORDER=1
+```
+
+- Item:
+
+    ``` {.term}
+    export ORDER="${ORDER}2"
+    ```
+
+``` {.term}
+echo "order-${ORDER}3"
+```' \
+  'order-123'
+
+run_test "eval: false in nested cell becomes static block" \
+  '::: {.callout-note}
+``` {.term}
+#| eval: false
+echo static-nested
+```
+:::' \
+  'sourceCode bash'
+
 # --- Echo modes ---
 echo ""
 echo "Echo modes:"
