@@ -10,16 +10,20 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: aarch64-apple-darwin
+          # Both macOS binaries are built in one job (cross-compiling one of
+          # them), so a release needs only one macOS runner
+          - name: macos
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
             os: macos-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
-          - target: x86_64-unknown-linux-gnu
+          - name: linux-x86_64
+            targets: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-          - target: aarch64-unknown-linux-gnu
+          - name: linux-aarch64
+            targets: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             cross: true
-          - target: x86_64-pc-windows-msvc
+          - name: windows-x86_64
+            targets: x86_64-pc-windows-msvc
             os: windows-latest
             ext: .exe
 
@@ -30,7 +34,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.targets }}
 
       - name: Install cross-compilation tools
         if: matrix.cross
@@ -40,20 +44,21 @@ jobs:
           echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
           echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
 
-      - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Rename binary
+      - name: Build and rename binaries
         shell: bash
         run: |
-          src="target/${{ matrix.target }}/release/quarto-term${{ matrix.ext }}"
-          dst="quarto-term-${{ matrix.target }}${{ matrix.ext }}"
-          cp "$src" "$dst"
+          for target in ${TARGETS//,/ }; do
+            cargo build --release --target "$target"
+            cp "target/$target/release/quarto-term${EXT}" "quarto-term-${target}${EXT}"
+          done
+        env:
+          TARGETS: ${{ matrix.targets }}
+          EXT: ${{ matrix.ext }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.target }}
-          path: quarto-term-${{ matrix.target }}${{ matrix.ext }}
+          name: binary-${{ matrix.name }}
+          path: quarto-term-*
 
   release:
     needs: build
