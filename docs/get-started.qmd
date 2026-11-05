@@ -141,7 +141,7 @@ extensions:
       colorscheme: solarized-dark
 ```
 
-Individual pages still need `engine: markdown` in their front matter (or use the knitr/Jupyter setup described below).
+Pages with only terminal cells still need `engine: markdown` in their front matter, or use ```` ```{.term} ```` (see [Using with knitr or Jupyter](#using-with-knitr-or-jupyter)).
 
 ## Using in a presentation
 
@@ -194,19 +194,15 @@ See the [Reference](reference.qmd#output-formats) for the complete format suppor
 
 ## Using with knitr or Jupyter
 
-For documents that only contain terminal cells, `engine: markdown` is recommended. If you need to mix `{term}` cells with `{r}` or `{python}` cells:
+Terminal cells can be written as ```` ```{term} ```` or ```` ```{.term} ````; both are the same to quarto-term. The difference is how Quarto's engines treat them:
 
-**Jupyter** works without changes. `{term}` blocks pass through to the Lua filter.
+| Page | ```` ```{term} ```` | ```` ```{.term} ```` |
+|---|---|---|
+| Only terminal cells | Needs `engine: markdown` (otherwise Quarto picks Jupyter) | Works as is |
+| With `{python}` cells (Jupyter) | Works | Works |
+| With `{r}` cells (knitr) | Doesn't work: knitr consumes the chunks, so cell options are lost and `include: false` chunks never run | Works |
 
-**knitr** requires registering a pass-through engine in a setup chunk:
+So for pages with R code, write terminal cells as ```` ```{.term} ````; knitr leaves those alone. quarto-term warns when it finds ```` ```{term} ```` chunks that knitr has processed.
 
-````markdown
-```{r}
-#| include: false
-knitr::knit_engines$set(term = function(options) {
-  knitr:::one_string(c("```{term}", options$code, "```"))
-})
-```
-````
+Terminal cells always run after all Python or R cells have finished: the terminal session runs during the Pandoc filter phase, not during engine execution. Terminal cells can use files that Python or R cells created, but not the other way around. With [Docker](docker.qmd), Python and R run on the host and terminal cells in the container, so they only share files through volumes.
 
-Note that `{term}` cells are always executed after all knitr/Jupyter cells have finished. The terminal session runs during the Pandoc filter phase, not during engine execution.

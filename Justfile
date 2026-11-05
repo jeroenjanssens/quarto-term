@@ -26,6 +26,10 @@ test-e2e: build
 test-e2e-docker: build
     QUARTO_TERM_TEST_DOCKER=1 bash tests/e2e/run_e2e.sh
 
+# Render tests through Quarto with Jupyter and knitr (needs quarto; uv and R/knitr optional)
+test-quarto: build
+    bash tests/quarto/run.sh
+
 # Build debug binary
 build:
     cargo build

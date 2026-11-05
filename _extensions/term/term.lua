@@ -147,13 +147,29 @@ function Pandoc(doc)
   -- replaced in a second walk with the same order (see replace_term_blocks).
   local term_blocks = {}
   local replacements = {}
+  local knitr_processed = false
   doc:walk({
     CodeBlock = function(block)
       if is_term_block(block) then
         table.insert(term_blocks, block)
+        -- knitr turns ```{term} chunks into {.term .cell-code} blocks after
+        -- acting on (and removing) their cell options
+        for _, cls in ipairs(block.classes) do
+          if cls == "cell-code" then knitr_processed = true end
+        end
       end
     end,
   })
+  if knitr_processed then
+    local msg = "quarto-term: this document uses knitr, which consumed the ```{term} chunks "
+      .. "(their cell options are lost, and include: false chunks don't run). "
+      .. "Write ```{.term} instead; knitr leaves those alone."
+    if quarto and quarto.log and quarto.log.warning then
+      quarto.log.warning(msg)
+    else
+      io.stderr:write("[WARNING] " .. msg .. "\n")
+    end
+  end
 
   local function replace_term_blocks()
     local n = 0
