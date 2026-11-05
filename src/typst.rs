@@ -55,6 +55,9 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
         .filter(|name| renderer::is_safe_font_name(name))
         .unwrap_or_else(|| "Courier New".to_string());
     text_params.push(format!("font: \"{}\"", font_name));
+    // Show exactly what a terminal shows: no ligatures or contextual alternates
+    text_params.push("ligatures: false".to_string());
+    text_params.push("features: (calt: 0)".to_string());
     if let Some(fs) = theme.font_size {
         if let Some(pt) = css_size_to_typst(fs) {
             text_params.push(format!("size: {pt}"));
@@ -238,6 +241,14 @@ mod tests {
         assert!(result.contains("size: 0.80em"));
         assert!(result.contains("fill: rgb(\"#c0caf5\")"));
         assert!(result.contains("leading: 0.3em"));
+    }
+
+    #[test]
+    fn render_lines_to_typst_disables_ligatures() {
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: Some("JetBrains Mono"), line_height: None };
+        let result = render_lines_to_typst(&[rendered("a == b")], &theme);
+        assert!(result.contains("ligatures: false"));
+        assert!(result.contains("features: (calt: 0)"));
     }
 
     #[test]

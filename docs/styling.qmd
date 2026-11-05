@@ -64,6 +64,15 @@ echo "Courier New font"
 echo "Georgia (serif) font"
 ```
 
+Ligatures are turned off in terminal output (`font-variant-ligatures: none` and the OpenType features `liga` and `calt`), so a font like JetBrains Mono shows `==` and `->` as two characters, just like a terminal does. To turn them back on in HTML, override the rule in your own CSS:
+
+```css
+pre.term-output, pre.term-screen, pre.term-source {
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+}
+```
+
 ### `font-size`
 
 Controls the font size. Accepts `em` or `pt` units:
