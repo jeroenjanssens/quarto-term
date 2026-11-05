@@ -322,6 +322,18 @@ do
   h.assert_nil(config.docker.entrypoint, "no entrypoint by default")
 end
 
+-- Test: callout-values / callout-format at document/project level
+do
+  local config = extract_config({ extensions = { term = {
+    ["callout-values"] = "➊➋➌", ["callout-format"] = "{}" } } })
+  h.assert_eq(config._callout_values, "➊➋➌", "callout-values string")
+  h.assert_eq(config._callout_format, "{}", "callout-format")
+  config = extract_config({ extensions = { term = { ["callout-values"] = { "A", "B" } } } })
+  h.assert_eq(config._callout_values[2], "B", "callout-values list")
+  config = extract_config({ extensions = { term = {} } })
+  h.assert_nil(config._callout_values, "no callout-values by default")
+end
+
 -- Test: docker config without image is ignored
 do
   local meta = { extensions = { term = { docker = { platform = "linux/amd64" } } } }

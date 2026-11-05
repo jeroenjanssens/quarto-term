@@ -208,6 +208,9 @@ function Pandoc(doc)
   end
 
   config._fmt_key = nil
+  -- Cell defaults, already applied by build_cell
+  config._callout_values = nil
+  config._callout_format = nil
 
   if #cells == 0 then
     if next(replacements) then

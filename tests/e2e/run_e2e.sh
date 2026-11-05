@@ -47,6 +47,27 @@ run_test() {
   fi
 }
 
+# run_test_doc NAME DOCUMENT EXPECTED: like run_test, but DOCUMENT has its own
+# front matter instead of the shared METADATA
+run_test_doc() {
+  local name="$1"
+  local input="$2"
+  local expected="$3"
+  local output
+
+  output=$(echo "$input" | timeout 15 pandoc -f markdown -t html --lua-filter "$FILTER" 2>/dev/null) || true
+
+  if echo "$output" | grep -qF "$expected"; then
+    echo "  PASS: $name"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: $name"
+    echo "    expected: '$expected'"
+    echo "    got: $(echo "$output" | head -5)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
 run_test_absent() {
   local name="$1"
   local input="$2"
@@ -179,6 +200,23 @@ run_test "callouts add term-callout span" \
 echo annotated
 ```' \
   "term-callout"
+
+run_test_doc "document-level callout-values and callout-format" \
+  '---
+extensions:
+  term:
+    shell: bash
+    timeout: 5.0
+    cache: false
+    callout-values: "➊➋"
+    callout-format: "{}"
+---
+
+``` {.term}
+#| callout: [1]
+echo annotated
+```' \
+  'term-callout">➊<'
 
 run_test_absent "remove strips matching line" \
   '``` {.term}

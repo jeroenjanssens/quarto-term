@@ -172,6 +172,15 @@ echo "second"
 echo "third"
 ```
 
+To use the same markers everywhere, set `callout-values` and `callout-format` once in the document's front matter or in `_quarto.yml`; cells can still override them:
+
+```yaml
+extensions:
+  term:
+    callout-values: "➊➋➌➍➎➏➐➑➒"
+    callout-format: "{}"
+```
+
 ## Hide setup, show result
 
 Use `include: false` to run commands that prepare state without showing them in the document. Readers only see the interesting part.

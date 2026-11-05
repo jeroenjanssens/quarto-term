@@ -151,6 +151,29 @@ do
   h.assert_eq(cell.options.remove[2], "pattern", "remove comma-sep[2] = pattern")
 end
 
+-- Test: callout-values / callout-format inherit document/project defaults
+do
+  local cell = build_cell(h.mock_block("#| callout: [1]\necho hi\n"), 1,
+    { _callout_values = "➊➋", _callout_format = "{}" })
+  h.assert_eq(cell.options.callout_values, "➊➋", "callout-values from config")
+  h.assert_eq(cell.options.callout_format, "{}", "callout-format from config")
+end
+
+-- Test: cell callout-values / callout-format override the defaults
+do
+  local cell = build_cell(h.mock_block('#| callout-values: "ab"\n#| callout-format: "({})"\necho hi\n'), 1,
+    { _callout_values = "➊➋", _callout_format = "{}" })
+  h.assert_eq(cell.options.callout_values, "ab", "cell callout-values wins")
+  h.assert_eq(cell.options.callout_format, "({})", "cell callout-format wins")
+end
+
+-- Test: without defaults, callout-values / callout-format stay unset (binary defaults)
+do
+  local cell = build_cell(h.mock_block("#| callout: [1]\necho hi\n"), 1, {})
+  h.assert_nil(cell.options.callout_values, "no callout-values by default")
+  h.assert_nil(cell.options.callout_format, "no callout-format by default")
+end
+
 -- Test: callout comma-separated (no brackets)
 do
   local cell = build_cell(h.mock_block('#| callout: 1, -1\necho hi\n'), 1, {})

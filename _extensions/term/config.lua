@@ -263,6 +263,23 @@ function M.extract_config(meta)
     config.marker = meta_str(term_meta["marker"])
   end
 
+  -- Defaults for the cell options callout-values / callout-format. Only used
+  -- in Lua (build_cell); term.lua removes them before the request is sent.
+  local cv_val = term_meta["callout-values"] or term_meta["callout_values"]
+  if cv_val ~= nil then
+    if type(cv_val) == "table" and cv_val.t == nil and #cv_val > 0
+        and type(cv_val[1]) ~= "userdata" then
+      config._callout_values = {}
+      for i = 1, #cv_val do
+        table.insert(config._callout_values, meta_str(cv_val[i]))
+      end
+    else
+      config._callout_values = meta_str(cv_val)
+    end
+  end
+  local cf_val = term_meta["callout-format"] or term_meta["callout_format"]
+  if cf_val ~= nil then config._callout_format = meta_str(cf_val) end
+
   local FORMAT_KEYS = { html = true, pdf = true, revealjs = true, epub = true, markdown = true, latex = true, typst = true }
 
   local function extract_style(style_meta)

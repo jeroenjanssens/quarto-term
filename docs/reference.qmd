@@ -13,8 +13,8 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `cache` | x | x | | | `true` | Cache results to skip re-execution on unchanged inputs |
 | `strip-auto-indent` | x | x | | | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
 | `callout` | | | x | | `[]` | Line specs to annotate with callout markers |
-| `callout-values` | | | x | | `"123456789"` | Characters or list of strings for callout labels |
-| `callout-format` | | | x | | `"<{}>"` | Format template; `{}` is replaced with the value |
+| `callout-values` | x | x | x | | `"123456789"` | Characters or list of strings for callout labels |
+| `callout-format` | x | x | x | | `"<{}>"` | Format template; `{}` is replaced with the value |
 | `delay` | x | x | x | x | `0.1` | Seconds to wait before executing a line |
 | `docker` | x | x | | | (none) | Run commands in a Docker container (see [Docker](docker.qmd)) |
 | `echo` | x | x | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
@@ -126,8 +126,8 @@ Set these with `#|` at the top of a cell:
 | `source` | (none) | Import cell code from an external file path |
 | `truncate` | `[]` | Line specs to truncate (replaced with "[N lines truncated]" message) |
 | `callout` | `[]` | Line specs for callout annotations |
-| `callout-values` | `"123456789"` | Characters or list of strings for callout labels |
-| `callout-format` | `"<{}>"` | Format template; `{}` is replaced with the value |
+| `callout-values` | (from config, else `"123456789"`) | Characters or list of strings for callout labels |
+| `callout-format` | (from config, else `"<{}>"`) | Format template; `{}` is replaced with the value |
 | `style` | (from config) | Override style options for this cell (see [Styling](styling.qmd#per-cell-style)) |
 
 ### Display Controls
