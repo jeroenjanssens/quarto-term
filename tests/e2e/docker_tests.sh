@@ -103,6 +103,50 @@ out=$(render "$(docker_doc "" "      image: \"$IMAGE\"
       pull: never" "$(cell '[ -e /tmp/qt-marker ]; echo "marker-status-$?"')")")
 check "each document gets a fresh container" "$out" "marker-status-1"
 
+# --- Image default shell and entrypoint ---
+
+# doc_without_shell DOCKER_YAML CELLS: like docker_doc, but without `shell`
+# and `shell-args`, so the image's own ENTRYPOINT/CMD starts the shell
+doc_without_shell() {
+  printf -- '---
+extensions:
+  term:
+    cache: false
+    timeout: 30.0
+    docker:
+%s
+---
+
+%s
+' "$1" "$2"
+}
+
+out=$(render "$(doc_without_shell "      image: \"$IMAGE\"
+      pull: never" "$(cell 'echo "default-shell-$((5 * 5)) $(basename "$0")"')")")
+check "no shell: image's default command (bash) is used" "$out" "default-shell-25 bash"
+check_absent "no shell: no cell errors" "$out" "error:"
+
+# An image whose ENTRYPOINT is the shell itself
+SHELL_EP_IMAGE="quarto-term-test-shell-entrypoint:latest"
+printf 'FROM %s\nENTRYPOINT ["/usr/local/bin/bash"]\n' "$IMAGE" \
+  | docker build -q -t "$SHELL_EP_IMAGE" - > /dev/null
+
+out=$(render "$(doc_without_shell "      image: \"$SHELL_EP_IMAGE\"
+      pull: never" "$(cell 'echo "ep-default-$((2 + 2))"')")")
+check "shell entrypoint, no shell: works" "$out" "ep-default-4"
+
+out=$(render "$(docker_doc '    timeout: 5.0' "      image: \"$SHELL_EP_IMAGE\"
+      pull: never" "$(cell 'echo hi')")")
+check "shell entrypoint + explicit shell: fails with hint" "$out" \
+  "session failed to start" "ENTRYPOINT" "docker.entrypoint"
+
+out=$(render "$(docker_doc "" "      image: \"$SHELL_EP_IMAGE\"
+      pull: never
+      entrypoint:" "$(cell 'echo "ep-cleared-$((3 + 3))"')")")
+check "shell entrypoint + explicit shell + empty entrypoint: works" "$out" "ep-cleared-6"
+
+docker image rm -f "$SHELL_EP_IMAGE" > /dev/null 2>&1 || true
+
 # --- Interaction with term options ---
 
 out=$(render "$(docker_doc '    prompt: "%"' "      image: \"$IMAGE\"

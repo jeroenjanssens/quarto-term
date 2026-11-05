@@ -40,7 +40,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `record` | x | x | | | (none) | File path(s) to record session (`.cast` or `.termshow`) |
 | `remove` | | | x | | `[]` | Line specs to remove from output (indices, ranges, or regex) |
 | `scroll` | | | x | | `!fullscreen` | Include scrollback in capture |
-| `shell` | x | x | | | `zsh` | Shell to use |
+| `shell` | x | x | | | `zsh` (Docker: the image's own shell) | Shell to use; see [Docker](docker.qmd#shell) |
 | `source` | | | x | | (none) | Import cell code from an external file |
 | `shell-args` | x | x | | | (auto) | Shell arguments |
 | `spacing` | x | x | x | | `false` | Add blank lines between commands in output |
@@ -76,7 +76,7 @@ Set these under `extensions: term:` in your YAML front matter:
 |--------|---------|-------------|
 | `profile` | (none) | Shell preset: `zsh`, `bash`, `python`, `node`, `r`, `ruby`, `sqlite`, `duckdb`, `fish`, `nushell`, `sh` (see [Shells](shells/index.qmd#quick-start-with-profiles)) |
 | `strip-auto-indent` | `false` | Counteract REPL auto-indentation on continuation lines (for Python PyREPL, Ruby irb) |
-| `shell` | `zsh` | Shell to use |
+| `shell` | `zsh` (Docker: the image's own shell) | Shell to use |
 | `shell-args` | auto | Shell arguments (defaults: `--no-rcs` for zsh, `--norc --noprofile` for bash) |
 | `prompt` | `$` | Literal prompt string. Auto-sets `PS1` and builds the matching regex. Alias: `ps1` |
 | `prompt-regex` | (derived) | Raw regex override for prompt detection. Alias: `ps1-regex` |

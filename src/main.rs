@@ -32,19 +32,27 @@ fn main() {
             eprintln!("quarto-term: docker mode (image: {})", docker.image);
         }
         eprintln!("quarto-term: starting session (shell: {}, prompt: {:?})",
-            request.config.shell, request.config.prompt);
+            request.config.shell.as_deref().unwrap_or(
+                if request.config.docker.is_some() { "image default" } else { "zsh" }),
+            request.config.prompt);
     }
 
     let mut session = match PtySession::new(&request.config) {
         Ok(s) => s,
         Err(e) => {
+            let mut startup_error = format!("session failed to start: {e}");
+            if let Some(ref docker) = request.config.docker {
+                if let Some(hint) = quarto_term::docker::startup_hint(docker, &request.config) {
+                    startup_error.push_str(&format!("\n  Hint: {hint}"));
+                }
+            }
             let results: Vec<CellResult> = request
                 .cells
                 .iter()
                 .map(|cell| CellResult {
                     id: cell.id,
                     markup: String::new(),
-                    error: Some(format!("session failed to start: {e}")),
+                    error: Some(startup_error.clone()),
                     recorded_assertions: Vec::new(),
                 })
                 .collect();

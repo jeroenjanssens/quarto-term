@@ -280,6 +280,48 @@ do
   h.assert_eq(config.docker.image, "python:3.12", "docker.image")
 end
 
+-- Test: docker without shell uses the image's own shell (no command appended)
+do
+  local meta = { extensions = { term = { docker = { image = "python:3.12" } } } }
+  local config = extract_config(meta)
+  h.assert_nil(config.shell, "docker without shell: no shell command")
+  h.assert_eq(#config.shell_args, 0, "docker without shell: no shell args (no --no-rcs)")
+  h.assert_eq(config.env["PS1"], "$ ", "docker without shell: PS1 still set")
+end
+
+-- Test: docker with explicit shell keeps the shell and its default args
+do
+  local meta = { extensions = { term = { shell = "zsh", docker = { image = "img" } } } }
+  local config = extract_config(meta)
+  h.assert_eq(config.shell, "zsh", "docker + shell: shell kept")
+  h.assert_eq(config.shell_args[1], "--no-rcs", "docker + shell: default args kept")
+end
+
+-- Test: docker with profile or shell-args counts as an explicit shell
+do
+  local config = extract_config({ extensions = { term = { profile = "python", docker = { image = "img" } } } })
+  h.assert_eq(config.shell, "python3", "docker + profile: shell from profile")
+  config = extract_config({ extensions = { term = { ["shell-args"] = { "-l" }, docker = { image = "img" } } } })
+  h.assert_eq(config.shell, "zsh", "docker + shell-args: default shell kept")
+  h.assert_eq(config.shell_args[1], "-l", "docker + shell-args: args kept")
+end
+
+-- Test: local session without shell still defaults to zsh
+do
+  local config = extract_config({ extensions = { term = { prompt = "$" } } })
+  h.assert_eq(config.shell, "zsh", "local default shell is zsh")
+end
+
+-- Test: docker.entrypoint (empty clears, value sets, absent is nil)
+do
+  local config = extract_config({ extensions = { term = { docker = { image = "img", entrypoint = "" } } } })
+  h.assert_eq(config.docker.entrypoint, "", "empty entrypoint is kept as empty string")
+  config = extract_config({ extensions = { term = { docker = { image = "img", entrypoint = "/bin/sh" } } } })
+  h.assert_eq(config.docker.entrypoint, "/bin/sh", "entrypoint value")
+  config = extract_config({ extensions = { term = { docker = { image = "img" } } } })
+  h.assert_nil(config.docker.entrypoint, "no entrypoint by default")
+end
+
 -- Test: docker config without image is ignored
 do
   local meta = { extensions = { term = { docker = { platform = "linux/amd64" } } } }

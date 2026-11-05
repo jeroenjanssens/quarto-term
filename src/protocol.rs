@@ -10,8 +10,10 @@ pub struct BatchRequest {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-    #[serde(default = "default_shell")]
-    pub shell: String,
+    /// Shell command. `None` in Docker mode means: don't append a command,
+    /// let the image's ENTRYPOINT/CMD start the shell. Local sessions use zsh.
+    #[serde(default)]
+    pub shell: Option<String>,
     #[serde(default)]
     pub shell_args: Vec<String>,
     #[serde(default = "default_prompt")]
@@ -99,6 +101,9 @@ pub struct DockerConfig {
     pub env: HashMap<String, String>,
     #[serde(default)]
     pub args: Vec<String>,
+    /// `Some("")` clears the image's entrypoint (`--entrypoint=`).
+    #[serde(default)]
+    pub entrypoint: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -373,8 +378,11 @@ pub struct RecordedAssertion {
     pub output: String,
 }
 
-fn default_shell() -> String {
-    "zsh".to_string()
+impl Config {
+    /// Shell for local (non-Docker) sessions.
+    pub fn local_shell(&self) -> &str {
+        self.shell.as_deref().unwrap_or("zsh")
+    }
 }
 
 fn default_prompt() -> String {
@@ -451,7 +459,8 @@ mod tests {
     #[test]
     fn batch_request_minimal_deserialization() {
         let req: BatchRequest = serde_json::from_str(minimal_json()).unwrap();
-        assert_eq!(req.config.shell, "zsh");
+        assert_eq!(req.config.shell, None);
+        assert_eq!(req.config.local_shell(), "zsh");
         assert_eq!(req.config.cols, 80);
         assert_eq!(req.config.rows, 24);
         assert_eq!(req.config.timeout, 10.0);

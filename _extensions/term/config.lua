@@ -94,6 +94,11 @@ function M.extract_config(meta)
     return config
   end
 
+  -- Whether the user chose a shell command (shell, profile, or shell-args).
+  -- In Docker mode without one, the image's own ENTRYPOINT/CMD starts the shell.
+  local shell_explicit = term_meta["profile"] ~= nil or term_meta["shell"] ~= nil
+    or term_meta["shell-args"] ~= nil or term_meta["shell_args"] ~= nil
+
   if term_meta["profile"] then
     local profile_name = type(term_meta["profile"]) == "string"
       and term_meta["profile"] or pandoc.utils.stringify(term_meta["profile"])
@@ -398,6 +403,11 @@ function M.extract_config(meta)
       if docker_meta["memory"] then docker.memory = meta_str(docker_meta["memory"]) end
       if docker_meta["cpus"] then docker.cpus = meta_str(docker_meta["cpus"]) end
       if docker_meta["name"] then docker.name = meta_str(docker_meta["name"]) end
+      -- An empty value (`entrypoint:` or `entrypoint: ""`) clears the image's
+      -- entrypoint; Pandoc passes both as a present, empty value.
+      if docker_meta["entrypoint"] ~= nil then
+        docker.entrypoint = meta_str(docker_meta["entrypoint"]) or ""
+      end
       if docker_meta["ports"] then
         docker.ports = {}
         local ports_val = docker_meta["ports"]
@@ -439,6 +449,11 @@ function M.extract_config(meta)
       end
       if docker.image then
         config.docker = docker
+        if not shell_explicit then
+          -- Use the image's own shell (ENTRYPOINT/CMD) with its rc files
+          config.shell = nil
+          config.shell_args = {}
+        end
       end
     end
   end

@@ -58,9 +58,15 @@ impl PtySession {
         let cmd = if let Some(ref docker) = config.docker {
             docker::check_docker_available()?;
             docker::maybe_pull_image(docker, config.verbose)?;
-            docker::build_docker_command(docker, config)
+            // Without a shell, the image's CMD is re-run with the session env
+            let image_cmd = if config.shell.is_none() {
+                docker::image_entrypoint_and_cmd(&docker.image).map(|(_, cmd)| cmd)
+            } else {
+                None
+            };
+            docker::build_docker_command(docker, config, image_cmd.as_deref())
         } else {
-            let mut cmd = CommandBuilder::new(&config.shell);
+            let mut cmd = CommandBuilder::new(config.local_shell());
             for arg in &config.shell_args {
                 cmd.arg(arg);
             }

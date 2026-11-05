@@ -67,7 +67,76 @@ pub fn maybe_pull_image(docker: &DockerConfig, verbose: bool) -> Result<(), Term
     Ok(())
 }
 
-pub fn build_docker_command(docker: &DockerConfig, config: &Config) -> CommandBuilder {
+/// The image's ENTRYPOINT and CMD, as reported by `docker image inspect`.
+pub fn image_entrypoint_and_cmd(image: &str) -> Option<(Vec<String>, Vec<String>)> {
+    let out = std::process::Command::new("docker")
+        .args(["image", "inspect", "--format", "{{json .Config}}", image])
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let config: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
+    let list = |key: &str| -> Vec<String> {
+        config[key]
+            .as_array()
+            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default()
+    };
+    Some((list("Entrypoint"), list("Cmd")))
+}
+
+/// Explain a failed Docker session start in terms of the image's
+/// ENTRYPOINT/CMD and the `shell` / `docker.entrypoint` options.
+pub fn startup_hint(docker: &DockerConfig, config: &Config) -> Option<String> {
+    let (entrypoint, cmd) = image_entrypoint_and_cmd(&docker.image)?;
+    startup_hint_for(docker, config, &entrypoint, &cmd)
+}
+
+fn startup_hint_for(
+    docker: &DockerConfig,
+    config: &Config,
+    entrypoint: &[String],
+    cmd: &[String],
+) -> Option<String> {
+    let image_entrypoint_used = docker.entrypoint.is_none() && !entrypoint.is_empty();
+    match config.shell {
+        Some(ref shell) if image_entrypoint_used => Some(format!(
+            "image {} has ENTRYPOINT {:?}, which receives `{}` as arguments; \
+             remove `shell` to start the image's own shell, or set `docker.entrypoint:` \
+             (empty) to clear the entrypoint",
+            docker.image, entrypoint, shell
+        )),
+        Some(_) => None,
+        None => {
+            let mut command: Vec<String> = Vec::new();
+            if docker.entrypoint.is_none() {
+                command.extend(entrypoint.iter().cloned());
+            } else if let Some(ref e) = docker.entrypoint {
+                if !e.is_empty() {
+                    command.push(e.clone());
+                }
+            }
+            command.extend(cmd.iter().cloned());
+            Some(format!(
+                "no `shell` is set, so the image's default command ran: {:?}; \
+                 set `shell` (or `profile`) if that isn't an interactive shell, and \
+                 `prompt` or `prompt-regex` if its prompt isn't {:?}",
+                command, config.prompt
+            ))
+        }
+    }
+}
+
+/// Build the `docker run` command.
+///
+/// `image_cmd` is the image's CMD; it's only used when no `shell` is set.
+pub fn build_docker_command(
+    docker: &DockerConfig,
+    config: &Config,
+    image_cmd: Option<&[String]>,
+) -> CommandBuilder {
     let mut cmd = CommandBuilder::new("docker");
     cmd.arg("run");
     cmd.arg("--rm");
@@ -125,11 +194,28 @@ pub fn build_docker_command(docker: &DockerConfig, config: &Config) -> CommandBu
     cmd.arg("--env");
     cmd.arg("LC_ALL=en_US.UTF-8");
 
+    if let Some(ref entrypoint) = docker.entrypoint {
+        cmd.arg(format!("--entrypoint={entrypoint}"));
+    }
+
     for arg in &docker.args {
         cmd.arg(arg);
     }
 
     cmd.arg(&docker.image);
+
+    // The command after the image: the configured shell, or (without one)
+    // the image's own CMD, which then runs through its ENTRYPOINT as usual.
+    // Without a shell and without a CMD, nothing is appended.
+    let command: Vec<String> = match config.shell {
+        Some(ref shell) => std::iter::once(shell.clone())
+            .chain(config.shell_args.iter().cloned())
+            .collect(),
+        None => image_cmd.map(|c| c.to_vec()).unwrap_or_default(),
+    };
+    if command.is_empty() {
+        return cmd;
+    }
 
     // Re-apply the session env through `env` so it survives image entrypoints
     // that are bash scripts: non-interactive bash drops PS1/PS2 before it
@@ -143,8 +229,7 @@ pub fn build_docker_command(docker: &DockerConfig, config: &Config) -> CommandBu
         }
     }
 
-    cmd.arg(&config.shell);
-    for arg in &config.shell_args {
+    for arg in command {
         cmd.arg(arg);
     }
 
@@ -160,7 +245,7 @@ mod tests {
         let json = format!(r#"{{"config":{config_json},"cells":[]}}"#);
         let req: BatchRequest = serde_json::from_str(&json).unwrap();
         let docker = req.config.docker.clone().unwrap();
-        build_docker_command(&docker, &req.config)
+        build_docker_command(&docker, &req.config, None)
             .get_argv()
             .iter()
             .map(|a| a.to_string_lossy().into_owned())
@@ -238,6 +323,98 @@ mod tests {
         // Session env is re-applied through `env`, in sorted order, so it
         // survives entrypoints that are bash scripts.
         assert_eq!(&args[image + 1..], ["env", "PS1=$ ", "PS2=> ", "bash"]);
+    }
+
+    #[test]
+    fn no_shell_uses_image_default_command() {
+        // Without a shell, nothing follows the image: its ENTRYPOINT/CMD runs
+        let args = argv(r#"{"env":{"PS1":"$ "},"docker":{"image":"bash:5"}}"#);
+        assert_eq!(args.last().unwrap(), "bash:5");
+        // The session env is still passed with --env
+        let image = position(&args, "bash:5");
+        assert!(args[..image].windows(2).any(|w| w == ["--env", "PS1=$ "]));
+    }
+
+    #[test]
+    fn no_shell_wraps_image_cmd_with_session_env() {
+        // The image's CMD runs through `env` so PS1/PS2 survive entrypoint scripts
+        let json = r#"{"config":{"env":{"PS1":"$ "},"docker":{"image":"bash:5"}},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        let docker = req.config.docker.clone().unwrap();
+        let cmd = vec!["bash".to_string()];
+        let args: Vec<String> = build_docker_command(&docker, &req.config, Some(&cmd))
+            .get_argv()
+            .iter()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        let image = position(&args, "bash:5");
+        assert_eq!(&args[image + 1..], ["env", "PS1=$ ", "bash"]);
+    }
+
+    #[test]
+    fn explicit_shell_ignores_image_cmd() {
+        let json = r#"{"config":{"shell":"sh","docker":{"image":"bash:5"}},"cells":[]}"#;
+        let req: BatchRequest = serde_json::from_str(json).unwrap();
+        let docker = req.config.docker.clone().unwrap();
+        let cmd = vec!["bash".to_string()];
+        let args: Vec<String> = build_docker_command(&docker, &req.config, Some(&cmd))
+            .get_argv()
+            .iter()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(args.last().unwrap(), "sh");
+    }
+
+    #[test]
+    fn empty_entrypoint_clears_image_entrypoint() {
+        let args = argv(r#"{"docker":{"image":"bash:5","entrypoint":"","args":["--init"]}}"#);
+        let flag = position(&args, "--entrypoint=");
+        assert!(flag < position(&args, "--init"), "entrypoint comes before docker args");
+        assert!(flag < position(&args, "bash:5"));
+    }
+
+    #[test]
+    fn custom_entrypoint() {
+        let args = argv(r#"{"shell":"bash","docker":{"image":"bash:5","entrypoint":"/usr/bin/env"}}"#);
+        assert!(position(&args, "--entrypoint=/usr/bin/env") < position(&args, "bash:5"));
+        assert_eq!(args.last().unwrap(), "bash");
+    }
+
+    #[test]
+    fn no_entrypoint_flag_by_default() {
+        let args = argv(r#"{"shell":"bash","docker":{"image":"bash:5"}}"#);
+        assert!(!args.iter().any(|a| a.starts_with("--entrypoint")));
+    }
+
+    fn config(json: &str) -> Config {
+        let json = format!(r#"{{"config":{json},"cells":[]}}"#);
+        serde_json::from_str::<BatchRequest>(&json).unwrap().config
+    }
+
+    fn strings(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn hint_for_shell_passed_to_shell_entrypoint() {
+        let c = config(r#"{"shell":"zsh","docker":{"image":"img"}}"#);
+        let hint = startup_hint_for(c.docker.as_ref().unwrap(), &c, &strings(&["/usr/bin/zsh"]), &[]).unwrap();
+        assert!(hint.contains("ENTRYPOINT"), "{hint}");
+        assert!(hint.contains("docker.entrypoint"), "{hint}");
+    }
+
+    #[test]
+    fn no_hint_when_entrypoint_is_cleared() {
+        let c = config(r#"{"shell":"zsh","docker":{"image":"img","entrypoint":""}}"#);
+        assert!(startup_hint_for(c.docker.as_ref().unwrap(), &c, &strings(&["/usr/bin/zsh"]), &[]).is_none());
+    }
+
+    #[test]
+    fn hint_for_image_default_command() {
+        let c = config(r#"{"docker":{"image":"python:3"}}"#);
+        let hint = startup_hint_for(c.docker.as_ref().unwrap(), &c, &[], &strings(&["python3"])).unwrap();
+        assert!(hint.contains("python3"), "{hint}");
+        assert!(hint.contains("`shell`"), "{hint}");
     }
 
     #[test]

@@ -20,13 +20,11 @@ Set the `docker:` block under `extensions: term:` in your front matter or `_quar
 ```yaml
 extensions:
   term:
-    shell: bash
-    shell-args: ["--norc", "--noprofile"]
     docker:
-      image: "python:3.12"
+      image: "ubuntu:24.04"
 ```
 
-The `image` field is required. All other fields are optional.
+The `image` field is required. All other fields are optional. Without a `shell`, the image's own shell is used (see [Shell](#shell)).
 
 ## All Docker Options
 
@@ -44,6 +42,7 @@ The `image` field is required. All other fields are optional.
 | `ports` | `[]` | Port mappings (e.g., `["8080:8080"]`) |
 | `volumes` | `[]` | Volume mounts as `host:container[:options]` |
 | `env` | `{}` | Environment variables passed to the container |
+| `entrypoint` | (image's) | Override the image's `ENTRYPOINT`; an empty value (`entrypoint:` or `""`) clears it |
 | `args` | `[]` | Raw extra `docker run` arguments (escape hatch) |
 
 ## Examples
@@ -53,10 +52,23 @@ The `image` field is required. All other fields are optional.
 ```yaml
 extensions:
   term:
+    docker:
+      image: "ubuntu:24.04"
+```
+
+The image's default command (`bash`) starts the shell.
+
+### Image Whose Default Command Isn't a Shell
+
+The default command of `python:3.12` is a Python REPL, so set the shell explicitly:
+
+```yaml
+extensions:
+  term:
     shell: bash
     shell-args: ["--norc", "--noprofile"]
     docker:
-      image: "ubuntu:24.04"
+      image: "python:3.12"
 ```
 
 ### With Volumes
@@ -148,17 +160,48 @@ To mount a directory next to your document, start the path with `./`. A bare nam
 
 Use `never` for air-gapped environments or when you've pre-pulled images. Use `always` when you want the latest tag on every render.
 
-## Shell Configuration
+## Shell {#shell}
 
-The `shell` and `shell-args` from the quarto-term config are used as the container's entrypoint command. The image must have the configured shell installed.
+### Image's own shell (default)
 
-For example, with `shell: zsh` the container is started as:
+Without `shell` (or `profile`, or `shell-args`), quarto-term runs the image's default command: its `ENTRYPOINT` and/or `CMD`, just like `docker run -it <image>` would. The shell starts with the image's own configuration (rc files, aliases, prompt), which is usually the environment the image was made for.
+
+The session environment (`PS1`, `PS2`, `env`) is passed with `--env`. If the image has a `CMD`, it's re-run through `env` so that `PS1` and `PS2` survive entrypoint scripts (such as `docker-entrypoint.sh`) that would otherwise drop them:
 
 ```
-docker run --rm -i -t <options> <image> zsh --no-rcs
+docker run --rm -i -t <options> <image> env PS1='$ ' PS2='> ' <CMD>
 ```
 
-If the shell doesn't exist in the image, the session fails to start with `shell process exited unexpectedly`.
+If the image has only an `ENTRYPOINT` (e.g. `ENTRYPOINT ["/usr/bin/zsh"]`), nothing is appended.
+
+::: {.callout-note}
+## Prompts set by the image
+If the image's rc files set their own prompt, prompt detection needs to match it: set `prompt` (or `prompt-regex`) accordingly. If the default command isn't an interactive shell at all (e.g. a Python REPL or a server), set `shell` or `profile`.
+:::
+
+### Explicit shell
+
+With `shell` (or `profile`, or `shell-args`), that command is appended after the image name and passed to the image's `ENTRYPOINT` as arguments:
+
+```
+docker run --rm -i -t <options> <image> env PS1='$ ' PS2='> ' zsh --no-rcs
+```
+
+This works for images without an `ENTRYPOINT` and for entrypoint scripts that end with `exec "$@"`. The image must have the configured shell installed.
+
+### `entrypoint`
+
+If the image's `ENTRYPOINT` doesn't run its arguments as a command (for example, when the entrypoint is a shell itself), an explicit `shell` fails to start. Either remove `shell` to use the image's own shell, or clear the entrypoint:
+
+```yaml
+docker:
+  image: "myorg/toolbox:latest"
+  entrypoint:          # empty: clear the image's ENTRYPOINT
+```
+
+Any other value replaces the entrypoint (`--entrypoint=<value>`).
+
+When a Docker session fails to start, the error includes a hint based on the image's `ENTRYPOINT` and `CMD`.
 
 ## Error Handling
 
@@ -169,6 +212,8 @@ If the shell doesn't exist in the image, the session fails to start with `shell 
 | Image not found (pull: never) | `session failed to start: shell process exited unexpectedly` |
 | Image pull fails | `failed to pull image '<image>'` |
 | Shell not in image | `session failed to start: shell process exited unexpectedly` |
+| Explicit `shell` passed to a shell `ENTRYPOINT` | `session failed to start: …` + hint to remove `shell` or set `entrypoint:` |
+| Image's default command isn't a shell, or its prompt doesn't match | `session failed to start: timeout waiting for prompt …` + hint to set `shell`, `profile`, or `prompt` |
 
 All errors appear in the rendered output as cell-level error messages (visible in verbose mode on stderr).
 
