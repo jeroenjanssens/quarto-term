@@ -255,7 +255,7 @@ The cell's source is a different matter, because Quarto reads it before quarto-t
 
 ## Show box drawing and other Unicode
 
-Box-drawing characters, check marks, and other non-ASCII characters are shown as the terminal shows them. That also holds for long output, which the terminal delivers in pieces that can split a character in two. Here, `truncate` keeps the first and last rows of the table (its line numbers count the blank lines that `spacing` adds):
+Box-drawing characters, check marks, and other non-ASCII characters are shown as the terminal shows them. That also holds for long output, which the terminal delivers in pieces that can split a character in two. Invisible characters that take up no column, such as the byte-order mark at the start of some text files, are left out, so they don't make a full line wrap. Here, `truncate` keeps the first and last rows of the table (its line numbers count the blank lines that `spacing` adds):
 
 ````markdown
 ```{term}
