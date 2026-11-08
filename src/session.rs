@@ -858,6 +858,8 @@ fn html_escape_basic(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+        // Quarto reads `{{<` as the start of a shortcode, even in raw HTML
+        .replace('{', "&#123;")
 }
 
 
@@ -872,6 +874,18 @@ mod tests {
         assert_eq!(html_escape_basic("a&b"), "a&amp;b");
         assert_eq!(html_escape_basic("<>"), "&lt;&gt;");
         assert_eq!(html_escape_basic("hello"), "hello");
+    }
+
+    #[test]
+    fn html_escape_basic_braces() {
+        assert_eq!(html_escape_basic("{{< meta title >}}"), "&#123;&#123;&lt; meta title &gt;}}");
+        assert_eq!(html_escape_basic("echo ${HOME}"), "echo $&#123;HOME}");
+    }
+
+    #[test]
+    fn html_escape_basic_escapes_ampersand_first() {
+        // `&` must be escaped before `{` becomes `&#123;`
+        assert_eq!(html_escape_basic("&{"), "&amp;&#123;");
     }
 
 }

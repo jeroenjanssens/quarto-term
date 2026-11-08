@@ -478,3 +478,112 @@ fn multibyte_output_is_intact_in_recordings() {
     assert!(!output.contains('\u{FFFD}'), "no replacement characters in the recording");
     assert_eq!(output.matches(&multibyte_line()).count(), MULTIBYTE_LINES, "every line is intact");
 }
+
+// ---------------------------------------------------------------------------
+// Shortcode-like output ({{< ... >}}) must not reach Quarto as `{{<`
+// ---------------------------------------------------------------------------
+
+fn config_for_format(format: &str) -> Value {
+    json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 10.0,
+        "format": format
+    })
+}
+
+#[test]
+fn html_output_escapes_braces() {
+    let result = run_binary(&request(vec![cell(1, "echo 'x{{< meta title >}}y'")]));
+    let html = get_markup(&result, 0);
+    assert!(!html.contains('{'), "no literal braces in HTML: {}", html);
+    assert!(
+        html.contains("x&#123;&#123;&lt; meta title &gt;}}y"),
+        "braces are entities: {}",
+        html
+    );
+}
+
+#[test]
+fn html_output_escapes_braces_before_colored_text() {
+    // `{{` followed by a colored span becomes `{{<span ...>` without escaping
+    let result = run_binary(&request(vec![cell(
+        1,
+        "printf 'alice{{\\033[32m2\\033[0m,3}}.txt\\n'",
+    )]));
+    let html = get_markup(&result, 0);
+    assert!(!html.contains("{{"), "no literal `{{{{` in HTML: {}", html);
+    assert!(html.contains("alice&#123;&#123;<span"), "colored text after braces: {}", html);
+}
+
+#[test]
+fn html_source_echo_escapes_braces() {
+    let result = run_binary(&request(vec![cell_with_opts(
+        1,
+        "echo '{{< meta title >}}'",
+        json!({"echo": "source", "output": false}),
+    )]));
+    let html = get_markup(&result, 0);
+    assert!(html.contains("term-source"), "source block: {}", html);
+    assert!(!html.contains('{'), "no literal braces in source: {}", html);
+}
+
+#[test]
+fn latex_output_escapes_braces() {
+    let result = run_binary(&request_with_config(
+        config_for_format("latex"),
+        vec![cell(1, "echo 'x{{< meta title >}}y'")],
+    ));
+    let tex = get_markup(&result, 0);
+    assert!(!tex.contains("{{"), "no literal `{{{{` in LaTeX: {}", tex);
+    assert!(tex.contains("x\\{\\{< meta title >\\}\\}y"), "escaped braces: {}", tex);
+}
+
+#[test]
+fn typst_plain_output_avoids_shortcode_opener() {
+    // Plain output is a raw block, where nothing can be escaped; with `{{<`
+    // it becomes a #raw() string literal instead
+    let result = run_binary(&request_with_config(
+        config_for_format("typst"),
+        vec![cell(1, "echo 'x{{< meta title >}}y'")],
+    ));
+    let typ = get_markup(&result, 0);
+    assert!(!typ.contains("{{<"), "no `{{{{<` in Typst: {}", typ);
+    assert!(typ.contains("#raw(block: true, "), "raw string literal: {}", typ);
+    assert!(typ.contains("x{{\\u{3c} meta title >}}y"), "escaped `<`: {}", typ);
+}
+
+#[test]
+fn typst_colored_output_escapes_angle_brackets() {
+    let result = run_binary(&request_with_config(
+        config_for_format("typst"),
+        vec![cell(1, "printf 'x{{< \\033[32mmeta\\033[0m >}}y\\n'")],
+    ));
+    let typ = get_markup(&result, 0);
+    assert!(!typ.contains("{{<"), "no `{{{{<` in Typst: {}", typ);
+    assert!(typ.contains("x{{\\< #text("), "escaped `<` before colored text: {}", typ);
+}
+
+#[test]
+fn typst_plain_output_without_shortcodes_is_unchanged() {
+    let result = run_binary(&request_with_config(
+        config_for_format("typst"),
+        vec![cell(1, "echo 'a <b> {c}'")],
+    ));
+    let typ = get_markup(&result, 0);
+    assert!(typ.contains("````\n"), "still a fenced raw block: {}", typ);
+    assert!(typ.contains("\na <b> {c}\n"), "text as is: {}", typ);
+}
+
+#[test]
+fn markdown_output_keeps_braces_literal() {
+    // Markdown can't escape them; the Lua filter turns such blocks into code
+    // blocks with shortcodes="false" instead
+    let result = run_binary(&request_with_config(
+        config_for_format("markdown"),
+        vec![cell(1, "echo 'x{{< meta title >}}y'")],
+    ));
+    let md = get_markup(&result, 0);
+    assert!(md.contains("x{{< meta title >}}y"), "literal text: {}", md);
+}

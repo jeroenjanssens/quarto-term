@@ -72,7 +72,11 @@ fn get_callout_value(values: &CalloutValues, index: usize) -> Option<String> {
 }
 
 fn html_escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    // `{` too: Quarto reads `{{<` as the start of a shortcode, even in raw HTML
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('{', "&#123;")
 }
 
 pub fn apply_callouts(
@@ -408,6 +412,16 @@ mod tests {
         apply_callouts(&mut lines, &[LineSpec::Index(1), LineSpec::Index(2)], &values, "[{}]");
         assert!(lines[0].markup.contains("[one]"));
         assert!(lines[1].markup.contains("[two]"));
+    }
+
+    #[test]
+    fn apply_callouts_escapes_braces_in_markers() {
+        // A `{{<` in a marker would start a Quarto shortcode
+        let mut lines = vec![make_rendered("a")];
+        let values = CalloutValues::List(vec!["1".to_string()]);
+        apply_callouts(&mut lines, &[LineSpec::Index(1)], &values, "{{<{}>}}");
+        assert!(lines[0].markup.contains("&#123;&#123;&lt;1&gt;}}"), "{}", lines[0].markup);
+        assert!(!lines[0].markup.contains('{'), "{}", lines[0].markup);
     }
 
     #[test]

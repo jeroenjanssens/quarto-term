@@ -90,15 +90,22 @@ pub fn render_lines_to_typst(lines: &[RenderedLine], theme: &TypstTheme) -> Stri
             .map(|l| l.text.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-        let max_backtick_run = inner
-            .as_bytes()
-            .split(|&b| b != b'`')
-            .map(|run| run.len())
-            .max()
-            .unwrap_or(0);
-        let fence_len = max_backtick_run.max(3) + 1;
-        let fence: String = std::iter::repeat('`').take(fence_len).collect();
-        result.push_str(&format!("{fence}\n{inner}\n{fence}\n"));
+        if inner.contains("{{<") {
+            // Quarto reads `{{<` as the start of a shortcode, even in raw
+            // blocks, and nothing can be escaped inside a fenced raw block.
+            // The same raw block as a string literal can write `<` as `\u{3c}`
+            result.push_str(&format!("#raw(block: true, {})\n", typst_string_literal(&inner)));
+        } else {
+            let max_backtick_run = inner
+                .as_bytes()
+                .split(|&b| b != b'`')
+                .map(|run| run.len())
+                .max()
+                .unwrap_or(0);
+            let fence_len = max_backtick_run.max(3) + 1;
+            let fence: String = std::iter::repeat('`').take(fence_len).collect();
+            result.push_str(&format!("{fence}\n{inner}\n{fence}\n"));
+        }
     }
 
     result.push_str("]\n");
@@ -153,6 +160,27 @@ fn wrap_with_pen(text: &str, pen: &Pen) -> String {
 
 fn color_to_hex(color: Color) -> String {
     color::color_to_hex(color)
+}
+
+/// A Typst string literal for `s`. `<` is written as `\u{3c}`, so the result
+/// never contains `{{<` (the start of a Quarto shortcode).
+fn typst_string_literal(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '<' => out.push_str("\\u{3c}"),
+            c if c.is_control() => out.push_str(&format!("\\u{{{:x}}}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 fn typst_escape(s: &str) -> String {
@@ -274,6 +302,58 @@ mod tests {
         let result = render_lines_to_typst(&lines, &theme);
         assert!(result.contains("````"));
         assert!(result.contains("``` #read"));
+    }
+
+    #[test]
+    fn typst_string_literal_escapes() {
+        assert_eq!(typst_string_literal("plain"), r#""plain""#);
+        assert_eq!(typst_string_literal(r"a\b"), r#""a\\b""#);
+        assert_eq!(typst_string_literal(r#"say "hi""#), r#""say \"hi\"""#);
+        assert_eq!(typst_string_literal("a\nb\tc\r"), r#""a\nb\tc\r""#);
+        assert_eq!(typst_string_literal("x\x1by"), r#""x\u{1b}y""#);
+        assert_eq!(typst_string_literal("{{< x >}}"), r#""{{\u{3c} x >}}""#);
+    }
+
+    #[test]
+    fn typst_string_literal_cannot_be_closed_early() {
+        let lit = typst_string_literal(r#"") #read("/etc/passwd") \"#);
+        // Every quote and backslash inside is escaped, so the only unescaped
+        // quotes are the first and the last character
+        let inner = &lit[1..lit.len() - 1];
+        let mut chars = inner.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                chars.next();
+            } else {
+                assert_ne!(c, '"', "unescaped quote in {lit}");
+            }
+        }
+    }
+
+    #[test]
+    fn render_lines_to_typst_plain_with_shortcode_uses_raw_function() {
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
+        let lines = vec![rendered("$ echo '{{< meta title >}}'"), rendered("{{< meta title >}}")];
+        let result = render_lines_to_typst(&lines, &theme);
+        assert!(!result.contains("{{<"), "{result}");
+        assert!(!result.contains("```"), "{result}");
+        assert!(
+            result.contains(r#"#raw(block: true, "$ echo '{{\u{3c} meta title >}}'\n{{\u{3c} meta title >}}")"#),
+            "{result}"
+        );
+    }
+
+    #[test]
+    fn render_lines_to_typst_plain_without_shortcode_keeps_fence() {
+        let theme = TypstTheme { bg: None, fg: None, font_size: None, font_family: None, line_height: None };
+        let result = render_lines_to_typst(&[rendered("a <b> {{c}} {<")], &theme);
+        assert!(result.contains("```\na <b> {{c}} {<\n```"), "{result}");
+        assert!(!result.contains("#raw("), "{result}");
+    }
+
+    #[test]
+    fn typst_escape_breaks_shortcode_opener() {
+        assert_eq!(typst_escape("{{< x >}}"), r"{{\< x \>}}");
     }
 
     #[test]

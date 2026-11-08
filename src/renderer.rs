@@ -208,6 +208,9 @@ fn html_escape(s: &str) -> String {
             '<' => out.push_str("&lt;"),
             '>' => out.push_str("&gt;"),
             '"' => out.push_str("&quot;"),
+            // Quarto reads `{{<` as the start of a shortcode, even in raw
+            // HTML. As an entity, the browser still shows `{`
+            '{' => out.push_str("&#123;"),
             _ => out.push(ch),
         }
     }
@@ -242,6 +245,25 @@ mod tests {
     #[test]
     fn html_escape_empty() {
         assert_eq!(html_escape(""), "");
+    }
+
+    #[test]
+    fn html_escape_left_brace() {
+        assert_eq!(html_escape("{"), "&#123;");
+        assert_eq!(html_escape("a{b}c"), "a&#123;b}c");
+    }
+
+    #[test]
+    fn html_escape_shortcode() {
+        assert_eq!(html_escape("{{< meta title >}}"), "&#123;&#123;&lt; meta title &gt;}}");
+    }
+
+    #[test]
+    fn html_escape_never_leaves_shortcode_opener() {
+        for s in ["{{<", "{{{<", "x{{<y", "{{</* x */>}}", "{{{< x >}}}"] {
+            let escaped = html_escape(s);
+            assert!(!escaped.contains('{'), "{s:?} -> {escaped:?}");
+        }
     }
 
     #[test]

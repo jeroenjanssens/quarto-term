@@ -194,6 +194,62 @@ check_absent() {
 }
 
 echo ""
+echo "Shortcode-like output:"
+# The cell's source must not contain an unclosed `{{<` itself (Quarto reads
+# the source before any filter runs), so the cell builds it with printf
+SHORTCODE_CODE="printf 'alice{{\\e[32m2\\e[0m,3}}.txt\\n'
+echo 'closed {{< meta title >}} end'
+printf 'unclosed {{%s end\\n' '<'"
+term_page "Shortcodes" "$SHORTCODE_CODE" > "$WORK_DIR/shortcodes.qmd"
+# Without colors, Typst output is a raw block (the #raw() string path)
+term_page "Shortcodes" "echo 'closed {{< meta title >}} end'
+printf 'unclosed {{%s end\\n' '<'" > "$WORK_DIR/shortcodes-plain.qmd"
+
+out=$(render shortcodes.qmd)
+check "html: {{< in output doesn't start a shortcode" "$out" \
+  'alice{{2,3}}.txt' 'closed {{< meta title >}} end' 'unclosed {{< end'
+# The paragraph must come after the cell's <pre>, not inside it
+after_pre=$(python3 - "$WORK_DIR/shortcodes.html" <<'PY' || true
+import sys
+s = open(sys.argv[1]).read()
+i = s.find("<p>TEXT-AFTER-THE-CELL</p>")
+print("outside" if i > 0 and s.rfind("</pre>", 0, i) > s.rfind("<pre", 0, i) else "inside")
+PY
+)
+check "html: the rest of the page is kept" "$after_pre" "outside"
+check_absent "html: shortcodes in output aren't expanded" "$out" 'closed Shortcodes end'
+
+for fmt in gfm commonmark markdown; do
+  out=$(render_to shortcodes.qmd "$fmt")
+  check "$fmt: {{< in output doesn't start a shortcode" "$out" \
+    'alice{{2,3}}.txt' 'closed {{< meta title >}} end' 'unclosed {{< end' 'TEXT-AFTER-THE-CELL'
+  check_absent "$fmt: shortcodes in output aren't expanded" "$out" 'closed Shortcodes end'
+done
+
+# (Pandoc turns `&#123;` back into `{` once shortcodes are processed)
+out=$(render_to shortcodes.qmd revealjs)
+check "revealjs: {{< in output doesn't start a shortcode" "$out" \
+  'alice{{<span' 'closed {{&lt; meta title &gt;}} end' 'unclosed {{&lt; end' '<p>TEXT-AFTER-THE-CELL</p>'
+
+out=$(render_to shortcodes.qmd latex)
+check "latex: braces are escaped, rest of the page kept" "$out" \
+  'closed \{\{< meta title >\}\} end' 'unclosed \{\{< end' 'TEXT-AFTER-THE-CELL'
+
+out=$(render_to shortcodes.qmd typst)
+check "typst (colored): escaped markup, rest of the page kept" "$out" \
+  'closed {{\< meta title \>}} end' 'unclosed {{\< end' 'TEXT-AFTER-THE-CELL'
+out=$(render_to shortcodes-plain.qmd typst)
+check "typst (plain): #raw() string, rest of the page kept" "$out" \
+  '#raw(block: true, ' 'closed {{\u{3c} meta title >}} end' 'unclosed {{\u{3c} end' 'TEXT-AFTER-THE-CELL'
+if [ -s "$WORK_DIR/shortcodes-plain.pdf" ]; then
+  echo "  PASS: typst (plain): compiles to PDF"
+  PASS=$((PASS + 1))
+else
+  echo "  FAIL: typst (plain): no PDF ($(tail -3 "$WORK_DIR/shortcodes-plain.qmd.typst.log"))"
+  FAIL=$((FAIL + 1))
+fi
+
+echo ""
 echo "Multibyte output:"
 # ~60 KB written at once by cat (like bat), so PTY reads split characters
 # (with 0.7.1 on every run; output from many small writes splits only sometimes)
