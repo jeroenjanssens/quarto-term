@@ -235,6 +235,44 @@ echo ""
 echo "third"
 ```
 
+## Show output that looks like a shortcode
+
+Terminal output can contain `{{</* ... */>}}`, for example when you print a Hugo template, a Quarto document, or text with nested braces. Quarto reads that as the start of a [shortcode](https://quarto.org/docs/extensions/shortcodes.html), even in raw output, and an unclosed one hides the rest of the page. quarto-term escapes it in every output format (HTML, PDF, Typst, and Markdown), so you see exactly what the terminal shows:
+
+````markdown
+```{term}
+printf '%s\n' '---' 'title: {{</* meta title */>}}' '---' 'Hello, {{ name }}!'
+printf 'alice{{%s,3}}.txt\n' '<2>'
+```
+````
+
+```{term}
+printf '%s\n' '---' 'title: {{< meta title >}}' '---' 'Hello, {{ name }}!'
+printf 'alice{{%s,3}}.txt\n' '<2>'
+```
+
+The cell's source is a different matter, because Quarto reads it before quarto-term does. A complete shortcode in the source, like the one in the first command, reaches the terminal as is. But an opening {{&lt; without its closing &gt;}} confuses Quarto itself, so let a command produce it, as the second command does with `printf`.
+
+## Show box drawing and other Unicode
+
+Box-drawing characters, check marks, and other non-ASCII characters are shown as the terminal shows them. That also holds for long output, which the terminal delivers in pieces that can split a character in two. Here, `truncate` keeps the first and last rows of the table (its line numbers count the blank lines that `spacing` adds):
+
+````markdown
+```{term}
+#| truncate: [10:-6]
+printf '┌────┬───────┬─────┐\n│  n │    n² │ odd │\n├────┼───────┼─────┤\n'
+seq 99 | awk '{ printf "│ %2d │ %5d │  %s  │\n", $1, $1^2, $1%2?"✓":"–" }'
+printf '└────┴───────┴─────┘\n'
+```
+````
+
+```{term}
+#| truncate: [10:-6]
+printf '┌────┬───────┬─────┐\n│  n │    n² │ odd │\n├────┼───────┼─────┤\n'
+seq 99 | awk '{ printf "│ %2d │ %5d │  %s  │\n", $1, $1^2, $1%2?"✓":"–" }'
+printf '└────┴───────┴─────┘\n'
+```
+
 ## Record a session for playback
 
 See the [Recording](recording.qmd) page for how to record sessions to `.cast` files and embed an interactive player.
