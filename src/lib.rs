@@ -14,6 +14,7 @@ pub mod session;
 pub mod terminal_line;
 pub mod typing;
 pub mod typst;
+pub mod utf8;
 
 #[cfg(test)]
 pub mod test_support;

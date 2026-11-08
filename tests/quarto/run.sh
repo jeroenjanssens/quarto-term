@@ -138,6 +138,72 @@ page "engine: markdown" '' '```{term}' 'engine: markdown' > "$WORK_DIR/braces.qm
 out=$(render braces.qmd)
 check "only {term} cells with engine: markdown" "$out" "term sees setup-42" '$SETUP" <1>'
 
+# term_page TITLE CODE: a document with one term cell and a paragraph after it
+term_page() {
+  printf -- '---
+title: "%s"
+engine: markdown
+filters: [term]
+keep-typ: true
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    cache: false
+    timeout: 20
+---
+
+```{term}
+%s
+```
+
+TEXT-AFTER-THE-CELL
+' "$1" "$2"
+}
+
+# render_to FILE FORMAT: render FILE to FORMAT and print the output file
+# (for typst, the .typ source; quarto also compiles it to PDF)
+render_to() {
+  local base="${1%.qmd}" out
+  case "$2" in
+    typst) out="$base.typ" ;;
+    *) out="$base-$2.out" ;;
+  esac
+  if [ "$2" = typst ]; then
+    (cd "$WORK_DIR" && quarto render "$1" --to typst 2> "$1.$2.log" > /dev/null) || true
+  else
+    (cd "$WORK_DIR" && quarto render "$1" --to "$2" -o "$base-$2.out" 2> "$1.$2.log" > /dev/null) || true
+  fi
+  cat "$WORK_DIR/$out" 2> /dev/null || true
+}
+
+# check_absent NAME OUTPUT TEXT...: none of TEXT may occur in OUTPUT
+check_absent() {
+  local name="$1" output="$2"
+  shift 2
+  for unexpected in "$@"; do
+    if printf '%s' "$output" | grep -qF -- "$unexpected"; then
+      echo "  FAIL: $name"
+      echo "    unexpected '$unexpected' in: $(printf '%s' "$output" | head -c 600)"
+      FAIL=$((FAIL + 1))
+      return
+    fi
+  done
+  echo "  PASS: $name"
+  PASS=$((PASS + 1))
+}
+
+echo ""
+echo "Multibyte output:"
+# ~60 KB written at once by cat (like bat), so PTY reads split characters
+# (with 0.7.1 on every run; output from many small writes splits only sometimes)
+MULTIBYTE_CODE="f=\$(mktemp); l=\$(printf '─%.0s' {1..60})' ✓é😀'; for i in {1..300}; do echo \"\$l\"; done > \"\$f\"; cat \"\$f\"; rm \"\$f\""
+term_page "Multibyte" "$MULTIBYTE_CODE" > "$WORK_DIR/multibyte.qmd"
+out=$(render multibyte.qmd)
+check "html: box drawing, accents, and emoji are intact" "$out" \
+  "$(printf '─%.0s' $(seq 60)) ✓é😀"
+check_absent "html: no replacement characters" "$out" '�'
+
 echo ""
 echo "==========================="
 echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"

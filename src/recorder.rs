@@ -64,17 +64,18 @@ impl Recorder {
         })
     }
 
-    pub fn record_output(&mut self, bytes: &[u8]) {
-        self.record_event("o", bytes);
+    /// Record terminal output. The caller decodes the PTY bytes, so that a
+    /// multibyte character split between chunks isn't garbled.
+    pub fn record_output(&mut self, text: &str) {
+        self.record_event("o", text);
     }
 
     pub fn finish(&mut self) {
         let _ = self.writer.flush();
     }
 
-    fn record_event(&mut self, event_type: &str, bytes: &[u8]) {
-        let text = String::from_utf8_lossy(bytes);
-        let escaped = serde_json::to_string(text.as_ref()).unwrap_or_default();
+    fn record_event(&mut self, event_type: &str, text: &str) {
+        let escaped = serde_json::to_string(text).unwrap_or_default();
 
         match self.format {
             Format::Asciicast => {
@@ -89,5 +90,50 @@ impl Recorder {
             }
         }
         let _ = self.writer.flush();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    fn temp_path(name: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("quarto-term-recorder-{}-{name}", std::process::id()))
+    }
+
+    /// The output events ("o") of a recording, in order
+    fn output_events(path: &std::path::Path) -> Vec<String> {
+        std::fs::read_to_string(path)
+            .unwrap()
+            .lines()
+            .skip(1)
+            .map(|line| serde_json::from_str::<Value>(line).unwrap())
+            .filter(|event| event[1] == "o")
+            .map(|event| event[2].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn records_multibyte_text_as_is() {
+        let path = temp_path("multibyte.cast");
+        let mut rec = Recorder::new(path.to_str().unwrap(), 80, 24).unwrap();
+        rec.record_output("┌─┐ ✓é😀\r\n");
+        rec.finish();
+        drop(rec);
+        assert_eq!(output_events(&path), vec!["┌─┐ ✓é😀\r\n"]);
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn records_escape_sequences_in_termshow() {
+        let path = temp_path("escapes.termshow");
+        let mut rec = Recorder::new(path.to_str().unwrap(), 80, 24).unwrap();
+        rec.record_output("\x1b[32m─\x1b[0m");
+        rec.record_output("\"quoted\"");
+        rec.finish();
+        drop(rec);
+        assert_eq!(output_events(&path), vec!["\x1b[32m─\x1b[0m", "\"quoted\""]);
+        std::fs::remove_file(&path).ok();
     }
 }

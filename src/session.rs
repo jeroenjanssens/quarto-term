@@ -21,6 +21,7 @@ use crate::recorder::Recorder;
 use crate::renderer::{self, RenderedLine};
 use crate::terminal_line;
 use crate::typst;
+use crate::utf8;
 
 struct ResolvedLineOpts {
     literal: bool,
@@ -37,6 +38,8 @@ pub struct PtySession {
     config: Config,
     recorders: Vec<Recorder>,
     output_since_cell_start: Vec<u8>,
+    /// Incomplete UTF-8 sequence at the end of the last PTY chunk
+    utf8_pending: Vec<u8>,
     cursor_row_after_last_cell: usize,
     scrollback_after_last_cell: usize,
 }
@@ -126,6 +129,7 @@ impl PtySession {
             config: config.clone(),
             recorders: Vec::new(),
             output_since_cell_start: Vec::new(),
+            utf8_pending: Vec::new(),
             cursor_row_after_last_cell: 0,
             scrollback_after_last_cell: 0,
         };
@@ -151,7 +155,7 @@ impl PtySession {
         if !session.recorders.is_empty() {
             let prompt_str = format!("{} ", config.prompt);
             for rec in &mut session.recorders {
-                rec.record_output(prompt_str.as_bytes());
+                rec.record_output(&prompt_str);
             }
         }
 
@@ -518,11 +522,13 @@ impl PtySession {
     }
 
     fn process_bytes(&mut self, bytes: &[u8]) {
+        // Decode once for the terminal and the recorders, keeping a multibyte
+        // character that's split between chunks for the next chunk
+        let text = utf8::decode_utf8_chunk(&mut self.utf8_pending, bytes);
         for rec in &mut self.recorders {
-            rec.record_output(bytes);
+            rec.record_output(&text);
         }
         self.output_since_cell_start.extend_from_slice(bytes);
-        let text = String::from_utf8_lossy(bytes);
         self.vt.feed_str(&text);
         self.respond_to_dsr(bytes);
     }

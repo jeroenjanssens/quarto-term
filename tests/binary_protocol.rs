@@ -418,3 +418,63 @@ fn docker_config_error_propagates() {
     let error = result[0]["error"].as_str().unwrap_or("");
     assert!(!error.is_empty(), "docker error should propagate: {:?}", result[0]);
 }
+
+// ---------------------------------------------------------------------------
+// Multibyte characters split between PTY reads
+// ---------------------------------------------------------------------------
+
+/// ~60 KB of 2-, 3-, and 4-byte characters, written at once by `cat` (like
+/// `bat` does). The PTY delivers it in chunks whose boundaries fall inside
+/// characters: with 0.7.1, every run had 95 replacement characters. (Output
+/// from many small writes, e.g. a loop of `printf`, only splits sometimes.)
+/// Shell builtins only, so it stays cheap when the tests run in parallel.
+const MULTIBYTE_LINES: usize = 300;
+const MULTIBYTE_CODE: &str = "f=$(mktemp); l=$(printf '─%.0s' {1..60})' ✓é😀'; for i in {1..300}; do echo \"$l\"; done > \"$f\"; cat \"$f\"; rm \"$f\"";
+
+fn multibyte_line() -> String {
+    format!("{} ✓é😀", "─".repeat(60))
+}
+
+#[test]
+fn multibyte_output_larger_than_a_read_is_intact() {
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 20.0,
+        "rows": 400
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, MULTIBYTE_CODE)]));
+    assert!(result[0]["error"].is_null(), "no error: {:?}", result[0]["error"]);
+    let html = get_markup(&result, 0);
+    assert!(!html.contains('\u{FFFD}'), "no replacement characters in output");
+    assert_eq!(html.matches(&multibyte_line()).count(), MULTIBYTE_LINES, "every line is intact");
+}
+
+#[test]
+fn multibyte_output_is_intact_in_recordings() {
+    let dir = std::env::temp_dir().join(format!("quarto-term-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let cast = dir.join("multibyte.cast");
+    let config = json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 20.0,
+        "record": [cast.to_str().unwrap()]
+    });
+    let result = run_binary(&request_with_config(config, vec![cell(1, MULTIBYTE_CODE)]));
+    assert!(result[0]["error"].is_null(), "no error: {:?}", result[0]["error"]);
+
+    let recording = std::fs::read_to_string(&cast).unwrap();
+    let mut output = String::new();
+    for line in recording.lines().skip(1) {
+        let event: Value = serde_json::from_str(line).unwrap();
+        if event[1] == "o" {
+            output.push_str(event[2].as_str().unwrap());
+        }
+    }
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(!output.contains('\u{FFFD}'), "no replacement characters in the recording");
+    assert_eq!(output.matches(&multibyte_line()).count(), MULTIBYTE_LINES, "every line is intact");
+}
