@@ -529,7 +529,9 @@ impl PtySession {
             rec.record_output(&text);
         }
         self.output_since_cell_start.extend_from_slice(bytes);
-        self.vt.feed_str(&text);
+        // Recordings keep invisible zero-width characters; the terminal
+        // emulator would give each one a column (asciinema/avt#27)
+        self.vt.feed_str(&utf8::without_invisible_zero_width(&text));
         self.respond_to_dsr(bytes);
     }
 

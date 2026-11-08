@@ -44,9 +44,72 @@ pub fn decode_utf8_chunk(pending: &mut Vec<u8>, bytes: &[u8]) -> String {
     out
 }
 
+/// Invisible characters that take up no column and don't change how their
+/// neighbors look: a byte-order mark (U+FEFF), a zero-width space (U+200B), and
+/// a word joiner (U+2060).
+const INVISIBLE_ZERO_WIDTH: [char; 3] = ['\u{FEFF}', '\u{200B}', '\u{2060}'];
+
+/// `text` without invisible zero-width characters.
+///
+/// The terminal emulator (avt) gives every character that isn't double-width a
+/// column of its own, including these (asciinema/avt#27). A line that starts
+/// with a BOM and fits the terminal exactly would then wrap. Zero-width joiners
+/// and combining marks are kept: they change how their neighbors look.
+pub fn without_invisible_zero_width(text: &str) -> std::borrow::Cow<'_, str> {
+    if text.contains(INVISIBLE_ZERO_WIDTH) {
+        std::borrow::Cow::Owned(text.replace(INVISIBLE_ZERO_WIDTH, ""))
+    } else {
+        std::borrow::Cow::Borrowed(text)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn drops_byte_order_mark() {
+        assert_eq!(without_invisible_zero_width("\u{FEFF}The Project"), "The Project");
+    }
+
+    #[test]
+    fn drops_zero_width_space_and_word_joiner() {
+        assert_eq!(without_invisible_zero_width("a\u{200B}b\u{2060}c"), "abc");
+    }
+
+    #[test]
+    fn drops_every_occurrence() {
+        assert_eq!(without_invisible_zero_width("\u{FEFF}\u{FEFF}x\u{200B}\u{200B}"), "x");
+    }
+
+    #[test]
+    fn keeps_joiners_combining_marks_and_variation_selectors() {
+        for text in ["e\u{301}", "a\u{200D}b", "a\u{200C}b", "\u{2744}\u{FE0F}", "\u{1F43B}\u{200D}\u{2744}\u{FE0F}"] {
+            assert_eq!(without_invisible_zero_width(text), text);
+        }
+    }
+
+    #[test]
+    fn keeps_other_text_and_escape_sequences() {
+        let text = "\x1b[32m┌─┐ ✓ é 😀 日本\x1b[0m\r\n";
+        assert_eq!(without_invisible_zero_width(text), text);
+    }
+
+    #[test]
+    fn borrows_when_there_is_nothing_to_drop() {
+        assert!(matches!(without_invisible_zero_width("plain"), std::borrow::Cow::Borrowed(_)));
+        assert!(matches!(without_invisible_zero_width("\u{FEFF}x"), std::borrow::Cow::Owned(_)));
+    }
+
+    #[test]
+    fn bom_split_between_chunks_is_dropped_after_decoding() {
+        let bytes = "\u{FEFF}abc".as_bytes(); // EF BB BF 61 62 63
+        let mut pending = Vec::new();
+        let first = decode_utf8_chunk(&mut pending, &bytes[..2]);
+        let second = decode_utf8_chunk(&mut pending, &bytes[2..]);
+        assert_eq!(without_invisible_zero_width(&first), "");
+        assert_eq!(without_invisible_zero_width(&second), "abc");
+    }
 
     /// Decode `chunks` one after the other, as the PTY reader would deliver them.
     fn decode_all(chunks: &[&[u8]]) -> (String, Vec<u8>) {

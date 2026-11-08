@@ -587,3 +587,81 @@ fn markdown_output_keeps_braces_literal() {
     let md = get_markup(&result, 0);
     assert!(md.contains("x{{< meta title >}}y"), "literal text: {}", md);
 }
+
+// ---------------------------------------------------------------------------
+// Invisible zero-width characters must not take up a column
+// ---------------------------------------------------------------------------
+
+/// The text of each output line (the markup without tags)
+fn output_lines(html: &str) -> Vec<String> {
+    html.lines()
+        .filter(|l| l.contains("term-output"))
+        .map(|l| {
+            let mut text = String::new();
+            let mut in_tag = false;
+            for c in l.chars() {
+                match c {
+                    '<' => in_tag = true,
+                    '>' => in_tag = false,
+                    _ if !in_tag => text.push(c),
+                    _ => {}
+                }
+            }
+            text
+        })
+        .collect()
+}
+
+fn config_80_cols() -> Value {
+    json!({
+        "shell": "bash",
+        "shell_args": ["--norc", "--noprofile"],
+        "prompt": "$",
+        "timeout": 5.0,
+        "cols": 80
+    })
+}
+
+#[test]
+fn bom_at_start_of_full_line_does_not_wrap() {
+    // A file that starts with a byte-order mark, cut to 80 columns
+    let code = "printf '\\xef\\xbb\\xbf%s\\n' $(printf 'x%.0s' {1..80})";
+    let result = run_binary(&request_with_config(config_80_cols(), vec![cell(1, code)]));
+    let lines = output_lines(get_markup(&result, 0));
+    let x80 = "x".repeat(80);
+    assert!(lines.iter().any(|l| l == &x80), "one line of 80 x's: {lines:?}");
+    assert!(!lines.iter().any(|l| l == "x"), "no wrapped x: {lines:?}");
+}
+
+#[test]
+fn zero_width_space_and_word_joiner_do_not_take_columns() {
+    let code = "printf 'xxxxxxxxxx\\xe2\\x80\\x8bxxxxxxxxxx\\xe2\\x81\\xa0%s\\n' $(printf 'x%.0s' {1..60})";
+    let result = run_binary(&request_with_config(config_80_cols(), vec![cell(1, code)]));
+    let lines = output_lines(get_markup(&result, 0));
+    assert!(lines.iter().any(|l| l == &"x".repeat(80)), "one line of 80 x's: {lines:?}");
+}
+
+#[test]
+fn zero_width_joiner_and_combining_marks_are_kept() {
+    // These change how their neighbors look, so they stay in the output
+    let code = "printf 'e\\xcc\\x81 a\\xe2\\x80\\x8db\\n'";
+    let result = run_binary(&request(vec![cell(1, code)]));
+    let html = get_markup(&result, 0);
+    assert!(html.contains("e\u{301}"), "combining mark kept: {html}");
+    assert!(html.contains("a\u{200D}b"), "zero-width joiner kept: {html}");
+}
+
+#[test]
+fn recordings_keep_invisible_characters() {
+    let dir = std::env::temp_dir().join(format!("quarto-term-bom-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let cast = dir.join("bom.cast");
+    let mut config = config_80_cols();
+    config["record"] = json!([cast.to_str().unwrap()]);
+    let result = run_binary(&request_with_config(config, vec![cell(1, "printf '\\xef\\xbb\\xbfbom\\n'")]));
+    assert!(result[0]["error"].is_null(), "no error: {:?}", result[0]["error"]);
+    let recording = std::fs::read_to_string(&cast).unwrap();
+    std::fs::remove_dir_all(&dir).ok();
+    // serde_json writes the BOM as is
+    assert!(recording.contains("\u{FEFF}bom"), "BOM in the recording: {recording}");
+}

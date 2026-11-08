@@ -261,6 +261,16 @@ check "html: box drawing, accents, and emoji are intact" "$out" \
 check_absent "html: no replacement characters" "$out" '�'
 
 echo ""
+echo "Invisible zero-width characters:"
+# A BOM at the start of a line that fits the terminal exactly must not make it wrap
+BOM_CODE="printf '\\xef\\xbb\\xbf%s\\n' \$(printf 'x%.0s' {1..80})"
+term_page "BOM" "$BOM_CODE" > "$WORK_DIR/bom.qmd"
+out=$(render bom.qmd)
+check "html: a line with a BOM and 80 columns stays one line" "$out" "$(printf 'x%.0s' $(seq 80))"
+wrapped=$(printf '%s\n' "$out" | grep -cx 'x' || true)
+check "html: nothing wraps" "wrapped lines: $wrapped" "wrapped lines: 0"
+
+echo ""
 echo "==========================="
 echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"
 [ "$FAIL" -eq 0 ]
