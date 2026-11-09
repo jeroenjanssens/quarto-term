@@ -75,6 +75,18 @@ jobs:
           pattern: binary-*
           merge-multiple: true
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
+
+      # The licenses of the Rust crates in the binaries, and quarto-term's own
+      - name: Add license files
+        run: |
+          cargo about generate about.hbs -o assets/THIRD-PARTY-LICENSES.md
+          cp LICENSE assets/LICENSE
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}

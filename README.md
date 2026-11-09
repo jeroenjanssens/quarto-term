@@ -118,3 +118,18 @@ macOS (ARM and Intel), Linux (x86_64 and ARM), and Windows.
 See [Get
 Started](https://quarto-term.jeroenjanssens.com/get-started.html) for a
 complete walkthrough.
+
+## Acknowledgements
+
+quarto-term builds on the work of others:
+
+- [avt](https://github.com/asciinema/avt) by Marcin Kulik, the virtual terminal of the asciinema project, which interprets everything the shell prints.
+- [portable-pty](https://github.com/wezterm/wezterm) by Wez Furlong, from WezTerm, which runs the shell in a pseudo-terminal.
+- The [asciinema player](https://github.com/asciinema/asciinema-player), which plays `.cast` recordings.
+- The termshow player from [Great Docs](https://github.com/posit-dev/great-docs) by Posit, which plays `.termshow` recordings, with a subset of the [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) font.
+- The color schemes that the built-in colorschemes are named after, such as Catppuccin, Dracula, Nord, Solarized, and Tokyo Night.
+
+## License
+
+quarto-term is licensed under the [MIT License](https://github.com/jeroenjanssens/quarto-term/blob/main/LICENSE).
+The licenses of the third-party work in the extension are in [`THIRD-PARTY-NOTICES.md`](https://github.com/jeroenjanssens/quarto-term/blob/main/_extensions/term/THIRD-PARTY-NOTICES.md), and those of the Rust crates in the binary in [`THIRD-PARTY-LICENSES.md`](https://github.com/jeroenjanssens/quarto-term/blob/main/THIRD-PARTY-LICENSES.md), which is also attached to every release.

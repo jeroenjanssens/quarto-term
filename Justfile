@@ -30,6 +30,11 @@ test-e2e-docker: build
 test-quarto: build
     bash tests/quarto/run.sh
 
+# Regenerate THIRD-PARTY-LICENSES.md, the licenses of the Rust crates in the
+# binary (needs cargo-about: `cargo install --locked cargo-about --features cli`)
+licenses:
+    cargo about generate about.hbs -o THIRD-PARTY-LICENSES.md
+
 # Build debug binary
 build:
     cargo build

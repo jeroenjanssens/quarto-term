@@ -26,6 +26,18 @@ jobs:
       - name: Build binary
         run: cargo build
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
+
+      - name: THIRD-PARTY-LICENSES.md is up to date
+        run: |
+          cargo about generate about.hbs -o /tmp/THIRD-PARTY-LICENSES.md
+          diff -u THIRD-PARTY-LICENSES.md /tmp/THIRD-PARTY-LICENSES.md || {
+            echo "::error file=THIRD-PARTY-LICENSES.md::Out of date; run 'just licenses' and commit it."
+            exit 1
+          }
+
       - name: Rust tests
         run: cargo test
 

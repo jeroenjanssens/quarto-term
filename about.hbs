@@ -1,0 +1,26 @@
+# Third-party licenses
+
+The quarto-term binary is built from the following Rust crates. Their licenses
+are listed below, one section per license text.
+
+## Overview
+
+{{#each overview}}
+- {{{name}}} ({{count}})
+{{/each}}
+
+## Licenses
+{{#each licenses}}
+
+### {{{name}}}
+
+Used by:
+
+{{#each used_by}}
+- [{{{crate.name}}} {{{crate.version}}}]({{#if crate.repository}}{{{crate.repository}}}{{else}}https://crates.io/crates/{{{crate.name}}}{{/if}})
+{{/each}}
+
+```
+{{{text}}}
+```
+{{/each}}
