@@ -354,6 +354,49 @@ check "gfm: lists unchanged" "$out" "1.  TOP-ONE" "NESTED-ONE"
 check_absent "gfm: no wrapper or markers" "$out" "term-callout-list" "counter-style"
 
 echo ""
+echo "Window chrome:"
+cat > "$WORK_DIR/chrome.qmd" <<'EOF'
+---
+title: "Chrome"
+engine: markdown
+filters: [term]
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    cache: false
+    timeout: 10
+---
+
+```{term}
+#| style.chrome: "plain-title"
+echo plain
+```
+
+```{term}
+#| fullscreen: true
+#| style.chrome: "fullscreen-title"
+echo full
+```
+
+```{term}
+#| style.chrome.title: 'a <b> & c'
+echo map
+```
+
+```{term}
+#| style.chrome: true
+echo untitled
+```
+EOF
+render chrome.qmd > /dev/null
+out=$(cat "$WORK_DIR/chrome.html" 2> /dev/null)
+check "chrome: a string is the title" "$out" \
+  '<span class="term-chrome-title">plain-title</span>' '<span class="term-chrome-title">fullscreen-title</span>'
+check "chrome: the title is escaped" "$out" '<span class="term-chrome-title">a &lt;b&gt; &amp; c</span>'
+check "chrome: true gives chrome without a title" "$(printf '%s' "$out" | grep -c 'class="term-chrome term-chrome-macos"')" "4"
+
+echo ""
 echo "==========================="
 echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"
 [ "$FAIL" -eq 0 ]
