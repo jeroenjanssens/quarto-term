@@ -271,6 +271,89 @@ wrapped=$(printf '%s\n' "$out" | grep -cx 'x' || true)
 check "html: nothing wraps" "wrapped lines: $wrapped" "wrapped lines: 0"
 
 echo ""
+echo "Callout lists:"
+cat > "$WORK_DIR/callout-list.qmd" <<'EOF'
+---
+title: "Callout lists"
+engine: markdown
+filters: [term]
+extensions:
+  term:
+    shell: bash
+    shell-args: ["--norc", "--noprofile"]
+    cache: false
+    timeout: 10
+    callout-list: true
+    callout-values: "➊➋➌"
+    callout-format: "{}"
+---
+
+```{term}
+#| callout: [1, 2]
+echo top
+echo level
+```
+
+1. TOP-ONE
+2. TOP-TWO
+
+The rules (a paragraph, so the lists don't merge):
+
+1.  RULE-ONE
+
+    ```{term}
+    #| callout: [1]
+    echo nested
+    ```
+
+    1. NESTED-ONE
+
+2.  RULE-TWO
+
+```{term}
+#| callout: [1]
+#| callout-list: false
+echo off
+```
+
+1. OFF-ONE
+
+```{term}
+#| callout: [1]
+echo gap
+```
+
+Text in between.
+
+1. GAP-ONE
+
+```{term}
+echo no callouts
+```
+
+1. NONE-ONE
+EOF
+render callout-list.qmd > /dev/null
+cl_check=$(python3 - "$WORK_DIR/callout-list.html" <<'PY' || true
+import re, sys
+s = open(sys.argv[1]).read()
+def wrapped(word):
+    i = s.find(word)
+    return i > 0 and s.rfind('<div class="term-callout-list', 0, i) > s.rfind('</div>', 0, i)
+print("top:" + str(wrapped("TOP-ONE")), "nested:" + str(wrapped("NESTED-ONE")),
+      "rules:" + str(wrapped("RULE-ONE")), "off:" + str(wrapped("OFF-ONE")),
+      "gap:" + str(wrapped("GAP-ONE")), "none:" + str(wrapped("NONE-ONE")),
+      "css:" + str("@counter-style term-callouts-" in s and 'symbols: "➊" "➋" "➌";' in s),
+      "markers-left:" + str(s.count("term-callout-list:")))
+PY
+)
+check "html: lists after callout cells get the callout markers" "$cl_check" "top:True" "nested:True" "css:True" "markers-left:0"
+check "html: other lists keep their numbers" "$cl_check" "rules:False" "off:False" "gap:False" "none:False"
+out=$(render_to callout-list.qmd gfm)
+check "gfm: lists unchanged" "$out" "1.  TOP-ONE" "NESTED-ONE"
+check_absent "gfm: no wrapper or markers" "$out" "term-callout-list" "counter-style"
+
+echo ""
 echo "==========================="
 echo "Results: $PASS passed, $FAIL failed, $SKIP skipped"
 [ "$FAIL" -eq 0 ]

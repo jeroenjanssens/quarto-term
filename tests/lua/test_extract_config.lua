@@ -334,6 +334,18 @@ do
   h.assert_nil(config._callout_values, "no callout-values by default")
 end
 
+-- Test: callout-list at document/project level
+do
+  local config = extract_config({ extensions = { term = { ["callout-list"] = true } } })
+  h.assert_eq(config._callout_list, true, "callout-list: true")
+  config = extract_config({ extensions = { term = { ["callout-list"] = false } } })
+  h.assert_eq(config._callout_list, false, "callout-list: false")
+  config = extract_config({ extensions = { term = { callout_list = true } } })
+  h.assert_eq(config._callout_list, true, "callout_list (underscore) also works")
+  config = extract_config({ extensions = { term = {} } })
+  h.assert_nil(config._callout_list, "no callout-list by default")
+end
+
 -- Test: cache-depends paths are resolved against the working directory
 do
   local cwd = pandoc.system.get_working_directory()

@@ -167,6 +167,19 @@ do
   h.assert_eq(cell.options.callout_format, "({})", "cell callout-format wins")
 end
 
+-- Test: callout-list defaults to off, inherits the document default, and the cell wins
+do
+  local cell = build_cell(h.mock_block("#| callout: [1]\necho hi\n"), 1, {})
+  h.assert_eq(cell._callout_list, false, "callout-list off by default")
+  cell = build_cell(h.mock_block("#| callout: [1]\necho hi\n"), 1, { _callout_list = true })
+  h.assert_eq(cell._callout_list, true, "callout-list from config")
+  cell = build_cell(h.mock_block("#| callout-list: false\necho hi\n"), 1, { _callout_list = true })
+  h.assert_eq(cell._callout_list, false, "cell callout-list: false wins")
+  cell = build_cell(h.mock_block("#| callout-list: true\necho hi\n"), 1, {})
+  h.assert_eq(cell._callout_list, true, "cell callout-list: true")
+  h.assert_nil(cell.options.callout_list, "callout-list isn't sent to the binary")
+end
+
 -- Test: without defaults, callout-values / callout-format stay unset (binary defaults)
 do
   local cell = build_cell(h.mock_block("#| callout: [1]\necho hi\n"), 1, {})
