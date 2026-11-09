@@ -181,6 +181,43 @@ extensions:
     callout-format: "{}"
 ```
 
+### Matching markers in the explanations
+
+With `callout-list: true`, the numbered list right after a cell gets the same markers as the callouts in the cell, so ➊ in the code matches ➊ in the explanation. Set it for a cell, or once for the whole document or project:
+
+````markdown
+```{term}
+#| callout: ['paste -sd\+$', '\| bc$']
+#| callout-values: "➊➋➌"
+#| callout-format: "{}"
+#| callout-list: true
+seq 3 | paste -sd+
+seq 3 | paste -sd+ | bc
+```
+
+1. Join the numbers with `+`.
+2. Let `bc` do the math.
+````
+
+```{term}
+#| callout: ['paste -sd\+$', '\| bc$']
+#| callout-values: "➊➋➌"
+#| callout-format: "{}"
+#| callout-list: true
+seq 3 | paste -sd+
+seq 3 | paste -sd+ | bc
+```
+
+1. Join the numbers with `+`.
+2. Let `bc` do the math.
+
+A few things to know:
+
+- Only a numbered list that comes *directly* after the cell is styled; anything in between (a paragraph, a heading) means it's not an explanation of the cell.
+- Two numbered lists with nothing in between are one list in Markdown. If the explanations are followed by another numbered list, put a paragraph between them, or indent the cell and its explanations under an item of the outer list.
+- It's for HTML output (including RevealJS and EPUB). Other formats keep their regular numbers.
+- More items than markers fall back to regular numbers.
+
 ## Hide setup, show result
 
 Use `include: false` to run commands that prepare state without showing them in the document. Readers only see the interesting part.
