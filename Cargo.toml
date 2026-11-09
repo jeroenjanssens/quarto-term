@@ -4,6 +4,7 @@ version = "0.8.2"
 edition = "2021"
 description = "A Quarto extension that provides a persistent interactive terminal session across code chunks"
 license = "MIT"
+publish = false
 
 [lib]
 name = "quarto_term"

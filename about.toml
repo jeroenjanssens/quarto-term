@@ -18,4 +18,7 @@ targets = [
     "x86_64-pc-windows-msvc",
 ]
 ignore-dev-dependencies = true
+# Not quarto-term itself (`publish = false`): its license is LICENSE, and its
+# version would make this file outdated with every release
+private = { ignore = true }
 ignore-build-dependencies = false
