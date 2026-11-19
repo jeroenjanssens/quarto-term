@@ -1,4 +1,5 @@
 #!/bin/sh
-if [ -f recording-demo.termshow ]; then
-  uvx great-docs termshow render recording-demo.termshow -o termshow/recording-demo
-fi
+for f in recording-demo.termshow examples/nyancat.termshow; do
+  [ -f "$f" ] || continue
+  uvx great-docs termshow render "$f" -o "termshow/$(basename "$f" .termshow)"
+done

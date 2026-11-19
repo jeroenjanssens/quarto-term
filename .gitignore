@@ -6,8 +6,10 @@ docs/_extensions/
 *.html
 *.cast
 !docs/recording-demo.cast
+!docs/examples/nyancat.cast
 *.termshow
 !docs/recording-demo.termshow
+!docs/examples/nyancat.termshow
 *.termshow.yml
 docs/termshow/
 *.pdf

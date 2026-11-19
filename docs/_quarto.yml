@@ -74,6 +74,10 @@ website:
             text: SQLite
           - href: shells/zsh.qmd
             text: Zsh
+      - text: Examples
+        menu:
+          - href: examples/nyancat.qmd
+            text: Nyancat
       - href: docker.qmd
         text: Docker
       - href: debugging.qmd
