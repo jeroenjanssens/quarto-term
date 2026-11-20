@@ -538,6 +538,9 @@ function Pandoc(doc)
     local output_file = quarto.doc.output_file
     if output_file then
       local output_dir = output_file:match("(.*[/\\])") or "./"
+      -- For a page in a subdirectory of a project, the output directory
+      -- may not exist yet when this filter runs, so create it first.
+      pcall(pandoc.system.make_directory, output_dir, true)
       for _, path in ipairs(config.record) do
         local basename = path:match("([^/\\]+)$") or path
         local src_f = io.open(path, "rb")
