@@ -56,8 +56,15 @@ jobs:
 
       - uses: astral-sh/setup-uv@v4
 
+      # Render twice. The first render records the terminal sessions, but the
+      # termshow frames are built in its pre-render step, from the committed
+      # recordings. The second render hits the cell cache, so it keeps the new
+      # recordings and builds the frames from them. This way, the asciicast
+      # and termshow players show the same recording.
       - name: Render
-        run: quarto render docs
+        run: |
+          quarto render docs
+          quarto render docs
 
       - uses: actions/upload-pages-artifact@v3
         with:
