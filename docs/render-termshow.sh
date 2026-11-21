@@ -1,4 +1,7 @@
 #!/bin/sh
+# Skip the nested render of the README by render-readme.sh: it doesn't
+# embed any termshow players, and the pages have been rendered already.
+[ "$QUARTO_TERM_README" = "1" ] && exit 0
 # Use the latest commit on the main branch of Great Docs.
 great_docs="git+https://github.com/posit-dev/great-docs"
 for f in recording-demo.termshow examples/nyancat.termshow; do
