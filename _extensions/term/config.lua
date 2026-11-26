@@ -140,8 +140,13 @@ function M.extract_config(meta)
           table.insert(parts, " ")
         elseif el.t == "Code" then
           table.insert(parts, el.text)
-        elseif el.t == "SoftBreak" then
+        elseif el.t == "SoftBreak" or el.t == "LineBreak" then
           table.insert(parts, "\n")
+        elseif el.t == "Para" or el.t == "Plain" then
+          -- A YAML block string (`|`) is parsed as paragraphs; stringify
+          -- would turn their line breaks into spaces
+          if #parts > 0 then table.insert(parts, "\n") end
+          table.insert(parts, meta_str(el.content))
         elseif el.t == "Quoted" then
           local q = el.quotetype == "SingleQuote" and "'" or '"'
           table.insert(parts, q .. pandoc.utils.stringify(el.content) .. q)

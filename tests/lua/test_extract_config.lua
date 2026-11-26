@@ -468,6 +468,21 @@ do
   h.assert_eq(resolve("/data", cwd), "/data", "anonymous volume unchanged")
 end
 
+-- Test: init as a YAML block string keeps its lines (pandoc parses it as
+-- paragraphs, whose line breaks pandoc.utils.stringify turns into spaces)
+do
+  local para = { t = "Para", content = {
+    { t = "Str", text = ".mode" }, { t = "Space" }, { t = "Str", text = "column" },
+    { t = "SoftBreak" },
+    { t = "Str", text = ".headers" }, { t = "Space" }, { t = "Str", text = "on" },
+  } }
+  local meta = { extensions = { term = { init = { t = "MetaBlocks", para } } } }
+  local config = extract_config(meta)
+  h.assert_eq(#config.init, 2, "init block string from YAML: two commands")
+  h.assert_eq(config.init[1], ".mode column", "init block string from YAML[1]")
+  h.assert_eq(config.init[2], ".headers on", "init block string from YAML[2]")
+end
+
 -- Test: error from execute and extensions.term
 do
   h.assert_eq(extract_config(nil)._error, false, "error off by default")
