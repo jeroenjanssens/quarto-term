@@ -50,8 +50,7 @@ jobs:
 
       - name: Install DuckDB
         run: |
-          curl -sL https://github.com/duckdb/duckdb/releases/download/v1.3.0/duckdb_cli-linux-amd64.zip -o duckdb.zip
-          unzip -q duckdb.zip
+          curl -sL https://github.com/duckdb/duckdb/releases/download/v2.0.0/duckdb-cli-linux-amd64.tar.gz | tar xz
           sudo mv duckdb /usr/local/bin/
 
       - uses: astral-sh/setup-uv@v4
