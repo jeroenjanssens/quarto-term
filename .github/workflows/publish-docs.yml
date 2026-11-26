@@ -5,9 +5,7 @@ on:
     branches: [main]
     paths:
       - "docs/**"
-      - "_extensions/term/term.lua"
-      - "_extensions/term/term.css"
-      - "_extensions/term/themes/**"
+      - "_extensions/term/**"
       - ".github/workflows/publish-docs.yml"
   workflow_run:
     workflows: ["Release"]
