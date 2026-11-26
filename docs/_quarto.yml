@@ -15,9 +15,11 @@ project:
 extensions:
   term:
     shell: zsh
-    init:
-      - zsh-syntax-highlighting
-      - "setopt INTERACTIVE_COMMENTS"
+    # A string rather than a list, so that pages can override it with
+    # `init: false`; Quarto concatenates lists across metadata levels
+    init: |
+      zsh-syntax-highlighting
+      setopt INTERACTIVE_COMMENTS
     spacing: true
     style:
       html:

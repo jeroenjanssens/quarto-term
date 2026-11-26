@@ -293,7 +293,19 @@ extensions:
 
 For plugin names, quarto-term checks the current working directory, then searches common installation paths (`/opt/homebrew/share`, `/usr/local/share`, `/usr/share`, `/home/linuxbrew/.linuxbrew/share`).
 
-Entries that resolve to a file are sourced; everything else is executed as an inline command. Multi-line blocks are split and run line by line.
+Entries that resolve to a file are sourced; everything else is executed as an inline command. Multi-line blocks are split and run line by line, and each line is resolved on its own, so a block can be used instead of a list:
+
+```yaml
+extensions:
+  term:
+    init: |
+      zsh-syntax-highlighting
+      setopt INTERACTIVE_COMMENTS
+```
+
+::: {.callout-tip}
+When Quarto merges metadata, it concatenates lists. A document can't turn off an `init` list from `_quarto.yml` with `init: false`, and its own `init` list is added to the project's. Set `init` in `_quarto.yml` as a string if documents need to override it.
+:::
 
 ## Terminal Recordings
 

@@ -3,8 +3,7 @@ title: "Zsh"
 engine: markdown
 extensions:
   term:
-    init:
-      - zsh-syntax-highlighting
+    init: zsh-syntax-highlighting
     spacing: false
 ---
 

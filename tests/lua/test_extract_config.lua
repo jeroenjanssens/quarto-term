@@ -230,6 +230,15 @@ do
   h.assert_eq(config.init[1], "source /dev/null", "init existing file gets source prefix")
 end
 
+-- Test: init multi-line block resolves files per line
+do
+  local meta = { extensions = { term = { init = "/dev/null\nsetopt INTERACTIVE_COMMENTS" } } }
+  local config = extract_config(meta)
+  h.assert_eq(config.init[1], "source /dev/null", "init multiline file[1]")
+  h.assert_eq(config.init[2], "setopt INTERACTIVE_COMMENTS", "init multiline file[2]")
+  h.assert_eq(config._init_files[1], "/dev/null", "init multiline file dependency")
+end
+
 -- Test: trailing_spaces (snake_case compat) under style
 do
   local meta = { extensions = { term = { style = { ["trailing_spaces"] = true } } } }

@@ -4,11 +4,11 @@ engine: markdown
 extensions:
   term:
     shell: sqlite3
-    shell-args: []
+    shell-args: ["-cmd", ".prompt 'sqlite> ' '   ...> '"]
     prompt: "sqlite>"
-    init:
-      - ".mode column"
-      - ".headers on"
+    init: |
+      .mode column
+      .headers on
     spacing: false
 ---
 
@@ -20,7 +20,7 @@ extensions:
     profile: sqlite
 ```
 
-This sets `shell: sqlite3`, `prompt: "sqlite>"`, and `ps2: "   ...>"`. You'll likely want to configure output formatting via `init`:
+This sets `shell: sqlite3`, `prompt: "sqlite>"`, and `ps2: "   ...>"`. It also passes `-cmd ".prompt 'sqlite> ' '   ...> '"` as `shell-args`, because SQLite 3.54 and later show a different prompt by default. You'll likely want to configure output formatting via `init`:
 
 ```yaml
 extensions:

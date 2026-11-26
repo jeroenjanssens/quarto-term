@@ -35,7 +35,8 @@ local SHELL_PRESETS = {
   node = { shell = "node", shell_args = {}, prompt = ">", ps2 = "..." },
   r = { shell = "R", shell_args = {"--no-save", "--no-restore", "--quiet"}, prompt = ">", ps2 = "+" },
   ruby = { shell = "irb", shell_args = {"--noecho", "--nomultiline"}, prompt = "irb>", ps2 = "irb*" },
-  sqlite = { shell = "sqlite3", shell_args = {}, prompt = "sqlite>", ps2 = "   ...>" },
+  -- SQLite 3.54 changed the default prompt, so set it explicitly
+  sqlite = { shell = "sqlite3", shell_args = {"-cmd", ".prompt 'sqlite> ' '   ...> '"}, prompt = "sqlite>", ps2 = "   ...>" },
   duckdb = { shell = "duckdb", shell_args = {}, prompt = "D", ps2 = ">" },
   fish = { shell = "fish", shell_args = {"--no-config"}, prompt = ">", ps2 = "" },
   nushell = { shell = "nu", shell_args = {"--no-config-file"}, prompt = ">", ps2 = ":::" },
@@ -225,17 +226,21 @@ function M.extract_config(meta)
         table.insert(init_list, meta_str(init_val))
       end
       config.init = {}
+      -- Each line is resolved on its own, so that a multi-line string can
+      -- mix plugins and commands. Unlike a list, a string set at the project
+      -- level can be overridden by `init: false` in a document, because
+      -- Quarto concatenates lists when it merges metadata
       for _, entry in ipairs(init_list) do
-        local resolved = resolve_init_path(entry)
-        if resolved then
-          table.insert(config.init, "source " .. resolved)
-          -- Host files are part of the cache key (see cache.lua)
-          config._init_files = config._init_files or {}
-          table.insert(config._init_files, resolved)
-        else
-          for line in entry:gmatch("[^\n]+") do
-            local trimmed = line:match("^%s*(.-)%s*$")
-            if trimmed and trimmed ~= "" then
+        for line in entry:gmatch("[^\n]+") do
+          local trimmed = line:match("^%s*(.-)%s*$")
+          if trimmed and trimmed ~= "" then
+            local resolved = resolve_init_path(trimmed)
+            if resolved then
+              table.insert(config.init, "source " .. resolved)
+              -- Host files are part of the cache key (see cache.lua)
+              config._init_files = config._init_files or {}
+              table.insert(config._init_files, resolved)
+            else
               table.insert(config.init, trimmed)
             end
           end
