@@ -310,4 +310,16 @@ do
   h.assert_true(cell._eval, "no eval -> true")
 end
 
+-- Test: error (failed cells fail the render unless allowed)
+do
+  local cell = build_cell(h.mock_block("echo hi\n"), 1, {})
+  h.assert_eq(cell._error, false, "error off by default")
+  cell = build_cell(h.mock_block("echo hi\n"), 1, { _error = true })
+  h.assert_eq(cell._error, true, "error from config")
+  cell = build_cell(h.mock_block("#| error: true\necho hi\n"), 1, {})
+  h.assert_eq(cell._error, true, "cell error: true")
+  cell = build_cell(h.mock_block("#| error: false\necho hi\n"), 1, { _error = true })
+  h.assert_eq(cell._error, false, "cell error: false wins")
+end
+
 h.finish("build_cell")

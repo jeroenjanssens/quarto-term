@@ -468,4 +468,14 @@ do
   h.assert_eq(resolve("/data", cwd), "/data", "anonymous volume unchanged")
 end
 
+-- Test: error from execute and extensions.term
+do
+  h.assert_eq(extract_config(nil)._error, false, "error off by default")
+  h.assert_eq(extract_config({ execute = { error = true } })._error, true, "execute.error")
+  local meta = { execute = { error = true }, extensions = { term = { error = false } } }
+  h.assert_eq(extract_config(meta)._error, false, "extensions.term.error wins")
+  meta = { extensions = { term = { error = true } } }
+  h.assert_eq(extract_config(meta)._error, true, "extensions.term.error")
+end
+
 h.finish("extract_config")

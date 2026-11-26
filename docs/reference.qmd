@@ -22,6 +22,7 @@ All project and document options are set under `extensions: term:` — in `_quar
 | `echo` | x | x | x | | `terminal` | Output mode: `terminal`, `source`, `true`, or `false` |
 | `enter` | | | x | x | (from `literal`) | Press Enter after the line |
 | `env` | x | x | | | `{}` | Additional environment variables |
+| `error` | x | x | x | | `false` | Show a failed cell's error in the document instead of failing the render (see [Errors](#errors)) |
 | `eval` | | | x | | `true` | Execute the cell; `false` renders it as a static code block |
 | `expect-prompt` | | | x | x | (from `enter`) | Wait for prompt after the line |
 | `fullscreen` | | | x | | `false` | Capture the entire terminal screen |
@@ -85,6 +86,7 @@ Set these under `extensions: term:` in your YAML front matter:
 | `ps2` | (derived) | Literal continuation prompt string |
 | `ps2-regex` | (derived from `ps2`) | Raw regex for continuation prompt (e.g., `"^\\s*$"` for fish) |
 | `timeout` | `10.0` | Seconds to wait for prompt before error |
+| `error` | `false` (or Quarto's `execute: error`) | Show failed cells' errors in the document instead of failing the render |
 | `delay` | `0.1` | Default seconds to wait before executing each line |
 | `hold` | `0.0` | Default seconds to wait after each cell completes |
 | `echo` | `terminal` | Default output mode for cells |
@@ -117,6 +119,7 @@ Set these with `#|` at the top of a cell:
 | `spacing` | (from config) | Override spacing for this cell |
 | `typing` | (from config) | Override typing simulation |
 | `timeout` | (from config) | Override timeout for this cell |
+| `error` | (from config) | Show this cell's error in the document instead of failing the render |
 | `hold` | (from config) | Seconds to wait after cell completes (captures ongoing output) |
 | `literal` | `true` | Default `literal` for all lines in this cell |
 | `delay` | (from config) | Default `delay` for all lines in this cell |
@@ -306,6 +309,17 @@ extensions:
 ::: {.callout-tip}
 When Quarto merges metadata, it concatenates lists. A document can't turn off an `init` list from `_quarto.yml` with `init: false`, and its own `init` list is added to the project's. Set `init` in `_quarto.yml` as a string if documents need to override it.
 :::
+
+## Errors
+
+A cell fails when its session can't start, a prompt isn't detected before `timeout`, or an `assert` pattern isn't found. A command that prints an error, such as `ls missing-file`, doesn't count: its output is rendered like any other.
+
+By default, a failed cell fails the render, so that a broken page can't be published. As with Quarto's own `error` option, set `error: true` to show the error after the cell's output instead. Set it for a cell with `#| error: true`, for a document or project under `extensions.term`, or for all engines with Quarto's `execute`:
+
+```yaml
+execute:
+  error: true
+```
 
 ## Terminal Recordings
 

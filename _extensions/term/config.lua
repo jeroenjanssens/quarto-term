@@ -90,6 +90,15 @@ function M.extract_config(meta)
     format = "html",
   }
 
+  -- Like Quarto's `execute: error`: by default a failed cell fails the
+  -- render; with `error: true` the error is shown in the document instead
+  config._error = false
+  local execute_meta = meta and meta["execute"]
+  if type(execute_meta) == "table" and execute_meta["error"] ~= nil then
+    local v = execute_meta["error"]
+    config._error = v == true or (type(v) ~= "boolean" and pandoc.utils.stringify(v) == "true")
+  end
+
   local term_meta = meta and meta["extensions"] and meta["extensions"]["term"]
   if not term_meta then
     return config
@@ -311,6 +320,7 @@ function M.extract_config(meta)
   local cl_val = term_meta["callout-list"]
   if cl_val == nil then cl_val = term_meta["callout_list"] end
   if cl_val ~= nil then config._callout_list = meta_bool(cl_val) end
+  if term_meta["error"] ~= nil then config._error = meta_bool(term_meta["error"]) == true end
 
   local FORMAT_KEYS = { html = true, pdf = true, revealjs = true, epub = true, markdown = true, latex = true, typst = true }
 

@@ -18,6 +18,14 @@ local config_mod = dofile(FILTER_DIR .. "config.lua")
 
 local extract_config = config_mod.extract_config
 
+-- Quarto catches errors raised by filters, logs them, and still writes the
+-- output with exit status 0, so exit to make the render fail
+local function fail(message)
+  io.stderr:write(message .. "\n")
+  io.stderr:flush()
+  os.exit(1)
+end
+
 local function is_term_block(block)
   if block.t ~= "CodeBlock" then
     return false
@@ -200,6 +208,8 @@ function Pandoc(doc)
       if cell_chrome == nil then cell_chrome = _chrome end
       local cell_callout_list = cell._callout_list
       cell._callout_list = nil
+      local cell_error = cell._error
+      cell._error = nil
       cell._eval = nil
       cell._include = nil
       cell._colorscheme = nil
@@ -223,6 +233,7 @@ function Pandoc(doc)
           colorscheme_dark = cell_colorscheme_dark,
           chrome = cell_chrome,
           callout_list = cell_callout_list,
+          error = cell_error,
         })
       else
         -- Strip #| option lines from the code block
@@ -341,13 +352,20 @@ function Pandoc(doc)
   local cell_theme_css = {}
   local callout_list_css = {}
 
+  local failures = {}
+
   for _, pos in ipairs(term_positions) do
     local result = results[pos.cell_i]
+    local cell_error = nil
     if result then
       if result.error and result.error ~= pandoc.json.null and result.error ~= "" then
-        io.stderr:write("quarto-term: cell " .. pos.cell_i .. " error: " .. tostring(result.error) .. "\n")
+        cell_error = tostring(result.error)
+        io.stderr:write("quarto-term: cell " .. pos.cell_i .. " error: " .. cell_error .. "\n")
         if os.getenv("QUARTO_TERM_CHECK") then
-          error("quarto-term check: assertion failed in cell " .. pos.cell_i)
+          fail("quarto-term check: assertion failed in cell " .. pos.cell_i)
+        end
+        if not pos.error then
+          table.insert(failures, pos.cell_i)
         end
       end
       if pos.include == false then
@@ -403,8 +421,30 @@ function Pandoc(doc)
         else
           replacements[pos.block_i] = pandoc.RawBlock(raw_format, "")
         end
+        if cell_error and pos.error then
+          -- Shown after the (possibly partial) output, like Quarto shows
+          -- execution errors with `error: true`
+          local blocks = pandoc.Blocks({})
+          local existing = replacements[pos.block_i]
+          if existing.t then blocks:insert(existing) else blocks:extend(existing) end
+          blocks:insert(pandoc.Div(
+            { pandoc.CodeBlock(cell_error) },
+            pandoc.Attr("", { "cell-output", "cell-output-error", "term-error" })
+          ))
+          replacements[pos.block_i] = blocks
+        end
       end
     end
+  end
+
+  if #failures > 0 then
+    local cells_word = #failures == 1 and "cell " or "cells "
+    local ids = {}
+    for _, id in ipairs(failures) do table.insert(ids, tostring(id)) end
+    fail("quarto-term: " .. cells_word .. table.concat(ids, ", ")
+      .. " failed (see the errors above). Set `error: true` under `execute`, "
+      .. "`extensions.term`, or as a cell option to show errors in the "
+      .. "document instead")
   end
 
   doc = replace_term_blocks()

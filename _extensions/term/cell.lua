@@ -222,6 +222,9 @@ function M.build_cell(block, cell_id, config)
   local cl_opt = cell_opts["callout-list"]
   if cl_opt == nil then cl_opt = cell_opts["callout_list"] end
   if cl_opt ~= nil then callout_list = cl_opt == true end
+  -- Lua only: show a failed cell's error instead of failing the render
+  local allow_error = config._error == true
+  if cell_opts["error"] ~= nil then allow_error = cell_opts["error"] == true end
   if cell_opts["remove"] ~= nil then options.remove = as_list(cell_opts["remove"]) end
   if cell_opts["truncate"] ~= nil then options.truncate = as_list(cell_opts["truncate"]) end
   if cell_opts["highlight"] ~= nil then options.highlight = cell_opts["highlight"] end
@@ -294,6 +297,7 @@ function M.build_cell(block, cell_id, config)
     _colorscheme_dark = cell_colorscheme_dark,
     _chrome = cell_chrome,
     _callout_list = callout_list == true,
+    _error = allow_error,
   }
 end
 

@@ -6,6 +6,7 @@ pub enum TermError {
     PromptTimeout { elapsed_secs: f64, last_output: String },
     ShellExited,
     RegexCompile(String),
+    InitFailed { command: String, reason: String },
 }
 
 impl fmt::Display for TermError {
@@ -21,6 +22,13 @@ impl fmt::Display for TermError {
             }
             Self::ShellExited => write!(f, "shell process exited unexpectedly"),
             Self::RegexCompile(msg) => write!(f, "invalid prompt regex: {msg}"),
+            Self::InitFailed { command, reason } => write!(
+                f,
+                "init command {command:?} did not return to the prompt: {reason}\n  \
+                 Hint: the shell may be waiting for more input, or the command \
+                 may not be valid for this shell (is a project-level `init` \
+                 meant for another shell?)"
+            ),
         }
     }
 }
@@ -80,6 +88,20 @@ mod tests {
     fn display_shell_exited() {
         let err = TermError::ShellExited;
         assert_eq!(err.to_string(), "shell process exited unexpectedly");
+    }
+
+    #[test]
+    fn display_init_failed() {
+        let err = TermError::InitFailed {
+            command: "SELECT 1".to_string(),
+            reason: "the shell is at the continuation prompt".to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.starts_with(
+            "init command \"SELECT 1\" did not return to the prompt: \
+             the shell is at the continuation prompt"
+        ));
+        assert!(msg.contains("Hint:"));
     }
 
     #[test]

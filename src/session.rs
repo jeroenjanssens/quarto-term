@@ -142,7 +142,22 @@ impl PtySession {
                 .map_err(|_| TermError::ShellExited)?;
             session.writer.flush().map_err(|_| TermError::ShellExited)?;
             session.drain_pty();
-            session.wait_for_prompt()?;
+            let init_failed = |reason: String| TermError::InitFailed {
+                command: init_cmd.trim_end().to_string(),
+                reason,
+            };
+            match session.wait_for_prompt() {
+                Ok(()) => {}
+                Err(TermError::ShellExited) => return Err(TermError::ShellExited),
+                Err(e) => return Err(init_failed(e.to_string())),
+            }
+            // wait_for_prompt also accepts PS2, which would leave the next
+            // command typed into an unfinished one
+            if !session.last_line_is_primary_prompt() {
+                return Err(init_failed(
+                    "the shell is at the continuation prompt".to_string(),
+                ));
+            }
         }
 
         session.recorders = config
