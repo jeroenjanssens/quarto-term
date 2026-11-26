@@ -13,7 +13,9 @@ quarto-term is great for:
   output and persistent state
 - **Technical books and courses**: faithful terminal rendering for any
   “type this, see that” sequence, including TUI walkthroughs, database
-  demos, and data pipeline chains
+  demos, and data pipeline chains. For example, quarto-term renders the
+  book [Data Science at the Command
+  Line](https://dsatcl.jeroenjanssens.com).
 - **DevOps and security**: runbooks, CTF writeups, and environment setup
   guides where colored tool output and multi-step sessions matter
 
